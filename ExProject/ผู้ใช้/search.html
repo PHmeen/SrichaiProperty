@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ค้นหาอสังหาริมทรัพย์ - Srichai Property Agents</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style> 
+        body { font-family: 'Prompt', sans-serif; background-color: #f8fafc; }
+        .glass-panel { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.5); }
+        /* ซ่อนลูกศร Dropdown ดั้งเดิมของ Datalist ในบางเบราว์เซอร์ให้ดูคลีนขึ้น */
+        input::-webkit-calendar-picker-indicator { display: none !important; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased selection:bg-blue-200 selection:text-blue-900 overflow-x-hidden">
+
+    <nav class="fixed w-full z-50 top-0 transition-all duration-300 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-20">
+                
+                <div class="flex-shrink-0 flex items-center gap-2 cursor-pointer group" onclick="window.location.href='home.html'">
+                    <div class="w-10 h-10 bg-blue-700 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-700/30 group-hover:scale-105 transition-transform">S</div>
+                    <span class="text-2xl font-extrabold text-slate-900 tracking-tight">
+                        Srichai<span class="text-blue-600">Property</span>
+                    </span>
+                </div>
+
+                <div class="hidden lg:flex space-x-1 items-center bg-slate-100/50 p-1 rounded-full border border-slate-200">
+                    <a href="home.html" class="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-5 py-2 text-sm font-medium transition">หน้าแรก</a>
+                    <a href="search.html" class="text-blue-700 bg-white shadow-sm rounded-full px-5 py-2 text-sm font-bold transition">ค้นหาอสังหาฯ</a>
+                    <a href="agents.html" class="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-5 py-2 text-sm font-medium transition">นายหน้าของเรา</a>
+                    <a href="#" class="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-5 py-2 text-sm font-medium transition">ประวัติการนัดหมาย</a>
+                </div>
+
+                <div class="flex items-center space-x-2 sm:space-x-4">
+                    <div class="hidden md:flex items-center space-x-1 mr-2 border-r border-slate-200 pr-4">
+                        <a href="#" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition cursor-pointer" title="รายการโปรด">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+                        </a>
+                        <a href="#" class="relative p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition cursor-pointer" title="ข้อความแชท">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863-0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                            <span class="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
+                              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border border-white"></span>
+                            </span>
+                        </a>
+                    </div>
+
+                    <div class="relative group">
+                        <div class="flex items-center space-x-3 bg-slate-50 border border-slate-200 pl-2 pr-4 py-1.5 rounded-full shadow-sm cursor-pointer hover:bg-slate-100 transition">
+                            <img src="https://i.pravatar.cc/150?img=68" alt="Profile" class="w-8 h-8 rounded-full border-2 border-white shadow-sm object-cover group-hover:scale-105 transition-transform">
+                            <div class="flex flex-col hidden sm:flex">
+                                <span class="text-sm font-bold text-slate-900 leading-none">พาทิศ หนูดำ</span>
+                                <span class="text-[10px] text-blue-600 font-bold uppercase tracking-widest mt-0.5">ผู้สนใจซื้อ</span>
+                            </div>
+                        </div>
+                        
+                        <div class="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top-right z-50">
+                            <div class="p-4 border-b border-slate-100">
+                                <p class="text-sm font-bold text-slate-900">พาทิศ หนูดำ</p>
+                                <p class="text-xs text-slate-500 truncate">mean1940@gmail.com</p>
+                            </div>
+                            <div class="p-2 space-y-1">
+                                <a href="profile.html" class="block px-4 py-2 text-sm text-slate-600 font-medium hover:bg-slate-50 hover:text-blue-600 rounded-xl transition">ตั้งค่าโปรไฟล์</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-slate-600 font-medium hover:bg-slate-50 hover:text-blue-600 rounded-xl transition">สมัครเป็นนายหน้า (Agent)</a>
+                                <a href="#" class="block px-4 py-2 text-sm text-slate-600 font-medium hover:bg-slate-50 hover:text-blue-600 rounded-xl transition">เปลี่ยนรหัสผ่าน</a>
+                            </div>
+                            <div class="p-2 border-t border-slate-100">
+                                <a href="login.html" class="block px-4 py-2 text-sm text-red-600 font-bold hover:bg-red-50 rounded-xl transition">ออกจากระบบ</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="mobile-menu-btn" class="lg:hidden text-slate-600 hover:text-blue-600 focus:outline-none ml-2">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="mobile-menu" class="hidden lg:hidden bg-white border-t border-slate-100 absolute w-full shadow-lg">
+            <div class="px-4 pt-4 pb-6 space-y-2 max-h-[80vh] overflow-y-auto">
+                <div class="flex items-center justify-between mb-4 px-3 pb-4 border-b border-slate-100">
+                    <div class="flex items-center gap-3">
+                        <img src="https://i.pravatar.cc/150?img=68" class="w-12 h-12 rounded-full border border-slate-200">
+                        <div>
+                            <h4 class="font-bold text-slate-900">พาทิศ หนูดำ</h4>
+                            <p class="text-xs text-blue-600 font-bold">ผู้สนใจซื้อ</p>
+                        </div>
+                    </div>
+                    <button onclick="window.location.href='profile.html'" class="text-xs bg-slate-100 text-slate-600 font-bold px-3 py-1.5 rounded-lg hover:bg-slate-200 transition">ตั้งค่า</button>
+                </div>
+
+                <a href="home.html" class="block px-3 py-3 text-slate-600 font-medium hover:bg-slate-50 rounded-xl">หน้าแรก</a>
+                <a href="search.html" class="block px-3 py-3 text-blue-700 font-bold bg-blue-50 rounded-xl">ค้นหาอสังหาฯ</a>
+                <a href="agents.html" class="block px-3 py-3 text-slate-600 font-medium hover:bg-slate-50 rounded-xl">นายหน้าของเรา</a>
+                
+                <div class="border-t border-slate-100 my-3"></div>
+                
+                <div class="text-xs font-bold text-slate-400 uppercase px-3 mb-2 tracking-wider">บัญชีของฉัน</div>
+                <a href="#" class="flex items-center gap-3 px-3 py-3 text-slate-600 font-medium hover:bg-slate-50 rounded-xl">
+                    <span class="text-red-500 text-xl">❤️</span> รายการโปรด
+                </a>
+                <a href="#" class="flex items-center gap-3 px-3 py-3 text-slate-600 font-medium hover:bg-slate-50 rounded-xl">
+                    <span class="text-amber-500 text-xl">📅</span> ประวัติการนัดหมาย
+                </a>
+                <a href="#" class="flex items-center justify-between px-3 py-3 text-slate-600 font-medium hover:bg-slate-50 rounded-xl">
+                    <div class="flex items-center gap-3"><span class="text-blue-500 text-xl">💬</span> ข้อความแชท</div>
+                    <span class="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">1 ใหม่</span>
+                </a>
+                
+                <div class="border-t border-slate-100 my-4"></div>
+                <a href="login.html" class="block px-3 py-3 bg-red-50 text-red-600 font-bold text-center rounded-xl transition hover:bg-red-100">ออกจากระบบ</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="pt-20"></div>
+
+    <div class="bg-slate-900 py-10 lg:py-14 relative overflow-hidden">
+        <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1564013799919-ab600027ffc6?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')] bg-cover bg-center opacity-20"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/80 to-transparent"></div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <h1 class="text-3xl font-extrabold text-white mb-6">ค้นหาอสังหาฯ ที่ใช่ สำหรับคุณ</h1>
+            
+            <div class="bg-white p-3 rounded-2xl shadow-xl flex flex-col md:flex-row gap-3">
+                <div class="flex-1 flex bg-slate-50 rounded-xl p-2 border border-slate-100 focus-within:border-blue-500 transition-colors">
+                    <span class="flex items-center pl-3 pr-2 text-slate-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </span>
+                    <input type="text" placeholder="ค้นหา รหัสทรัพย์, ชื่อโครงการ, หรือสถานีรถไฟฟ้า..." class="w-full bg-transparent border-none focus:ring-0 text-slate-800 font-medium px-2 py-2 outline-none">
+                </div>
+                <select class="md:w-40 bg-slate-50 rounded-xl px-4 py-3 border border-slate-100 text-slate-700 font-medium outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                    <option>ซื้อ (Buy)</option>
+                    <option>เช่า (Rent)</option>
+                </select>
+                <select class="md:w-48 bg-slate-50 rounded-xl px-4 py-3 border border-slate-100 text-slate-700 font-medium outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                    <option>ประเภททั้งหมด</option>
+                    <option>บ้านเดี่ยว</option>
+                    <option>คอนโดมิเนียม</option>
+                    <option>ทาวน์โฮม</option>
+                    <option>ที่ดิน</option>
+                </select>
+                <button class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30">
+                    ค้นหา
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col lg:flex-row gap-8">
+        
+        <div class="w-full lg:w-1/4 flex flex-col gap-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 lg:sticky lg:top-28">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-extrabold text-slate-900">ตัวกรองขั้นสูง</h3>
+                    <button class="text-sm text-blue-600 font-medium hover:underline">ล้างค่า</button>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-bold text-slate-700 mb-3">จังหวัด / ทำเล</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        </span>
+                        <input type="text" list="province-list" placeholder="พิมพ์หรือเลือกจังหวัด..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500 focus:bg-white font-medium transition">
+                        <datalist id="province-list">
+                            <option value="กรุงเทพมหานคร">
+                            <option value="สงขลา">
+                            <option value="สมุทรปราการ">
+                            <option value="นนทบุรี">
+                            <option value="ปทุมธานี">
+                            <option value="ชลบุรี">
+                            <option value="เชียงใหม่">
+                            <option value="ภูเก็ต">
+                            <option value="ขอนแก่น">
+                            <option value="นครราชสีมา">
+                            <option value="นครศรีธรรมราช">
+                        </datalist>
+                    </div>
+                </div>
+
+                <hr class="border-slate-100 mb-6">
+
+                <div class="mb-6">
+                    <label class="block text-sm font-bold text-slate-700 mb-3">ช่วงราคา (บาท)</label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" placeholder="ต่ำสุด" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500 focus:bg-white text-center font-medium">
+                        <span class="text-slate-400">-</span>
+                        <input type="text" placeholder="สูงสุด" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500 focus:bg-white text-center font-medium">
+                    </div>
+                </div>
+
+                <hr class="border-slate-100 mb-6">
+
+                <div class="mb-6">
+                    <label class="block text-sm font-bold text-slate-700 mb-3">ห้องนอน</label>
+                    <div class="flex flex-wrap gap-2">
+                        <button class="px-4 py-2 border-2 border-blue-600 bg-blue-50 text-blue-700 rounded-xl text-sm font-bold">ไม่ระบุ</button>
+                        <button class="px-4 py-2 border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 rounded-xl text-sm font-medium transition">1+</button>
+                        <button class="px-4 py-2 border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 rounded-xl text-sm font-medium transition">2+</button>
+                        <button class="px-4 py-2 border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 rounded-xl text-sm font-medium transition">3+</button>
+                        <button class="px-4 py-2 border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 rounded-xl text-sm font-medium transition">4+</button>
+                    </div>
+                </div>
+
+                <hr class="border-slate-100 mb-6">
+
+                <div class="mb-6">
+                    <label class="block text-sm font-bold text-slate-700 mb-3">จุดเด่น / ไลฟ์สไตล์พิเศษ</label>
+                    <div class="space-y-3">
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <input type="checkbox" class="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
+                            <span class="text-sm text-slate-600 font-medium group-hover:text-slate-900 transition">🚆 ใกล้รถไฟฟ้า BTS/MRT</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <input type="checkbox" class="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
+                            <span class="text-sm text-slate-600 font-medium group-hover:text-slate-900 transition">✈️ ใกล้สนามบิน</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <input type="checkbox" class="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
+                            <span class="text-sm text-slate-600 font-medium group-hover:text-slate-900 transition">🐾 อนุญาตให้เลี้ยงสัตว์ (Pet-Friendly)</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <input type="checkbox" class="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
+                            <span class="text-sm text-slate-600 font-medium group-hover:text-slate-900 transition">🛣️ ใกล้ทางด่วน / มอเตอร์เวย์</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <input type="checkbox" class="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
+                            <span class="text-sm text-slate-600 font-medium group-hover:text-slate-900 transition">🛋️ ตกแต่งครบ พร้อมอยู่ (Fully Furnished)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <button class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-xl transition shadow-lg hover:-translate-y-0.5 transform">
+                    อัปเดตผลการค้นหา
+                </button>
+            </div>
+        </div>
+
+        <div class="w-full lg:w-3/4">
+            
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                <div>
+                    <h2 class="text-xl font-extrabold text-slate-900">ประกาศทั้งหมด</h2>
+                    <p class="text-slate-500 text-sm mt-1">พบอสังหาริมทรัพย์ <span class="font-bold text-blue-600">1,240</span> รายการ</p>
+                </div>
+                <div class="flex items-center gap-3 w-full sm:w-auto">
+                    <button class="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-sm font-bold transition shadow-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
+                        ดูแผนที่
+                    </button>
+                    <div class="w-px h-6 bg-slate-200 hidden sm:block"></div>
+                    <span class="text-sm text-slate-500 font-medium whitespace-nowrap hidden sm:block">เรียงตาม:</span>
+                    <select class="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto cursor-pointer shadow-sm">
+                        <option>อัปเดตล่าสุด</option>
+                        <option>ราคา: ต่ำไปสูง</option>
+                        <option>ราคา: สูงไปต่ำ</option>
+                        <option>พื้นที่ใช้สอย: มากไปน้อย</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-6">
+                
+                <div class="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 relative group flex flex-col cursor-pointer" onclick="window.location.href='property-detail.html'">
+                    <button onclick="toggleFavorite(this); event.stopPropagation();" class="absolute top-4 right-4 z-10 w-10 h-10 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center text-slate-400 hover:scale-110 transition shadow-sm">
+                        <svg class="w-5 h-5 heart-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+                    </button>
+                    <div class="absolute top-4 left-4 z-10 flex flex-col gap-2">
+                        <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm tracking-wide">ขาย</span>
+                        <span class="bg-slate-900/80 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm">บ้านเดี่ยว</span>
+                    </div>
+                    <div class="relative h-60 overflow-hidden">
+                        <img src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&w=800&q=80" alt="House" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+                    </div>
+                    <div class="p-6 flex flex-col flex-grow">
+                        <div class="text-3xl font-extrabold text-blue-700 mb-2">฿5,500,000</div>
+                        <h3 class="text-xl font-bold text-slate-900 mb-2 line-clamp-1 group-hover:text-blue-600 transition">บ้านเดี่ยว 2 ชั้น โครงการสิริชัย วิลเลจ</h3>
+                        <p class="text-slate-500 text-sm mb-6 flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            ต.คอหงส์ อ.หาดใหญ่ จ.สงขลา
+                        </p>
+                        <div class="flex items-center justify-between text-slate-600 border-t border-b border-slate-100 py-4 mb-4 bg-slate-50 px-4 rounded-xl mt-auto">
+                            <span class="font-bold flex items-center gap-1">🛏️ 3</span>
+                            <div class="w-px h-6 bg-slate-200"></div>
+                            <span class="font-bold flex items-center gap-1">🚿 3</span>
+                            <div class="w-px h-6 bg-slate-200"></div>
+                            <span class="font-bold flex items-center gap-1 text-sm">📐 60 ตร.ว.</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <img src="https://i.pravatar.cc/150?img=11" alt="Agent" class="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm">
+                                <div>
+                                    <div class="text-sm font-bold text-slate-900">สมชาย ใจดี</div>
+                                    <div class="text-xs text-blue-600 font-bold">Verified Agent ✓</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 relative group flex flex-col cursor-pointer" onclick="window.location.href='property-detail.html'">
+                    <button onclick="toggleFavorite(this); event.stopPropagation();" class="absolute top-4 right-4 z-10 w-10 h-10 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center text-slate-400 hover:scale-110 transition shadow-sm">
+                        <svg class="w-5 h-5 heart-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+                    </button>
+                    <div class="absolute top-4 left-4 z-10 flex flex-col gap-2">
+                        <span class="bg-[#84cc00] text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm tracking-wide">🚆 ใกล้ BTS อโศก</span>
+                        <span class="bg-slate-900/80 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm">คอนโดมิเนียม</span>
+                    </div>
+                    <div class="relative h-60 overflow-hidden">
+                        <img src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?ixlib=rb-4.0.3&w=800&q=80" alt="Condo" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+                    </div>
+                    <div class="p-6 flex flex-col flex-grow">
+                        <div class="text-3xl font-extrabold text-blue-700 mb-2">฿4,200,000</div>
+                        <h3 class="text-xl font-bold text-slate-900 mb-2 line-clamp-1 group-hover:text-blue-600 transition">คอนโดหรู ใจกลางอโศก ชั้น 15</h3>
+                        <p class="text-slate-500 text-sm mb-6 flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            เขตวัฒนา, กรุงเทพมหานคร
+                        </p>
+                        <div class="flex items-center justify-between text-slate-600 border-t border-b border-slate-100 py-4 mb-4 bg-slate-50 px-4 rounded-xl mt-auto">
+                            <span class="font-bold flex items-center gap-1">🛏️ 1</span>
+                            <div class="w-px h-6 bg-slate-200"></div>
+                            <span class="font-bold flex items-center gap-1">🚿 1</span>
+                            <div class="w-px h-6 bg-slate-200"></div>
+                            <span class="font-bold flex items-center gap-1 text-sm">📐 35 ตร.ม.</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <img src="https://i.pravatar.cc/150?img=32" alt="Agent" class="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm">
+                                <div>
+                                    <div class="text-sm font-bold text-slate-900">อลิสา พร็อพเพอร์ตี้</div>
+                                    <div class="text-xs text-slate-500 font-medium">Agent</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 relative group flex flex-col cursor-pointer" onclick="window.location.href='property-detail.html'">
+                    <button onclick="toggleFavorite(this); event.stopPropagation();" class="absolute top-4 right-4 z-10 w-10 h-10 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center text-slate-400 hover:scale-110 transition shadow-sm">
+                        <svg class="w-5 h-5 heart-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+                    </button>
+                    <div class="absolute top-4 left-4 z-10 flex flex-col gap-2">
+                        <span class="bg-sky-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm tracking-wide">✈️ ใกล้สนามบิน</span>
+                        <span class="bg-slate-900/80 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm">บ้านเดี่ยว</span>
+                    </div>
+                    <div class="relative h-60 overflow-hidden">
+                        <img src="https://images.unsplash.com/photo-1512915922686-57c11dde9b6b?ixlib=rb-4.0.3&w=800&q=80" alt="House" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+                    </div>
+                    <div class="p-6 flex flex-col flex-grow">
+                        <div class="text-3xl font-extrabold text-blue-700 mb-2">฿4,500,000</div>
+                        <h3 class="text-xl font-bold text-slate-900 mb-2 line-clamp-1 group-hover:text-blue-600 transition">บ้านเดี่ยวสไตล์โมเดิร์น เดินทางสะดวก</h3>
+                        <p class="text-slate-500 text-sm mb-6 flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            ถ.สนามบิน-ลพบุรีราเมศวร์, ควนลัง
+                        </p>
+                        <div class="flex items-center justify-between text-slate-600 border-t border-b border-slate-100 py-4 mb-4 bg-slate-50 px-4 rounded-xl mt-auto">
+                            <span class="font-bold flex items-center gap-1">🛏️ 3</span>
+                            <div class="w-px h-6 bg-slate-200"></div>
+                            <span class="font-bold flex items-center gap-1">🚿 3</span>
+                            <div class="w-px h-6 bg-slate-200"></div>
+                            <span class="font-bold flex items-center gap-1 text-sm">📐 180 ตร.ม.</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <img src="https://ui-avatars.com/api/?name=Agent+3&background=0ea5e9&color=fff" class="w-10 h-10 rounded-full border-2 border-white shadow-sm">
+                                <div>
+                                    <div class="text-sm font-bold text-slate-900">กิตติพงษ์ เรียลตี้</div>
+                                    <div class="text-xs text-slate-500 font-medium">Agent</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 relative group flex flex-col cursor-pointer" onclick="window.location.href='property-detail.html'">
+                    <button onclick="toggleFavorite(this); event.stopPropagation();" class="absolute top-4 right-4 z-10 w-10 h-10 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center text-slate-400 hover:scale-110 transition shadow-sm">
+                        <svg class="w-5 h-5 heart-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+                    </button>
+                    <div class="absolute top-4 left-4 z-10 flex flex-col gap-2">
+                        <span class="bg-indigo-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm tracking-wide">ให้เช่า</span>
+                        <span class="bg-slate-900/80 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm">ทาวน์โฮม</span>
+                    </div>
+                    <div class="relative h-60 overflow-hidden">
+                        <img src="https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?ixlib=rb-4.0.3&w=800&q=80" alt="House" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+                    </div>
+                    <div class="p-6 flex flex-col flex-grow">
+                        <div class="text-3xl font-extrabold text-blue-700 mb-2">฿12,000 <span class="text-sm text-slate-500 font-medium">/ เดือน</span></div>
+                        <h3 class="text-xl font-bold text-slate-900 mb-2 line-clamp-1 group-hover:text-blue-600 transition">บ้านเดี่ยวชั้นเดียว ให้เช่า เฟอร์ครบ</h3>
+                        <p class="text-slate-500 text-sm mb-6 flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            ต.คอหงส์ อ.หาดใหญ่ จ.สงขลา
+                        </p>
+                        <div class="flex items-center justify-between text-slate-600 border-t border-b border-slate-100 py-4 mb-4 bg-slate-50 px-4 rounded-xl mt-auto">
+                            <span class="font-bold flex items-center gap-1">🛏️ 2</span>
+                            <div class="w-px h-6 bg-slate-200"></div>
+                            <span class="font-bold flex items-center gap-1">🚿 2</span>
+                            <div class="w-px h-6 bg-slate-200"></div>
+                            <span class="font-bold flex items-center gap-1 text-sm">📐 50 ตร.ว.</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <img src="https://i.pravatar.cc/150?img=68" alt="Agent" class="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm">
+                                <div>
+                                    <div class="text-sm font-bold text-slate-900">ธนกร เอสเตท</div>
+                                    <div class="text-xs text-blue-600 font-bold">Verified Agent ✓</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-12 flex justify-center items-center gap-2">
+                <button class="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition shadow-sm font-bold">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                </button>
+                <button class="w-10 h-10 flex items-center justify-center rounded-xl bg-blue-700 text-white font-bold shadow-md hover:-translate-y-0.5 transition transform">1</button>
+                <button class="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 font-bold hover:bg-slate-50 transition shadow-sm">2</button>
+                <button class="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 font-bold hover:bg-slate-50 transition shadow-sm">3</button>
+                <span class="text-slate-400 font-bold mx-2">...</span>
+                <button class="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 font-bold hover:bg-slate-50 transition shadow-sm">12</button>
+                <button class="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition shadow-sm font-bold">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <footer class="bg-slate-900 text-slate-300 pt-16 pb-8 border-t border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+                <div class="md:col-span-2">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">S</div>
+                        <span class="text-2xl font-extrabold text-white tracking-tight">Srichai<span class="text-blue-500">Property</span></span>
+                    </div>
+                    <p class="text-sm leading-relaxed text-slate-400 max-w-md">
+                        ระบบบริหารจัดการการซื้อขายอสังหาริมทรัพย์ กรณีศึกษา Srichai Property Agents แพลตฟอร์มที่รวมผู้ซื้อและนายหน้าไว้ในที่เดียว
+                    </p>
+                </div>
+                <div>
+                    <h4 class="text-white font-bold mb-4 uppercase text-sm">เมนูหลัก</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="home.html" class="hover:text-blue-400 transition">หน้าแรก</a></li>
+                        <li><a href="profile.html" class="hover:text-blue-400 transition">บัญชีของฉัน</a></li>
+                        <li><a href="login.html" class="hover:text-red-400 transition text-red-500">ออกจากระบบ</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-bold mb-4 uppercase text-sm">ติดต่อเรา</h4>
+                    <ul class="space-y-2 text-sm text-slate-400">
+                        <li>📍 มหาวิทยาลัยสงขลานครินทร์</li>
+                        <li>📧 contact@srichaiproperty.com</li>
+                        <li>📞 074-XXX-XXX</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-slate-800 pt-8 text-center text-sm text-slate-500">
+                <p>&copy; 2026 Srichai Property Agents. โครงงานระบบบริหารจัดการการซื้อขายอสังหาริมทรัพย์.</p>
+            </div>
+        </div>
+    </footer>
+
+    <button class="fixed bottom-6 right-6 w-14 h-14 bg-blue-700 text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-blue-800 hover:scale-110 transition-all z-50 group">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863-0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+        <span class="absolute top-0 right-0 w-4 h-4 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>
+        <span class="absolute right-16 bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none">
+            มี 1 ข้อความใหม่
+        </span>
+    </button>
+
+    <script>
+        const mobileBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        
+        mobileBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        // ฟังก์ชันกดหัวใจ
+        function toggleFavorite(btn) {
+            const icon = btn.querySelector('.heart-icon');
+            if (icon.getAttribute('fill') === 'none') {
+                icon.setAttribute('fill', 'currentColor');
+                icon.classList.remove('text-slate-400');
+                icon.classList.add('text-red-500');
+                alert("เพิ่มลงในรายการโปรดเรียบร้อยแล้ว!");
+            } else {
+                icon.setAttribute('fill', 'none');
+                icon.classList.remove('text-red-500');
+                icon.classList.add('text-slate-400');
+            }
+        }
+    </script>
+</body>
+</html>

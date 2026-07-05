@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Listing Moderation - Srichai Property Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style> 
+        body { font-family: 'Prompt', sans-serif; background-color: #f8fafc; color: #1e293b; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Animation สำหรับ Modal */
+        .modal-enter { opacity: 0; transform: scale(0.95); }
+        .modal-enter-active { opacity: 1; transform: scale(1); transition: all 0.2s ease-out; }
+        .modal-leave { opacity: 1; transform: scale(1); }
+        .modal-leave-active { opacity: 0; transform: scale(0.95); transition: all 0.2s ease-in; }
+    </style>
+</head>
+<body class="antialiased selection:bg-indigo-200 selection:text-indigo-900 overflow-hidden flex h-screen">
+
+    <aside class="w-72 bg-slate-900 text-white flex flex-col hidden lg:flex shadow-[4px_0_24px_rgba(0,0,0,0.1)] z-20 shrink-0">
+        <div class="h-20 flex items-center px-6 border-b border-slate-800 bg-slate-950">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-extrabold text-xl shadow-lg shadow-indigo-600/30">S</div>
+                <div class="flex flex-col">
+                    <span class="text-xl font-extrabold tracking-tight leading-none text-white">Srichai<span class="text-indigo-400">Admin</span></span>
+                    <span class="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> System Online
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto py-6 px-4 space-y-1 custom-scroll">
+            <a href="home.html" class="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold transition shadow-md shadow-indigo-900/50 group mb-6">
+                <div class="flex items-center gap-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                    เปิดดูหน้าเว็บไซต์จริง
+                </div>
+            </a>
+
+            <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Overview</p>
+            <a href="home.html" class="flex items-center gap-3 px-3 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl font-medium transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                แดชบอร์ดหลัก
+            </a>
+
+            <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 mt-6">Moderation (ตรวจสอบ)</p>
+            <a href="moderation.html" class="flex items-center justify-between px-3 py-2.5 bg-slate-800 text-white rounded-xl font-bold transition border border-slate-700 shadow-sm relative overflow-hidden group">
+                <div class="absolute inset-y-0 left-0 w-1 bg-indigo-500 rounded-r"></div>
+                <div class="flex items-center gap-3 pl-1">
+                    <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path></svg>
+                    ประกาศอสังหาฯ
+                </div>
+                <span class="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">5</span>
+            </a>
+            <a href="#" class="flex items-center justify-between px-3 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl font-medium transition group">
+                <div class="flex items-center gap-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    เอกสารยืนยันตัวตน (KYC)
+                </div>
+                <span class="bg-amber-500 text-slate-900 text-[10px] font-bold px-2 py-0.5 rounded-full">2</span>
+            </a>
+            <a href="#" class="flex items-center justify-between px-3 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl font-medium transition group">
+                <div class="flex items-center gap-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    รายงานปัญหา (Reports)
+                </div>
+            </a>
+            
+            <p class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 mt-6">Management</p>
+            <a href="users.html" class="flex items-center gap-3 px-3 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl font-medium transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                ฐานข้อมูลนายหน้า (Agents)
+            </a>
+            <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl font-medium transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>
+                จัดการแบนเนอร์/โปรโมชัน
+            </a>
+        </div>
+
+        <div class="p-4 border-t border-slate-800 bg-slate-950">
+            <div class="flex items-center justify-between px-2">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-lg bg-indigo-500 flex items-center justify-center font-bold text-white shadow-inner">A</div>
+                    <div>
+                        <p class="text-sm font-bold text-white leading-tight">Admin Root</p>
+                        <p class="text-[9px] text-slate-400 font-mono">Super Administrator</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <div class="flex-1 flex flex-col h-screen overflow-hidden relative">
+        
+        <header class="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-6 lg:px-10 z-10 shrink-0">
+            <div class="flex items-center gap-4">
+                <button class="lg:hidden text-slate-500 hover:text-indigo-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <h1 class="text-xl font-extrabold text-slate-800 hidden md:block">คิวตรวจสอบประกาศ (Listing Moderation)</h1>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="hidden md:flex relative w-64 lg:w-80">
+                    <input type="text" placeholder="ค้นหารหัส PRJ-XXX, ชื่อประกาศ..." class="w-full bg-slate-100 border border-slate-200 text-sm text-slate-800 rounded-full pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition shadow-inner">
+                    <svg class="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 overflow-x-hidden overflow-y-auto p-6 lg:p-8 custom-scroll">
+            
+            <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-6">
+                <div class="flex space-x-1 bg-slate-200/60 p-1.5 rounded-xl w-fit border border-slate-200">
+                    <button class="px-5 py-2 text-sm font-bold bg-white text-indigo-600 rounded-lg shadow-sm flex items-center gap-2">
+                        รอตรวจสอบ 
+                        <span class="bg-red-100 text-red-600 text-[10px] px-1.5 py-0.5 rounded-md">5</span>
+                    </button>
+                    <button class="px-5 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 rounded-lg transition">อนุมัติแล้ว</button>
+                    <button class="px-5 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 rounded-lg transition">ถูกระงับ/ปฏิเสธ</button>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3 w-full xl:w-auto">
+                    <select class="bg-white border border-slate-300 text-slate-700 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-sm cursor-pointer flex-1 xl:flex-none">
+                        <option value="">ทุกประเภทอสังหาฯ</option>
+                        <option value="house">บ้านเดี่ยว (House)</option>
+                        <option value="condo">คอนโด (Condo)</option>
+                        <option value="land">ที่ดิน (Land)</option>
+                    </select>
+                    <select class="bg-white border border-slate-300 text-slate-700 text-sm font-medium rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-sm cursor-pointer flex-1 xl:flex-none">
+                        <option value="urgent">เรียงตาม SLA (ด่วนสุด)</option>
+                        <option value="newest">อัปเดตล่าสุด</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="space-y-5">
+                
+                <div class="bg-white rounded-2xl border border-red-100 shadow-sm p-5 flex flex-col lg:flex-row gap-6 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative overflow-hidden group ring-1 ring-red-500/20">
+                    <div class="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
+
+                    <div class="w-full lg:w-72 shrink-0 flex flex-col gap-2 cursor-pointer relative">
+                        <span class="absolute top-2 right-2 bg-slate-900/70 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-md flex items-center gap-1 z-10">
+                            <svg class="w-3 h-3 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                            Hot Listing
+                        </span>
+                        <img src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=600" class="w-full h-40 object-cover rounded-xl border border-slate-200 group-hover:opacity-90 transition" alt="Property">
+                        <div class="grid grid-cols-3 gap-2 h-16">
+                            <img src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=200" class="w-full h-full object-cover rounded-lg border border-slate-200">
+                            <img src="https://images.unsplash.com/photo-1600607687931-cecebd802404?w=200" class="w-full h-full object-cover rounded-lg border border-slate-200">
+                            <div class="w-full h-full bg-slate-100 rounded-lg border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-500 hover:bg-slate-200 transition">
+                                +8 รูป
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 flex flex-col justify-between">
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="bg-indigo-50 text-indigo-700 text-[10px] font-bold px-2.5 py-1 rounded-md border border-indigo-100 uppercase tracking-wider">บ้านเดี่ยว (House)</span>
+                                    <span class="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2.5 py-1 rounded-md border border-emerald-100">ขาย (Sale)</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] text-slate-400 font-mono font-bold">ID: PRJ-9932</span>
+                                    <span class="flex items-center gap-1 bg-red-50 text-red-600 text-[10px] font-bold px-2 py-1 rounded-md border border-red-200 animate-pulse">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                        SLA: เหลือ 45 นาที
+                                    </span>
+                                </div>
+                            </div>
+
+                            <h2 class="text-xl font-extrabold text-slate-900 leading-tight mt-1 hover:text-indigo-600 cursor-pointer transition">
+                                ขายบ้านเดี่ยว 2 ชั้น โครงการสิริชัย หาดใหญ่ ตกแต่งบิวท์อินพร้อมเข้าอยู่
+                            </h2>
+                            <p class="text-2xl font-black text-indigo-600 mt-2">฿ 5,500,000</p>
+                            
+                            <div class="flex flex-wrap items-center gap-x-5 gap-y-2 mt-3 text-sm text-slate-600 font-medium">
+                                <span class="flex items-center gap-1.5"><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg> อ.หาดใหญ่, จ.สงขลา</span>
+                                <span class="flex items-center gap-1.5" title="พื้นที่"><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg> 60 ตร.ว. / 180 ตร.ม.</span>
+                                <span class="flex items-center gap-1.5" title="ห้องนอน"><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg> 3 นอน</span>
+                                <span class="flex items-center gap-1.5" title="ห้องน้ำ"><svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"></path></svg> 3 น้ำ</span>
+                            </div>
+                            
+                            <div class="mt-4 p-2.5 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <img src="https://ui-avatars.com/api/?name=พาทิศ+หนูดำ&background=eff6ff&color=1d4ed8&bold=true" class="w-9 h-9 rounded-full border border-blue-200">
+                                    <div>
+                                        <p class="text-[13px] font-bold text-slate-800 leading-tight">นายพาทิศ หนูดำ 
+                                            <span class="ml-1 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] rounded font-bold border border-amber-200">PRO Agent</span>
+                                        </p>
+                                        <p class="text-[10px] text-slate-500 mt-0.5">ส่งเมื่อ 14 มี.ค. 2026, 09:15 น.</p>
+                                    </div>
+                                </div>
+                                <button class="text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-3 py-1.5 rounded-lg transition border border-blue-100">ดูประวัติ</button>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap lg:flex-nowrap items-center gap-3 mt-5 pt-4 border-t border-slate-100">
+                            <button class="flex-1 lg:flex-none lg:w-32 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-4 rounded-xl transition flex justify-center items-center gap-2 text-sm border border-slate-200">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                ดูพรีวิว
+                            </button>
+                            
+                            <button onclick="openRejectModal()" class="flex-1 bg-white border-2 border-slate-200 hover:border-red-500 hover:bg-red-50 text-slate-700 hover:text-red-600 font-bold py-2.5 px-4 rounded-xl transition flex justify-center items-center gap-2 text-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                ปฏิเสธการลง
+                            </button>
+
+                            <button onclick="openApproveModal()" class="flex-[2] bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-xl transition shadow-md shadow-indigo-600/30 flex justify-center items-center gap-2 text-sm">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                อนุมัติและเผยแพร่
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="approveModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm hidden">
+        <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden mx-4 transform transition-all scale-95 opacity-0" id="approveModalContent">
+            <div class="p-8 text-center">
+                <div class="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 ring-8 ring-emerald-50">
+                    <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                </div>
+                <h3 class="text-2xl font-extrabold text-slate-900 mb-2">ยืนยันการอนุมัติ?</h3>
+                <p class="text-slate-500 mb-6 text-sm">กรุณาตรวจสอบความถูกต้องของข้อมูลอีกครั้งก่อนเปิดใช้งานประกาศบนเว็บไซต์</p>
+                
+                <div class="bg-slate-50 rounded-2xl p-4 mb-8 text-left border border-slate-100">
+                    <div class="flex justify-between mb-3 pb-3 border-b border-slate-200 border-dashed">
+                        <span class="text-xs text-slate-500 font-bold uppercase tracking-wider">รหัสประกาศ</span>
+                        <span class="text-sm font-mono font-bold text-slate-800">PRJ-9932</span>
+                    </div>
+                    <div class="flex justify-between mb-3 pb-3 border-b border-slate-200 border-dashed">
+                        <span class="text-xs text-slate-500 font-bold uppercase tracking-wider">ราคา</span>
+                        <span class="text-sm font-bold text-indigo-600">฿ 5,500,000</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-xs text-slate-500 font-bold uppercase tracking-wider">ประเภท</span>
+                        <span class="text-sm font-bold text-slate-800">บ้านเดี่ยว (ขาย)</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="closeApproveModal()" class="py-3.5 text-sm font-bold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition">
+                        ยกเลิก
+                    </button>
+                    <button onclick="confirmApprove()" class="py-3.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition shadow-lg shadow-indigo-600/30">
+                        ยืนยันและเผยแพร่
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="rejectModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm hidden">
+        <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden mx-4 transform transition-all scale-95 opacity-0" id="rejectModalContent">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-red-50/50">
+                <h3 class="text-lg font-extrabold text-red-700 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    ระบุเหตุผลการปฏิเสธ
+                </h3>
+                <button onclick="closeRejectModal()" class="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-lg transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <div class="p-6">
+                <p class="text-sm text-slate-600 mb-4">โปรดเลือกเหตุผลที่ไม่อนุมัติประกาศ <span class="font-bold text-slate-800">PRJ-9932</span> ระบบจะส่งข้อความนี้แจ้งเตือนไปยังนายหน้าเพื่อแก้ไข</p>
+                <div class="space-y-3 mb-5">
+                    <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition">
+                        <input type="radio" name="reject_reason" class="w-4 h-4 text-red-600 focus:ring-red-500">
+                        <span class="text-sm font-medium text-slate-700">รูปภาพไม่ชัดเจน หรือมีลายน้ำของบริษัทอื่น</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition">
+                        <input type="radio" name="reject_reason" class="w-4 h-4 text-red-600 focus:ring-red-500">
+                        <span class="text-sm font-medium text-slate-700">ข้อมูลรายละเอียดไม่ครบถ้วน หรือคลุมเครือ</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition">
+                        <input type="radio" name="reject_reason" class="w-4 h-4 text-red-600 focus:ring-red-500">
+                        <span class="text-sm font-medium text-slate-700">ราคาประกาศผิดปกติจากความเป็นจริงมากเกินไป</span>
+                    </label>
+                    <label class="flex items-center gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition">
+                        <input type="radio" name="reject_reason" class="w-4 h-4 text-red-600 focus:ring-red-500">
+                        <span class="text-sm font-medium text-slate-700">อื่นๆ (โปรดระบุเพิ่มเติม)</span>
+                    </label>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">คำอธิบายเพิ่มเติมถึงนายหน้า (Optional)</label>
+                    <textarea class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm text-slate-700 focus:ring-2 focus:ring-red-500/20 focus:border-red-400 outline-none transition custom-scroll" rows="3" placeholder="พิมพ์ข้อความแนะนำการแก้ไข..."></textarea>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-3 bg-slate-50">
+                <button onclick="closeRejectModal()" class="px-4 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-800 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 transition">
+                    ยกเลิก
+                </button>
+                <button onclick="confirmReject()" class="px-4 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition shadow-md shadow-red-600/20 flex items-center gap-2">
+                    ยืนยันการปฏิเสธ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Modal Element References
+        const rejectModal = document.getElementById('rejectModal');
+        const rejectModalContent = document.getElementById('rejectModalContent');
+        
+        const approveModal = document.getElementById('approveModal');
+        const approveModalContent = document.getElementById('approveModalContent');
+
+        // Logic สำหรับ Modal ปฏิเสธ (Reject)
+        function openRejectModal() {
+            rejectModal.classList.remove('hidden');
+            setTimeout(() => {
+                rejectModalContent.classList.remove('scale-95', 'opacity-0');
+                rejectModalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function closeRejectModal() {
+            rejectModalContent.classList.remove('scale-100', 'opacity-100');
+            rejectModalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                rejectModal.classList.add('hidden');
+            }, 200);
+        }
+
+        function confirmReject() {
+            closeRejectModal();
+            alert('ปฏิเสธการลงประกาศเรียบร้อยแล้ว');
+        }
+
+        // Logic สำหรับ Modal อนุมัติ (Approve) -- เพิ่มเข้ามาใหม่ --
+        function openApproveModal() {
+            approveModal.classList.remove('hidden');
+            setTimeout(() => {
+                approveModalContent.classList.remove('scale-95', 'opacity-0');
+                approveModalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function closeApproveModal() {
+            approveModalContent.classList.remove('scale-100', 'opacity-100');
+            approveModalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                approveModal.classList.add('hidden');
+            }, 200);
+        }
+
+        function confirmApprove() {
+            // เมื่อกดยืนยันแล้ว
+            alert('อนุมัติประกาศ PRJ-9932 เรียบร้อยแล้ว!');
+            closeApproveModal();
+            
+            // ทำให้การ์ดที่อนุมัติแล้วหายไปจากหน้าจอจำลอง (Optional)
+            // document.querySelector('.bg-white.rounded-2xl.border-red-100').remove();
+        }
+
+        // ปิด Modal เมื่อคลิกพื้นที่ว่างข้างนอก
+        window.addEventListener('click', function(e) {
+            if (e.target === rejectModal) {
+                closeRejectModal();
+            }
+            if (e.target === approveModal) {
+                closeApproveModal();
+            }
+        });
+    </script>
+</body>
+</html>

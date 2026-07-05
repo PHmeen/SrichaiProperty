@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>บัญชีของฉัน - Srichai Property</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style> 
+        body { font-family: 'Prompt', sans-serif; background-color: #f8fafc; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .fade-in { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* สไตล์สำหรับ Toggle Switch */
+        .toggle-checkbox:checked { right: 0; border-color: #1d4ed8; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #1d4ed8; }
+        .toggle-checkbox { right: 0; z-index: 1; border-color: #e2e8f0; transition: all 0.3s; }
+        .toggle-label { background-color: #cbd5e1; transition: all 0.3s; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased selection:bg-blue-200">
+
+    <nav class="fixed w-full z-50 top-0 transition-all duration-300 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-20">
+                <div class="flex-shrink-0 flex items-center gap-2 cursor-pointer group" onclick="window.location.href='home.html'">
+                    <div class="w-10 h-10 bg-blue-700 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-700/30 group-hover:scale-105 transition-transform">S</div>
+                    <span class="text-2xl font-extrabold text-slate-900 tracking-tight">Srichai<span class="text-blue-600">Property</span></span>
+                </div>
+
+                <div class="hidden lg:flex space-x-1 items-center bg-slate-100/50 p-1 rounded-full border border-slate-200">
+                    <a href="home.html" class="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-5 py-2 text-sm font-medium transition">หน้าแรก</a>
+                    <a href="search.html" class="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-5 py-2 text-sm font-medium transition">ค้นหาอสังหาฯ</a>
+                    <a href="#" class="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-5 py-2 text-sm font-medium transition">นายหน้าของเรา</a>
+                </div>
+
+                <div class="flex items-center space-x-2 sm:space-x-4">
+                    <div class="hidden md:flex items-center space-x-1 mr-2 border-r border-slate-200 pr-4">
+                        <a href="#" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition cursor-pointer" title="รายการโปรด"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg></a>
+                        <a href="#" class="relative p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition cursor-pointer" title="ข้อความแชท">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863-0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                            <span class="absolute top-1.5 right-1.5 flex h-2.5 w-2.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border border-white"></span></span>
+                        </a>
+                    </div>
+
+                    <div class="relative group">
+                        <div class="flex items-center space-x-3 bg-blue-50 border border-blue-200 pl-2 pr-4 py-1.5 rounded-full shadow-sm cursor-pointer transition">
+                            <img src="https://i.pravatar.cc/150?img=68" class="w-8 h-8 rounded-full border-2 border-white shadow-sm object-cover group-hover:scale-105 transition-transform">
+                            <div class="flex flex-col hidden sm:flex">
+                                <span class="text-sm font-bold text-blue-800 leading-none">พาทิศ หนูดำ</span>
+                                <span class="text-[10px] text-blue-600 font-bold uppercase tracking-widest mt-0.5">ผู้สนใจซื้อ</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button id="mobile-menu-btn" class="lg:hidden text-slate-600 focus:outline-none ml-2">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="bg-slate-900 pt-32 pb-24 relative overflow-hidden">
+        <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5"></div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <h1 class="text-3xl font-extrabold text-white">จัดการบัญชีผู้ใช้</h1>
+            <p class="text-slate-300 mt-2">อัปเดตข้อมูลส่วนตัว ตั้งค่าความปลอดภัย และยืนยันตัวตน</p>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 -mt-12 flex flex-col lg:flex-row gap-8 relative z-20">
+        
+        <aside class="w-full lg:w-1/4">
+            <div class="bg-white rounded-[2rem] p-6 shadow-lg shadow-slate-200/50 border border-slate-200 lg:sticky lg:top-28">
+                
+                <div class="text-center mb-6 border-b border-slate-100 pb-6">
+                    <div class="relative inline-block mb-3 group cursor-pointer">
+                        <img src="https://i.pravatar.cc/150?img=68" alt="Profile" class="w-28 h-28 rounded-full object-cover border-4 border-white shadow-md transition group-hover:opacity-75">
+                        <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                            <span class="bg-slate-900/60 text-white rounded-full p-2 backdrop-blur-sm">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            </span>
+                        </div>
+                    </div>
+                    <h3 class="text-xl font-extrabold text-slate-900">พาทิศ หนูดำ</h3>
+                    <p class="text-slate-500 text-sm mt-1">mean1940@gmail.com</p>
+                </div>
+
+                <div class="mb-6 bg-slate-100 p-1.5 rounded-xl flex relative">
+                    <button onclick="switchRole('buyer')" id="btn-role-buyer" class="flex-1 py-2 text-sm font-bold rounded-lg transition-all bg-white text-blue-700 shadow-sm relative z-10">โหมดผู้ซื้อ</button>
+                    <button onclick="switchRole('agent')" id="btn-role-agent" class="flex-1 py-2 text-sm font-bold rounded-lg transition-all text-slate-500 hover:text-slate-700 relative z-10">โหมดนายหน้า</button>
+                </div>
+
+                <nav class="space-y-1.5" id="sidebar-menu">
+                    <a href="#" class="flex items-center gap-3 px-4 py-3 bg-blue-50 text-blue-700 font-bold rounded-xl transition border border-blue-100">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg> ข้อมูลส่วนตัว
+                    </a>
+
+                    <div id="menu-buyer-items" class="space-y-1.5">
+                        <a href="#" class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-blue-600 font-medium rounded-xl transition">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg> บ้านที่บันทึกไว้
+                        </a>
+                        <a href="#" class="flex items-center justify-between px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-blue-600 font-medium rounded-xl transition">
+                            <div class="flex items-center gap-3">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> การนัดหมายเข้าชม
+                            </div>
+                            <span class="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full">2</span>
+                        </a>
+                    </div>
+
+                    <div id="menu-agent-items" class="hidden space-y-1.5">
+                        <a href="dashboard.html" class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-blue-600 font-medium rounded-xl transition">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg> แผงควบคุม (Dashboard)
+                        </a>
+                        <a href="#" class="flex items-center justify-between px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-blue-600 font-medium rounded-xl transition">
+                            <div class="flex items-center gap-3">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg> จัดการประกาศ
+                            </div>
+                            <span class="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full">5</span>
+                        </a>
+                    </div>
+
+                    <div class="border-t border-slate-100 pt-2 mt-2">
+                        <a href="login.html" class="flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 font-bold rounded-xl transition">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg> ออกจากระบบ
+                        </a>
+                    </div>
+                </nav>
+            </div>
+        </aside>
+
+        <main class="w-full lg:w-3/4">
+            <div class="bg-white rounded-[2.5rem] p-6 sm:p-10 shadow-lg shadow-slate-200/50 border border-slate-200 fade-in relative" id="main-content">
+                
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 border-b border-slate-100 pb-6 gap-4">
+                    <div>
+                        <h2 class="text-2xl font-extrabold text-slate-900">ตั้งค่าข้อมูลพื้นฐาน</h2>
+                        <p class="text-slate-500 text-sm mt-1">ข้อมูลที่ครบถ้วนช่วยเพิ่มความน่าเชื่อถือในการติดต่อ</p>
+                    </div>
+                    <div class="bg-green-50 text-green-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-green-200 flex items-center gap-1.5 shadow-sm">
+                        <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span></span>
+                        อีเมลยืนยันแล้ว
+                    </div>
+                </div>
+
+                <form onsubmit="event.preventDefault(); alert('บันทึกข้อมูลเรียบร้อยแล้ว');" class="space-y-8">
+                    
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">ข้อมูลส่วนบุคคล</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">ชื่อจริง <span class="text-red-500">*</span></label>
+                                <input type="text" value="พาทิศ" class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition font-medium" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">นามสกุล <span class="text-red-500">*</span></label>
+                                <input type="text" value="หนูดำ" class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition font-medium" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">เบอร์โทรศัพท์มือถือ <span class="text-red-500">*</span></label>
+                                <input type="tel" value="097-159-0552" class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition font-medium">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">LINE ID (แนะนำ)</label>
+                                <input type="text" placeholder="ใส่ไอดีไลน์เพื่อการติดต่อที่รวดเร็ว" class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00B900] focus:bg-white transition font-medium">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-bold text-slate-700 mb-2">อีเมล (Email)</label>
+                                <input type="email" value="mean1940@gmail.com" class="w-full px-4 py-3.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 font-medium cursor-not-allowed" disabled>
+                                <p class="text-xs text-slate-400 mt-1">ไม่อนุญาตให้แก้ไขอีเมลเพื่อความปลอดภัย หากต้องการเปลี่ยนกรุณาติดต่อแอดมิน</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="agent-only-fields" class="hidden pt-6 border-t border-slate-100">
+                        <div class="flex items-center gap-2 mb-6">
+                            <span class="bg-amber-100 text-amber-600 p-1.5 rounded-lg"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg></span>
+                            <h3 class="text-lg font-extrabold text-slate-900">ข้อมูลนายหน้า & ยืนยันตัวตน (KYC)</h3>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">ชื่อบริษัท / สังกัดนิติบุคคล</label>
+                                <input type="text" placeholder="ระบุชื่อบริษัท (ถ้ามี)" class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition font-medium">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">โซนพื้นที่ให้บริการหลัก</label>
+                                <select class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition font-medium cursor-pointer">
+                                    <option>อ.หาดใหญ่ จ.สงขลา</option>
+                                    <option>อ.เมือง จ.สงขลา</option>
+                                    <option>จ.สงขลา (ทุกพื้นที่)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="bg-amber-50/50 border border-amber-200 rounded-2xl p-6">
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="block text-sm font-bold text-slate-800">เอกสารยืนยันตัวตน <span class="text-red-500">*</span></label>
+                                <span class="text-[10px] font-bold bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full uppercase">สถานะ: รออัปโหลด</span>
+                            </div>
+                            
+                            <div class="flex items-start gap-3 text-xs text-amber-800 bg-amber-100/50 p-3 rounded-xl mb-4 border border-amber-200">
+                                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <span><strong class="block">PDPA Compliance:</strong> กรุณาขีดคร่อมเอกสารว่า <span class="font-bold">"ใช้สำหรับ Srichai Property เท่านั้น"</span> ข้อมูลจะถูกเข้ารหัสและไม่เผยแพร่สู่สาธารณะ</span>
+                            </div>
+
+                            <div class="border-2 border-dashed border-blue-300 bg-white rounded-xl p-8 text-center hover:bg-blue-50 transition cursor-pointer group">
+                                <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                                </div>
+                                <p class="text-sm font-bold text-blue-700 mb-1">ลากไฟล์มาวาง หรือ คลิกเพื่อเลือกรูปภาพ</p>
+                                <p class="text-xs text-slate-500">รองรับ JPG, PNG ขนาดไม่เกิน 5 MB</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-6 border-t border-slate-100">
+                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">การตั้งค่าการแจ้งเตือน</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <div>
+                                    <p class="font-bold text-slate-800 text-sm">รับแจ้งเตือนผ่านอีเมล (Email)</p>
+                                    <p class="text-xs text-slate-500">ข่าวสาร, โครงการใหม่, สถานะการนัดหมาย</p>
+                                </div>
+                                <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                                    <input type="checkbox" name="toggle" id="toggle1" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer" checked/>
+                                    <label for="toggle1" class="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer"></label>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <div>
+                                    <p class="font-bold text-slate-800 text-sm">รับข้อความแชทผ่าน SMS</p>
+                                    <p class="text-xs text-slate-500">แจ้งเตือนด่วนเมื่อนายหน้า/ลูกค้าส่งข้อความหาคุณ</p>
+                                </div>
+                                <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                                    <input type="checkbox" name="toggle" id="toggle2" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                                    <label for="toggle2" class="toggle-label block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer"></label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-6 border-t border-slate-100">
+                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">ความปลอดภัย</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">รหัสผ่านใหม่ (ทิ้งว่างไว้หากไม่ต้องการเปลี่ยน)</label>
+                                <input type="password" placeholder="••••••••" class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition font-medium">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">ยืนยันรหัสผ่านใหม่</label>
+                                <input type="password" placeholder="••••••••" class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition font-medium">
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex justify-between items-center mt-4">
+                            <div>
+                                <p class="text-sm font-bold text-slate-800 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span> ประวัติเข้าสู่ระบบล่าสุด</p>
+                                <p class="text-xs text-slate-500 mt-0.5">Windows 10 • Chrome • Hat Yai (IP: 192.168.x.x)</p>
+                            </div>
+                            <span class="text-xs font-bold text-slate-400">วันนี้ 10:45 น.</span>
+                        </div>
+                    </div>
+
+                    <div class="sticky bottom-4 z-30 pt-6 border-t border-slate-100 bg-white/90 backdrop-blur-sm p-4 rounded-2xl flex justify-end gap-3 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)] border border-slate-100">
+                        <button type="button" class="px-6 py-3.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold rounded-xl transition">
+                            ยกเลิก
+                        </button>
+                        <button type="submit" class="px-10 py-3.5 bg-blue-700 hover:bg-blue-800 text-white font-extrabold rounded-xl shadow-lg shadow-blue-700/30 transition transform active:scale-95 flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> บันทึกข้อมูล
+                        </button>
+                    </div>
+
+                </form>
+
+                <div class="mt-12 pt-8 border-t border-red-100">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center p-6 bg-red-50 rounded-2xl border border-red-100">
+                        <div class="mb-4 sm:mb-0">
+                            <h4 class="text-red-700 font-extrabold text-lg mb-1">ลบบัญชีผู้ใช้ (Delete Account)</h4>
+                            <p class="text-red-500 text-sm max-w-md">เมื่อคุณลบบัญชี ข้อมูลส่วนบุคคล ประวัติการค้นหา และประกาศทั้งหมดของคุณจะถูกลบออกจากระบบอย่างถาวร</p>
+                        </div>
+                        <button onclick="confirmDelete()" class="px-6 py-3 bg-white border border-red-200 text-red-600 font-bold rounded-xl hover:bg-red-600 hover:text-white transition whitespace-nowrap shadow-sm">
+                            ขอลบบัญชีถาวร
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <footer class="bg-slate-900 text-slate-300 pt-16 pb-8 border-t border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+                <div class="md:col-span-2">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">S</div>
+                        <span class="text-2xl font-extrabold text-white tracking-tight">Srichai<span class="text-blue-500">Property</span></span>
+                    </div>
+                    <p class="text-sm leading-relaxed text-slate-400 max-w-md">
+                        ระบบบริหารจัดการการซื้อขายอสังหาริมทรัพย์ กรณีศึกษา Srichai Property Agents แพลตฟอร์มที่รวมผู้ซื้อและนายหน้าไว้ในที่เดียว
+                    </p>
+                </div>
+                <div>
+                    <h4 class="text-white font-bold mb-4 uppercase text-sm">เมนูหลัก</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="home.html" class="hover:text-blue-400 transition">หน้าแรก</a></li>
+                        <li><a href="search.html" class="hover:text-blue-400 transition">ค้นหาบ้าน</a></li>
+                        <li><a href="profile.html" class="hover:text-blue-400 transition text-blue-400">บัญชีของฉัน</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-bold mb-4 uppercase text-sm">ติดต่อเรา</h4>
+                    <ul class="space-y-2 text-sm text-slate-400">
+                        <li>📍 มหาวิทยาลัยสงขลานครินทร์</li>
+                        <li>📧 contact@srichaiproperty.com</li>
+                        <li>📞 074-XXX-XXX</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-slate-800 pt-8 text-center text-sm text-slate-500">
+                <p>&copy; 2026 Srichai Property Agents. โครงงานระบบบริหารจัดการการซื้อขายอสังหาริมทรัพย์.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const mobileBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        mobileBtn.addEventListener('click', () => { mobileMenu.classList.toggle('hidden'); });
+
+        // ฟังก์ชันสลับบทบาท (สำหรับการนำเสนอ)
+        function switchRole(role) {
+            const btnBuyer = document.getElementById('btn-role-buyer');
+            const btnAgent = document.getElementById('btn-role-agent');
+            const menuBuyer = document.getElementById('menu-buyer-items');
+            const menuAgent = document.getElementById('menu-agent-items');
+            const agentFormFields = document.getElementById('agent-only-fields');
+
+            if(role === 'buyer') {
+                btnBuyer.className = "flex-1 py-2 text-sm font-bold rounded-lg transition-all bg-white text-blue-700 shadow-sm relative z-10";
+                btnAgent.className = "flex-1 py-2 text-sm font-bold rounded-lg transition-all text-slate-500 hover:text-slate-700 relative z-10";
+                menuBuyer.classList.remove('hidden');
+                menuAgent.classList.add('hidden');
+                agentFormFields.classList.add('hidden');
+            } else if(role === 'agent') {
+                btnAgent.className = "flex-1 py-2 text-sm font-bold rounded-lg transition-all bg-white text-blue-700 shadow-sm relative z-10";
+                btnBuyer.className = "flex-1 py-2 text-sm font-bold rounded-lg transition-all text-slate-500 hover:text-slate-700 relative z-10";
+                menuBuyer.classList.add('hidden');
+                menuAgent.classList.remove('hidden');
+                agentFormFields.classList.remove('hidden'); 
+            }
+            
+            const mainContent = document.getElementById('main-content');
+            mainContent.classList.remove('fade-in');
+            void mainContent.offsetWidth; 
+            mainContent.classList.add('fade-in');
+        }
+
+        // ฟังก์ชันจำลองการขอลบบัญชี
+        function confirmDelete() {
+            if(confirm("คุณแน่ใจหรือไม่ว่าต้องการลบบัญชีผู้ใช้นี้?\nการดำเนินการนี้ไม่สามารถยกเลิกได้ และข้อมูลส่วนบุคคลทั้งหมดจะถูกลบออกจากฐานข้อมูลทันที")) {
+                alert("ลบบัญชีผู้ใช้สำเร็จ ระบบกำลังพากลับไปหน้าเข้าสู่ระบบ");
+                window.location.href = "login.html";
+            }
+        }
+    </script>
+</body>
+</html>
