@@ -34,6 +34,8 @@ export default function Home() {
             <div className="hidden md:flex space-x-1 items-center bg-slate-100/50 p-0.5 rounded-full border border-slate-200">
               <Link href="/" className="text-blue-700 bg-white shadow-sm rounded-full px-4 py-1.5 text-xs font-bold transition">หน้าแรก</Link>
               <Link href="/search" className="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-4 py-1.5 text-xs font-medium transition">ค้นหาอสังหาฯ</Link>
+              <Link href="/agents" className="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-4 py-1.5 text-xs font-medium transition">นายหน้าของเรา</Link>
+              <Link href="/appointments" className="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-4 py-1.5 text-xs font-medium transition">ประวัติการนัดหมาย</Link>
             </div>
 
             <div className="flex items-center space-x-3">
@@ -57,6 +59,8 @@ export default function Home() {
             <div className="px-4 pt-3 pb-5 space-y-1.5">
               <Link href="/" className="block px-3 py-2 text-xs text-blue-700 font-bold bg-blue-50 rounded-lg">หน้าแรก</Link>
               <Link href="/search" className="block px-3 py-2 text-xs text-slate-600 font-medium hover:bg-slate-50 rounded-lg">ค้นหาอสังหาฯ</Link>
+              <Link href="/agents" className="block px-3 py-2 text-xs text-slate-600 font-medium hover:bg-slate-50 rounded-lg">นายหน้าของเรา</Link>
+              <Link href="/appointments" className="block px-3 py-2 text-xs text-slate-600 font-medium hover:bg-slate-50 rounded-lg">ประวัติการนัดหมาย</Link>
               <div className="border-t border-slate-100 my-2 pt-2"></div>
               <Link href="/login" className="block px-3 py-2 text-xs text-slate-600 font-medium text-center border border-slate-200 rounded-lg mb-1.5">เข้าสู่ระบบ</Link>
               <Link href="/register" className="block px-3 py-2 text-xs bg-blue-700 text-white font-bold text-center rounded-lg shadow-sm">สมัครสมาชิก</Link>

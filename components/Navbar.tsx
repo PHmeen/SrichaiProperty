@@ -17,22 +17,22 @@ export default function Navbar() {
   return (
     <nav className="fixed w-full z-50 top-0 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-20">
+        <div className="flex justify-between items-center h-16">
           
           {/* ส่วนของโลโก้บริษัท (Brand Logo) */}
           <Link href="/" className="flex-shrink-0 flex items-center gap-2 cursor-pointer group">
             {/* กล่องตัวอักษร 'S' มีสีพื้นหลังน้ำเงินและเงา */}
-            <div className="w-10 h-10 bg-blue-700 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-700/30">
+            <div className="w-8 h-8 bg-blue-700 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-blue-700/30 group-hover:scale-105 transition-transform">
               S
             </div>
             {/* ข้อความชื่อเว็บ */}
-            <span className="text-2xl font-extrabold text-slate-900 tracking-tight">
+            <span className="text-xl font-extrabold text-slate-900 tracking-tight">
               Srichai<span className="text-blue-600">Property</span>
             </span>
           </Link>
 
           {/* เมนูนำทางสำหรับหน้าจอคอมพิวเตอร์ (Desktop Links) - จะซ่อนเมื่ออยู่บนมือถือด้วยคลาส hidden md:flex */}
-          <div className="hidden md:flex space-x-1 items-center bg-slate-100/50 p-1 rounded-full border border-slate-200">
+          <div className="hidden md:flex space-x-1 items-center bg-slate-100/50 p-0.5 rounded-full border border-slate-200">
             {/* เมนูหน้าแรก */}
             <Link
               href="/"
@@ -57,7 +57,7 @@ export default function Navbar() {
               ค้นหาอสังหาฯ
             </Link>
             
-            {/* เมนูติดต่อนายหน้า */}
+            {/* เมนูนายหน้าของเรา */}
             <Link
               href="/agents"
               className={`rounded-full px-5 py-2 text-sm transition ${
@@ -66,7 +66,19 @@ export default function Navbar() {
                   : "text-slate-600 hover:text-blue-600 hover:bg-white/50 font-medium"
               }`}
             >
-              ติดต่อนายหน้า
+              นายหน้าของเรา
+            </Link>
+
+            {/* เมนูการนัดหมาย */}
+            <Link
+              href="/appointments"
+              className={`rounded-full px-5 py-2 text-sm transition ${
+                isActive("/appointments")
+                  ? "text-blue-700 bg-white shadow-sm font-bold"
+                  : "text-slate-600 hover:text-blue-600 hover:bg-white/50 font-medium"
+              }`}
+            >
+              ประวัติการนัดหมาย
             </Link>
           </div>
 
@@ -136,7 +148,16 @@ export default function Navbar() {
                 isActive("/agents") ? "text-blue-700 font-bold bg-blue-50" : "text-slate-600 font-medium hover:bg-slate-50"
               }`}
             >
-              ติดต่อนายหน้า
+              นายหน้าของเรา
+            </Link>
+            <Link
+              href="/appointments"
+              onClick={() => setIsOpen(false)}
+              className={`block px-3 py-3 rounded-xl ${
+                isActive("/appointments") ? "text-blue-700 font-bold bg-blue-50" : "text-slate-600 font-medium hover:bg-slate-50"
+              }`}
+            >
+              ประวัติการนัดหมาย
             </Link>
             <div className="border-t border-slate-100 my-2 pt-2"></div>
             <Link

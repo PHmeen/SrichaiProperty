@@ -43,9 +43,9 @@ export default function ProfilePage() {
     <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm flex flex-col">
       
       {/* 🧭 เมนูนำทางด้านบน */}
-      <nav className="fixed w-full z-50 top-0 bg-white border-b border-slate-200 shadow-sm h-16 flex-shrink-0">
-        <div className="max-w-5xl mx-auto px-4 h-full">
-          <div className="flex justify-between items-center h-full">
+      <nav className="fixed w-full z-50 top-0 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm transition-all duration-300">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
             <Link href="/home" className="flex-shrink-0 flex items-center gap-2 group">
               <div className="w-8 h-8 bg-blue-700 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-105 transition-transform">S</div>
               <span className="text-xl font-extrabold text-slate-900 tracking-tight">Srichai<span className="text-blue-600">Property</span></span>
@@ -55,14 +55,19 @@ export default function ProfilePage() {
               <Link href="/home" className="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-4 py-1.5 text-xs font-medium transition">หน้าแรก</Link>
               <Link href="/search" className="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-4 py-1.5 text-xs font-medium transition">ค้นหาอสังหาฯ</Link>
               <Link href="/agents" className="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-4 py-1.5 text-xs font-medium transition">นายหน้าของเรา</Link>
-              <Link href="/appointments" className="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-4 py-1.5 text-xs font-medium transition">การนัดหมาย</Link>
+              <Link href="/appointments" className="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-4 py-1.5 text-xs font-medium transition">ประวัติการนัดหมาย</Link>
             </div>
 
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 pl-1.5 pr-3 py-1 rounded-full shadow-sm">
+            <div className="flex items-center space-x-2">
+              <Link href="/profile" className="flex items-center space-x-2 bg-slate-50 border border-slate-200 pl-1.5 pr-3 py-1 rounded-full shadow-sm hover:bg-slate-100 transition cursor-pointer">
                 <img src="https://i.pravatar.cc/150?img=68" alt="Profile" className="w-7 h-7 rounded-full border border-white shadow-sm object-cover" />
-                <span className="text-xs font-bold text-slate-900 leading-none hidden sm:inline">{profile.fullName}</span>
-              </div>
+                <div className="flex flex-col hidden sm:flex">
+                  <span className="text-xs font-bold text-slate-900 leading-none">{profile.fullName}</span>
+                  <span className="text-[9px] text-blue-600 font-bold uppercase tracking-widest mt-0.5">
+                    {profile.role === 'buyer' ? 'ผู้สนใจซื้อ' : profile.role === 'agent' ? 'นายหน้า' : 'ผู้ดูแลระบบ'}
+                  </span>
+                </div>
+              </Link>
             </div>
           </div>
         </div>
