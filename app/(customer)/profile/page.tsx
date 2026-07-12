@@ -9,8 +9,10 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/app/context/AppContext';
+import { useSession } from 'next-auth/react';
 
 export default function ProfilePage() {
+  const { data: session } = useSession();
   // === 1. ดึงข้อมูลส่วนตัวและฟังก์ชันบันทึกโปรไฟล์จาก Context ===
   const { profile, updateProfile } = useApp();
 
@@ -60,9 +62,9 @@ export default function ProfilePage() {
 
             <div className="flex items-center space-x-2">
               <Link href="/profile" className="flex items-center space-x-2 bg-slate-50 border border-slate-200 pl-1.5 pr-3 py-1 rounded-full shadow-sm hover:bg-slate-100 transition cursor-pointer">
-                <img src="https://i.pravatar.cc/150?img=68" alt="Profile" className="w-7 h-7 rounded-full border border-white shadow-sm object-cover" />
+                <img src={session?.user?.image || "https://i.pravatar.cc/150?img=68"} alt="Profile" className="w-7 h-7 rounded-full border border-white shadow-sm object-cover" />
                 <div className="flex flex-col hidden sm:flex">
-                  <span className="text-xs font-bold text-slate-900 leading-none">{profile.fullName}</span>
+                  <span className="text-xs font-bold text-slate-900 leading-none">{session?.user?.name || profile.fullName}</span>
                   <span className="text-[9px] text-blue-600 font-bold uppercase tracking-widest mt-0.5">
                     {profile.role === 'buyer' ? 'ผู้สนใจซื้อ' : profile.role === 'agent' ? 'นายหน้า' : 'ผู้ดูแลระบบ'}
                   </span>
@@ -89,10 +91,10 @@ export default function ProfilePage() {
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 lg:sticky lg:top-24 space-y-5">
             <div className="text-center pb-4 border-b border-slate-100 space-y-2">
               <div className="relative inline-block group cursor-pointer">
-                <img src="https://i.pravatar.cc/150?img=68" alt="Profile" className="w-20 h-20 rounded-full object-cover border-2 border-slate-200 shadow-md" />
+                <img src={session?.user?.image || "https://i.pravatar.cc/150?img=68"} alt="Profile" className="w-20 h-20 rounded-full object-cover border-2 border-slate-200 shadow-md" />
               </div>
-              <h3 className="font-extrabold text-slate-900 text-sm">{fullName}</h3>
-              <p className="text-slate-500 text-[11px]">{profile.email}</p>
+              <h3 className="font-extrabold text-slate-900 text-sm">{session?.user?.name || fullName}</h3>
+              <p className="text-slate-500 text-[11px]">{session?.user?.email || profile.email}</p>
             </div>
 
             {/* ปุ่มสลับบทบาทการใช้งาน (ผู้ซื้อ / นายหน้า / แอดมิน) */}
@@ -207,6 +209,52 @@ export default function ProfilePage() {
                 บันทึกการเปลี่ยนแปลง
               </button>
             </form>
+          </div>
+
+          {/* ส่วนของการลบบัญชีอย่างถาวร (Danger Zone) */}
+          <div className="mt-6 bg-white rounded-2xl p-5 sm:p-8 shadow-sm border border-red-100 space-y-4">
+            <div className="border-b border-red-50 pb-3">
+              <h3 className="text-sm font-extrabold text-red-600 flex items-center gap-2">
+                ⚠️ โซนอันตราย (Danger Zone)
+              </h3>
+              <p className="text-slate-500 text-[11px] mt-0.5">
+                การดำเนินการในส่วนนี้จะไม่สามารถกู้คืนข้อมูลได้ในภายหลัง
+              </p>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <h4 className="text-xs font-bold text-slate-800">ลบบัญชีผู้ใช้งานถาวร</h4>
+                <p className="text-[11px] text-slate-500 leading-relaxed max-w-xl">
+                  เมื่อลบบัญชีแล้ว ข้อมูลประกาศ ประวัตินัดหมาย และข้อมูลการแชททั้งหมดของคุณจะถูกทำลายทิ้งและลบออกจากระบบอย่างถาวรทันที
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  const checkConfirm = window.confirm("⚠️ คุณแน่ใจอย่างยิ่งใช่หรือไม่ว่าต้องการลบบัญชีผู้ใช้งานนี้? การกระทำนี้ไม่สามารถย้อนกลับได้");
+                  if (checkConfirm) {
+                    try {
+                      const res = await fetch('/api/auth/delete-account', {
+                        method: 'DELETE'
+                      });
+                      const result = await res.json();
+                      if (res.ok) {
+                        alert("ลบบัญชีสำเร็จแล้ว ระบบจะนำคุณออกจากระบบโดยอัตโนมัติ");
+                        window.location.href = '/login';
+                      } else {
+                        alert(result.error || "เกิดข้อผิดพลาดในการลบบัญชี");
+                      }
+                    } catch {
+                      alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์เพื่อขอลบบัญชีได้");
+                    }
+                  }
+                }}
+                className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold px-4 py-2.5 rounded-xl transition text-xs shadow-sm cursor-pointer whitespace-nowrap"
+              >
+                ลบบัญชีของฉัน
+              </button>
+            </div>
           </div>
         </main>
 

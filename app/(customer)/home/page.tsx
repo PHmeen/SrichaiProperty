@@ -9,8 +9,10 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/app/context/AppContext';
+import { useSession, signOut } from 'next-auth/react';
 
 export default function CustomerHomePage() {
+  const { data: session } = useSession();
   // === 1. ประกาศตัวแปรสถานะภายในหน้าเพจ (Local State) ===
   const [activeTab, setActiveTab] = useState<'buy' | 'rent' | 'sell'>('buy'); // เก็บข้อมูลการสลับแท็บเมนู ค้นหา ซื้อ/เช่า/ขาย
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);               // สลับแสดง/ซ่อนเมนูแนวตั้งบนมือถือ
@@ -79,9 +81,9 @@ export default function CustomerHomePage() {
               {/* เมนูหน้าโปรไฟล์แบบ Dropdown */}
               <div className="relative group">
                 <div className="flex items-center space-x-2 bg-slate-50 border border-slate-200 pl-1.5 pr-3 py-1 rounded-full shadow-sm cursor-pointer hover:bg-slate-100 transition">
-                  <img src="https://i.pravatar.cc/150?img=68" alt="Profile" className="w-7 h-7 rounded-full border border-white shadow-sm object-cover group-hover:scale-105 transition-transform" />
+                  <img src={session?.user?.image || "https://i.pravatar.cc/150?img=68"} alt="Profile" className="w-7 h-7 rounded-full border border-white shadow-sm object-cover group-hover:scale-105 transition-transform" />
                   <div className="flex flex-col hidden sm:flex">
-                    <span className="text-xs font-bold text-slate-900 leading-none">{profile.fullName}</span>
+                    <span className="text-xs font-bold text-slate-900 leading-none">{session?.user?.name || profile.fullName}</span>
                     <span className="text-[9px] text-blue-600 font-bold uppercase tracking-widest mt-0.5">
                       {profile.role === 'buyer' ? 'ผู้สนใจซื้อ' : profile.role === 'agent' ? 'นายหน้า' : 'ผู้ดูแลระบบ'}
                     </span>
@@ -90,8 +92,8 @@ export default function CustomerHomePage() {
                 
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top-right z-50">
                   <div className="p-3 border-b border-slate-100">
-                    <p className="text-xs font-bold text-slate-900">{profile.fullName}</p>
-                    <p className="text-[10px] text-slate-500 truncate">{profile.email}</p>
+                    <p className="text-xs font-bold text-slate-900">{session?.user?.name || profile.fullName}</p>
+                    <p className="text-[10px] text-slate-500 truncate">{session?.user?.email || profile.email}</p>
                   </div>
                   <div className="p-1.5 space-y-0.5">
                     <Link href="/profile" className="block px-3 py-1.5 text-xs text-slate-600 font-medium hover:bg-slate-50 hover:text-blue-600 rounded-lg transition">ตั้งค่าโปรไฟล์</Link>
@@ -103,7 +105,12 @@ export default function CustomerHomePage() {
                     )}
                   </div>
                   <div className="p-1.5 border-t border-slate-100">
-                    <Link href="/login" className="block px-3 py-1.5 text-xs text-red-600 font-bold hover:bg-red-50 rounded-lg transition">ออกจากระบบ</Link>
+                    <button 
+                      onClick={() => signOut({ callbackUrl: '/login' })}
+                      className="w-full text-left block px-3 py-1.5 text-xs text-red-600 font-bold hover:bg-red-50 rounded-lg transition cursor-pointer"
+                    >
+                      ออกจากระบบ
+                    </button>
                   </div>
                 </div>
               </div>

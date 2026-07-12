@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
+import FacebookProvider from "next-auth/providers/facebook";
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
@@ -9,6 +10,23 @@ const handler = NextAuth({
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+    }),
+    FacebookProvider({
+      clientId: process.env.FACEBOOK_CLIENT_ID || "",
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET || "",
+      authorization: "https://www.facebook.com/v18.0/dialog/oauth?scope=public_profile",
+      userinfo: {
+        url: "https://graph.facebook.com/me",
+        params: { fields: "id,name,picture.width(250).height(250)" },
+      },
+      profile(profile) {
+        return {
+          id: profile.id,
+          name: profile.name,
+          email: profile.email || `fb_${profile.id}@facebook.com`,
+          image: profile.picture?.data?.url || null,
+        };
+      },
     }),
     CredentialsProvider({
       name: "Credentials",
@@ -50,30 +68,32 @@ const handler = NextAuth({
   ],
   callbacks: {
     async signIn({ user, account }) {
-      // ตรวจสอบเมื่อมีการล็อกอินด้วย Google
-      if (account?.provider === "google") {
-        if (!user.email) return false;
+      // ตรวจสอบเมื่อมีการล็อกอินด้วย Google หรือ Facebook
+      if (account?.provider === "google" || account?.provider === "facebook") {
+        // หากเป็นการล็อกอินผ่าน Facebook ที่ไม่มีสิทธิ์ email ให้สร้าง synthetic email ปลอดภัยระดับ ID
+        const userEmail = user.email || `fb_${user.id || Date.now()}@facebook.com`;
+        user.email = userEmail;
 
         // ค้นหาว่าอีเมลนี้มีอยู่ในระบบหรือยัง
         const existingUser = await db.users.findUnique({
-          where: { email: user.email }
+          where: { email: userEmail }
         });
 
         if (!existingUser) {
           // หากไม่มี ให้นำชื่อมาแยกเป็น first_name และ last_name เพื่อบันทึกเข้าตาราง users อัตโนมัติ
           const nameParts = (user.name || "").trim().split(/\s+/);
-          const firstName = nameParts[0] || "Google";
+          const firstName = nameParts[0] || (account.provider === "google" ? "Google" : "Facebook");
           const lastName = nameParts.slice(1).join(" ") || "User";
 
           await db.users.create({
             data: {
-              email: user.email,
+              email: userEmail,
               password_hash: "", // ล็อกอินผ่านโซเชียลจะไม่มีรหัสผ่าน
               first_name: firstName,
               last_name: lastName,
               profile_image: user.image || null,
               role_id: "buyer", // กำหนดบทบาทเริ่มต้น
-              status: "pending", // แก้ไขตรงนี้จาก 'active' เป็น 'pending' ตามข้อจำกัดใน Database
+              status: "pending", // ยืนยันรอก่อน
               is_verified: true
             }
           });
@@ -83,13 +103,14 @@ const handler = NextAuth({
     },
     async jwt({ token, user, account }) {
       if (user) {
-        const u = user as { id: string; role: string; phone?: string | null };
+        const u = user as { id: string; role: string; phone?: string | null; image?: string | null };
         token.id = u.id;
         token.role = u.role || "buyer";
         token.phone = u.phone || null;
+        token.picture = u.image || null;
       }
-      // ถ้าเป็นการล็อกอินผ่าน Google ให้ไปดึงข้อมูล ID และ Role ล่าสุดจาก DB
-      if (account?.provider === "google" && token.email) {
+      // ถ้าเป็นการล็อกอินผ่าน Google หรือ Facebook ให้ไปดึงข้อมูล ID และ Role ล่าสุดจาก DB
+      if ((account?.provider === "google" || account?.provider === "facebook") && token.email) {
         const dbUser = await db.users.findUnique({
           where: { email: token.email }
         });
@@ -97,16 +118,18 @@ const handler = NextAuth({
           token.id = dbUser.id;
           token.role = dbUser.role_id || "buyer";
           token.phone = dbUser.phone || null;
+          token.picture = dbUser.profile_image || token.picture || null;
         }
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        const s = session.user as { id: string; role: string; phone?: string | null };
+        const s = session.user as { id: string; role: string; phone?: string | null; image?: string | null };
         s.id = token.id as string;
         s.role = token.role as string;
         s.phone = token.phone as string | null;
+        session.user.image = token.picture as string | null;
       }
       return session;
     }

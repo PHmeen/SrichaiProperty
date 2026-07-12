@@ -1,10 +1,10 @@
-"use client"; // แจ้ง Next.js ว่าไฟล์นี้เป็น Client Component (เปิดใช้ React State/Hooks ฝั่งเว็บบราวเซอร์ได้)
-
 import { useState } from "react";
 import Link from "next/link"; // ใช้แทน <a> สำหรับทำ Client-Side Routing (กดเปลี่ยนหน้าทันทีโดยไม่ต้องรีโหลดหน้าเว็บใหม่)
 import { usePathname } from "next/navigation"; // Hook สำหรับดึงเส้นทาง URL ปัจจุบัน เพื่อนำมาเช็คว่าเมนูไหนกำลังเปิดอยู่
+import { useSession, signOut } from "next-auth/react";
 
 export default function Navbar() {
+  const { data: session } = useSession();
   // useState สำหรับเปิด-ปิดเมนูบนหน้าจอมือถือ (false = ปิด, true = เปิด)
   const [isOpen, setIsOpen] = useState(false);
   
@@ -13,6 +13,10 @@ export default function Navbar() {
 
   // ฟังก์ชันตัวช่วย: เช็คว่าปุ่มเมนูนี้ตรงกับ URL ปัจจุบันหรือไม่ (ใช้สำหรับไฮไลท์ปุ่มสีฟ้า)
   const isActive = (path: string) => pathname === path;
+
+  // ค้นหารูปภาพผู้ใช้จริง
+  const avatarUrl = session?.user?.image || "https://i.pravatar.cc/150?img=68";
+  const userFullName = session?.user?.name || "ผู้ใช้งาน";
 
   return (
     <nav className="fixed w-full z-50 top-0 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm transition-all duration-300">
@@ -86,18 +90,38 @@ export default function Navbar() {
           <div className="flex items-center space-x-4">
             {/* ซ่อนบนมือถือแสดงบนคอมพิวเตอร์ (hidden md:flex) */}
             <div className="hidden md:flex items-center space-x-4">
-              <Link
-                href="/login"
-                className="text-slate-600 text-sm font-medium hover:text-blue-700 transition flex items-center gap-2"
-              >
-                เข้าสู่ระบบ
-              </Link>
-              <Link
-                href="/register"
-                className="bg-blue-700 hover:bg-blue-800 text-white px-6 py-2.5 rounded-full text-sm font-bold transition shadow-lg shadow-blue-700/30"
-              >
-                สมัครสมาชิก
-              </Link>
+              {session ? (
+                <div className="flex items-center gap-3">
+                  <Link href="/profile" className="flex items-center space-x-2 bg-slate-50 border border-slate-200 pl-1.5 pr-3 py-1 rounded-full shadow-sm hover:bg-slate-100 transition cursor-pointer">
+                    <img src={avatarUrl} alt="Profile" className="w-7 h-7 rounded-full border border-white shadow-sm object-cover" />
+                    <div className="flex flex-col text-left">
+                      <span className="text-xs font-bold text-slate-900 leading-none">{userFullName}</span>
+                      <span className="text-[9px] text-blue-600 font-bold uppercase tracking-widest mt-0.5">โปรไฟล์ของฉัน</span>
+                    </div>
+                  </Link>
+                  <button
+                    onClick={() => signOut({ callbackUrl: '/login' })}
+                    className="text-red-600 hover:text-red-700 text-xs font-bold transition cursor-pointer"
+                  >
+                    ออกจากระบบ
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    className="text-slate-600 text-sm font-medium hover:text-blue-700 transition flex items-center gap-2"
+                  >
+                    เข้าสู่ระบบ
+                  </Link>
+                  <Link
+                    href="/register"
+                    className="bg-blue-700 hover:bg-blue-800 text-white px-6 py-2.5 rounded-full text-sm font-bold transition shadow-lg shadow-blue-700/30"
+                  >
+                    สมัครสมาชิก
+                  </Link>
+                </>
+              )}
             </div>
 
             {/* ปุ่มเปิดเมนูสำหรับบราวเซอร์มือถือ (Mobile Menu Button) - จะแสดงเฉพาะบนจอเล็ก md:hidden */}
@@ -160,20 +184,43 @@ export default function Navbar() {
               ประวัติการนัดหมาย
             </Link>
             <div className="border-t border-slate-100 my-2 pt-2"></div>
-            <Link
-              href="/login"
-              onClick={() => setIsOpen(false)}
-              className="block px-3 py-3 text-slate-600 font-medium text-center border border-slate-200 rounded-xl mb-2"
-            >
-              เข้าสู่ระบบ
-            </Link>
-            <Link
-              href="/register"
-              onClick={() => setIsOpen(false)}
-              className="block px-3 py-3 bg-blue-700 text-white font-bold text-center rounded-xl shadow-md"
-            >
-              สมัครสมาชิก
-            </Link>
+            {session ? (
+              <>
+                <Link
+                  href="/profile"
+                  onClick={() => setIsOpen(false)}
+                  className="block px-3 py-2 text-slate-700 font-medium hover:bg-slate-50 rounded-xl"
+                >
+                  👤 ตั้งค่าโปรไฟล์
+                </Link>
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    signOut({ callbackUrl: '/login' });
+                  }}
+                  className="block w-full text-left px-3 py-2 text-red-600 font-bold hover:bg-red-50 rounded-xl cursor-pointer"
+                >
+                  🚪 ออกจากระบบ
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  onClick={() => setIsOpen(false)}
+                  className="block px-3 py-3 text-slate-600 font-medium text-center border border-slate-200 rounded-xl mb-2"
+                >
+                  เข้าสู่ระบบ
+                </Link>
+                <Link
+                  href="/register"
+                  onClick={() => setIsOpen(false)}
+                  className="block px-3 py-3 bg-blue-700 text-white font-bold text-center rounded-xl shadow-md"
+                >
+                  สมัครสมาชิก
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -102,6 +102,7 @@ export default function LoginPage() {
             </button>
             <button 
               type="button"
+              onClick={() => signIn('facebook', { callbackUrl: '/home' })}
               className="flex items-center justify-center gap-2.5 w-full px-3 py-2.5 bg-[#1877F2] hover:bg-[#166FE5] text-white rounded-xl shadow-sm hover:shadow hover:shadow-blue-500/10 transition-all duration-300 font-bold active:scale-[0.98] cursor-pointer text-xs"
             >
               <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
@@ -190,15 +191,38 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="mt-8 text-center text-slate-600 font-medium text-xs">
+          <p className="mt-6 text-center text-slate-600 font-medium text-xs">
             ยังไม่มีบัญชี? <Link href="/register" className="text-blue-600 font-bold hover:underline ml-1">สมัครสมาชิกฟรี</Link>
           </p>
 
-          <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col items-center gap-4">
-            <div className="flex justify-center gap-6 text-[10px] text-slate-400 font-bold uppercase tracking-widest flex-wrap">
+          {/* กล่องแยกสำหรับนายหน้า (Agent Portal Section) */}
+          <div className="mt-8 p-4 bg-emerald-50/60 rounded-2xl border border-emerald-100 flex flex-col items-center text-center">
+            <span className="text-sm font-bold text-emerald-800 mb-1 flex items-center gap-1.5">
+              💼 สำหรับนายหน้า (Agent Portal)
+            </span>
+            <p className="text-[11px] text-slate-500 mb-3">
+              คุณต้องการลงประกาศอสังหาริมทรัพย์และจัดการผู้สนใจซื้อใช่หรือไม่?
+            </p>
+            <div className="flex gap-2 w-full">
+              <Link 
+                href="/login/agent" 
+                className="flex-1 text-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs transition shadow-sm cursor-pointer"
+              >
+                เข้าสู่ระบบนายหน้า
+              </Link>
+              <Link 
+                href="/register/agent" 
+                className="flex-1 text-center bg-white hover:bg-slate-50 text-emerald-700 font-bold py-2 rounded-xl text-xs border border-emerald-200 transition cursor-pointer"
+              >
+                สมัครเป็นนายหน้า
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col items-center gap-4">
+            <div className="flex justify-center gap-5 text-[10px] text-slate-400 font-bold uppercase tracking-widest flex-wrap">
               <button onClick={() => setPolicyType('privacy')} className="hover:text-blue-600 transition cursor-pointer bg-transparent border-none">Privacy Policy</button>
               <button onClick={() => setPolicyType('terms')} className="hover:text-blue-600 transition cursor-pointer bg-transparent border-none">Terms of Use</button>
-              <Link href="/login/agent" className="text-blue-600 hover:underline transition">เข้าสู่ระบบนายหน้า &rarr;</Link>
               <Link href="/home" className="hover:text-blue-600 transition italic">Home &rarr;</Link>
             </div>
           </div>
@@ -234,7 +258,7 @@ export default function LoginPage() {
       )}
 
       {/* Policy Modal */}
-      {policyType && (
+      {policyType && policies[policyType] && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => setPolicyType(null)}></div>
           <div className="bg-white rounded-[2.5rem] max-w-xl w-full max-h-[80vh] flex flex-col relative z-10 shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
