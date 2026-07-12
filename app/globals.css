@@ -11,6 +11,10 @@
   --font-sans: var(--font-prompt);
 }
 
+html {
+  font-size: 18px; /* ปรับขนาดสเกลเว็บหลักทุกหน้าให้ใหญ่ขึ้นแบบมาตรฐานสากล */
+}
+
 body {
   font-family: var(--font-sans);
   background-color: var(--background);
