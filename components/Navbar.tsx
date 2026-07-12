@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from "react";
 import Link from "next/link"; // ใช้แทน <a> สำหรับทำ Client-Side Routing (กดเปลี่ยนหน้าทันทีโดยไม่ต้องรีโหลดหน้าเว็บใหม่)
 import { usePathname } from "next/navigation"; // Hook สำหรับดึงเส้นทาง URL ปัจจุบัน เพื่อนำมาเช็คว่าเมนูไหนกำลังเปิดอยู่
@@ -12,7 +14,12 @@ export default function Navbar() {
   const pathname = usePathname();
 
   // ฟังก์ชันตัวช่วย: เช็คว่าปุ่มเมนูนี้ตรงกับ URL ปัจจุบันหรือไม่ (ใช้สำหรับไฮไลท์ปุ่มสีฟ้า)
-  const isActive = (path: string) => pathname === path;
+  const isActive = (path: string) => {
+    if (path === "/home" || path === "/") {
+      return pathname === "/home" || pathname === "/";
+    }
+    return pathname === path;
+  };
 
   // ค้นหารูปภาพผู้ใช้จริง
   const avatarUrl = session?.user?.image || "https://i.pravatar.cc/150?img=68";
@@ -24,7 +31,7 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-16">
           
           {/* ส่วนของโลโก้บริษัท (Brand Logo) */}
-          <Link href="/" className="flex-shrink-0 flex items-center gap-2 cursor-pointer group">
+          <Link href={session ? "/home" : "/"} className="flex-shrink-0 flex items-center gap-2 cursor-pointer group">
             {/* กล่องตัวอักษร 'S' มีสีพื้นหลังน้ำเงินและเงา */}
             <div className="w-8 h-8 bg-blue-700 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-blue-700/30 group-hover:scale-105 transition-transform">
               S
@@ -39,7 +46,7 @@ export default function Navbar() {
           <div className="hidden md:flex space-x-1 items-center bg-slate-100/50 p-0.5 rounded-full border border-slate-200">
             {/* เมนูหน้าแรก */}
             <Link
-              href="/"
+              href={session ? "/home" : "/"}
               className={`rounded-full px-5 py-2 text-sm transition ${
                 isActive("/") 
                   ? "text-blue-700 bg-white shadow-sm font-bold" // ไฮไลท์ถ้ากดหน้านี้อยู่
@@ -148,7 +155,7 @@ export default function Navbar() {
         <div className="md:hidden bg-white border-t border-slate-100 absolute w-full shadow-lg">
           <div className="px-4 pt-2 pb-6 space-y-2">
             <Link
-              href="/"
+              href={session ? "/home" : "/"}
               onClick={() => setIsOpen(false)} // คลิกไปแล้วปิดแถบเมนูมือถือ
               className={`block px-3 py-3 rounded-xl ${
                 isActive("/") ? "text-blue-700 font-bold bg-blue-50" : "text-slate-600 font-medium hover:bg-slate-50"

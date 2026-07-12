@@ -1,15 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/app/context/AppContext';
-
-
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
+  const { status } = useSession();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'buy' | 'rent' | 'sell'>('buy');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { properties, favorites, toggleFavorite } = useApp();
+
+  // หากตรวจพบว่าผู้ใช้งานเข้าระบบอยู่แล้ว ให้พาไปยังหน้าแรกฝั่งลูกค้าที่ล็อกอินทันที
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.replace('/home');
+    }
+  }, [status, router]);
 
   const locations = [
     { name: "หาดใหญ่", count: 124, image: "https://images.unsplash.com/photo-1563492065599-3520f775eeed?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" },

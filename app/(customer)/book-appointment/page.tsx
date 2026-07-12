@@ -8,7 +8,6 @@
 
 import React, { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useApp } from '@/app/context/AppContext';
 
 // ส่วนฟอร์มย่อยที่จำเป็นต้องรันภายใต้ Suspense เนื่องจากมีการดึงค่าจาก Query URL
@@ -58,21 +57,6 @@ function BookAppointmentForm() {
 
   return (
     <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm pb-20">
-      
-      {/* 🧭 เมนูนำทางด้านบน */}
-      <nav className="fixed w-full z-40 top-0 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/home" className="flex-shrink-0 flex items-center gap-2 group">
-              <div className="w-8 h-8 bg-blue-700 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-105 transition-transform">S</div>
-              <span className="text-xl font-extrabold text-slate-900 tracking-tight">Srichai<span className="text-blue-600">Property</span></span>
-            </Link>
-          </div>
-        </div>
-      </nav>
-
-      <div className="pt-24"></div>
-
       <div className="max-w-4xl mx-auto px-4">
         
         {/* ลิงก์กดย้อนกลับ */}

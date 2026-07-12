@@ -105,38 +105,6 @@ const defaultProperties: Property[] = [
     agentName: "สมชาย นายหน้าดี",
     agentImage: "https://ui-avatars.com/api/?name=Agent+1&background=1e40af&color=fff",
     isPremium: true
-  },
-  {
-    id: 2,
-    title: "คอนโดหรู ใกล้มอ.",
-    price: "฿1,890,000",
-    type: "คอนโดมิเนียม",
-    tag: "โครงการใหม่",
-    tagBg: "bg-teal-500",
-    location: "📍 ถ.ปุณณกัณฑ์, หาดใหญ่",
-    bedrooms: 1,
-    bathrooms: 1,
-    area: 35,
-    image: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
-    agentName: "วิภาดา จิตดี",
-    agentImage: "https://ui-avatars.com/api/?name=Agent+2&background=0d9488&color=fff",
-    isPremium: false
-  },
-  {
-    id: 3,
-    title: "ทาวน์โฮม 3 ชั้น รีโนเวทใหม่",
-    price: "฿3,200,000",
-    type: "ทาวน์โฮม",
-    tag: "มือสอง",
-    tagBg: "bg-orange-500",
-    location: "📍 ถ.คลองเรียน 1, หาดใหญ่",
-    bedrooms: 3,
-    bathrooms: 4,
-    area: 150,
-    image: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
-    agentName: "เอกชัย มั่นคง",
-    agentImage: "https://ui-avatars.com/api/?name=Agent+3&background=d97706&color=fff",
-    isPremium: false
   }
 ];
 
@@ -149,21 +117,7 @@ const defaultChatSessions: ChatSession[] = [
     lastMessage: "ยินดีรับผิดชอบค่าธรรมเนียมการโอนให้ครับ...",
     time: "10:45",
     messages: [
-      { id: 1, sender: 'user', text: "สวัสดีครับ สนใจบ้านเดี่ยวโครงการสิริชัย วิลเลจ ครับ", time: "10:30" },
-      { id: 2, sender: 'agent', text: "สวัสดีครับคุณพาทิศ บ้านหลังนี้ทำเลดีมากเลยครับ", time: "10:32" },
-      { id: 3, sender: 'user', text: "ค่าโอนบ้านทางผู้ขายจะรับผิดชอบให้ทั้งหมดไหมครับ?", time: "10:40" },
-      { id: 4, sender: 'agent', text: "ยินดีรับผิดชอบค่าธรรมเนียมการโอนให้ครับ สะดวกนัดเข้าชมวันเสาร์นี้เลยไหมครับ?", time: "10:45" }
-    ]
-  },
-  {
-    id: 2,
-    name: "วิภาดา จิตดี",
-    avatar: "https://ui-avatars.com/api/?name=Wipada+Agent&background=0d9488&color=fff",
-    isActive: false,
-    lastMessage: "คอนโดโครงการนี้ยังเปิดรับข้อเสนอนะคะ",
-    time: "เมื่อวาน",
-    messages: [
-      { id: 1, sender: 'agent', text: "คอนโดโครงการนี้ยังเปิดรับข้อเสนอนะคะ สะดวกช่วงเช้าหรือบ่ายดีคะ?", time: "เมื่อวาน" }
+      { id: 1, sender: 'user', text: "สวัสดีครับ สนใจบ้านครับ", time: "10:30" }
     ]
   }
 ];

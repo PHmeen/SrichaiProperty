@@ -9,13 +9,10 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/app/context/AppContext';
-import { useSession, signOut } from 'next-auth/react';
 
 export default function CustomerHomePage() {
-  const { data: session } = useSession();
   // === 1. ประกาศตัวแปรสถานะภายในหน้าเพจ (Local State) ===
   const [activeTab, setActiveTab] = useState<'buy' | 'rent' | 'sell'>('buy'); // เก็บข้อมูลการสลับแท็บเมนู ค้นหา ซื้อ/เช่า/ขาย
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);               // สลับแสดง/ซ่อนเมนูแนวตั้งบนมือถือ
 
   // === 2. เรียกใช้ข้อมูลและฟังก์ชันจากส่วนกลาง (Global State จาก useApp) ===
   const { properties, favorites, toggleFavorite, profile, appointments } = useApp();
@@ -37,134 +34,9 @@ export default function CustomerHomePage() {
     <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm">
       
       {/* ==================================================== */}
-      {/* 🧭 แถบนำทางด้านบน (Navigation Bar)                   */}
-      {/* ==================================================== */}
-      <nav className="fixed w-full z-50 top-0 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            
-            {/* โลโก้เว็บไซต์ */}
-            <Link href="/home" className="flex-shrink-0 flex items-center gap-2 group">
-              <div className="w-8 h-8 bg-blue-700 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-blue-700/30 group-hover:scale-105 transition-transform">S</div>
-              <span className="text-xl font-extrabold text-slate-900 tracking-tight">
-                Srichai<span className="text-blue-600">Property</span>
-              </span>
-            </Link>
-
-            {/* เมนูลิงก์ระดับ Desktop (ซ่อนเมื่อแสดงผลบนจอเล็ก) */}
-            <div className="hidden lg:flex space-x-1 items-center bg-slate-100/50 p-0.5 rounded-full border border-slate-200">
-              <Link href="/home" className="text-blue-700 bg-white shadow-sm rounded-full px-4 py-1.5 text-xs font-bold transition">หน้าแรก</Link>
-              <Link href="/search" className="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-4 py-1.5 text-xs font-medium transition">ค้นหาอสังหาฯ</Link>
-              <Link href="/agents" className="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-4 py-1.5 text-xs font-medium transition">นายหน้าของเรา</Link>
-              <Link href="/appointments" className="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-4 py-1.5 text-xs font-medium transition">ประวัติการนัดหมาย</Link>
-            </div>
-
-            {/* ส่วนโปรไฟล์และทางลัด */}
-            <div className="flex items-center space-x-3">
-              <div className="hidden md:flex items-center space-x-1 border-r border-slate-200 pr-3">
-                
-                {/* ลิงก์ไปหน้าบันทึกที่ชอบ */}
-                <Link href="/favorites" className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition cursor-pointer" title="รายการโปรด">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
-                </Link>
-                
-                {/* ลิงก์ไปห้องสนทนา (แชท) */}
-                <Link href="/chat" className="relative p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition cursor-pointer" title="ข้อความแชท">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863-0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-                  <span className="absolute top-1 right-1 flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500 border border-white"></span>
-                  </span>
-                </Link>
-              </div>
-
-              {/* เมนูหน้าโปรไฟล์แบบ Dropdown */}
-              <div className="relative group">
-                <div className="flex items-center space-x-2 bg-slate-50 border border-slate-200 pl-1.5 pr-3 py-1 rounded-full shadow-sm cursor-pointer hover:bg-slate-100 transition">
-                  <img src={session?.user?.image || "https://i.pravatar.cc/150?img=68"} alt="Profile" className="w-7 h-7 rounded-full border border-white shadow-sm object-cover group-hover:scale-105 transition-transform" />
-                  <div className="flex flex-col hidden sm:flex">
-                    <span className="text-xs font-bold text-slate-900 leading-none">{session?.user?.name || profile.fullName}</span>
-                    <span className="text-[9px] text-blue-600 font-bold uppercase tracking-widest mt-0.5">
-                      {profile.role === 'buyer' ? 'ผู้สนใจซื้อ' : profile.role === 'agent' ? 'นายหน้า' : 'ผู้ดูแลระบบ'}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top-right z-50">
-                  <div className="p-3 border-b border-slate-100">
-                    <p className="text-xs font-bold text-slate-900">{session?.user?.name || profile.fullName}</p>
-                    <p className="text-[10px] text-slate-500 truncate">{session?.user?.email || profile.email}</p>
-                  </div>
-                  <div className="p-1.5 space-y-0.5">
-                    <Link href="/profile" className="block px-3 py-1.5 text-xs text-slate-600 font-medium hover:bg-slate-50 hover:text-blue-600 rounded-lg transition">ตั้งค่าโปรไฟล์</Link>
-                    {profile.role === 'agent' && (
-                      <Link href="/agent/dashboard" className="block px-3 py-1.5 text-xs text-blue-600 font-bold hover:bg-blue-50 rounded-lg transition">🖥️ แดชบอร์ดนายหน้า</Link>
-                    )}
-                    {profile.role === 'admin' && (
-                      <Link href="/admin/dashboard" className="block px-3 py-1.5 text-xs text-purple-600 font-bold hover:bg-purple-50 rounded-lg transition">🖥️ แดชบอร์ดผู้ดูแลระบบ</Link>
-                    )}
-                  </div>
-                  <div className="p-1.5 border-t border-slate-100">
-                    <button 
-                      onClick={() => signOut({ callbackUrl: '/login' })}
-                      className="w-full text-left block px-3 py-1.5 text-xs text-red-600 font-bold hover:bg-red-50 rounded-lg transition cursor-pointer"
-                    >
-                      ออกจากระบบ
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* ปุ่มเปิดเมนูด้านบนเวอร์ชันมือถือ */}
-              <button 
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden text-slate-600 hover:text-blue-600 focus:outline-none ml-1"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* เมนูมือถือแนวตั้ง */}
-        {mobileMenuOpen && (
-          <div className="lg:hidden bg-white border-t border-slate-100 absolute w-full shadow-lg z-50">
-            <div className="px-4 pt-3 pb-5 space-y-1.5 max-h-[80vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-3 px-2 pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <img src="https://i.pravatar.cc/150?img=68" className="w-10 h-10 rounded-full border border-slate-200" alt="Avatar" />
-                  <div>
-                    <h4 className="font-bold text-xs text-slate-900">{profile.fullName}</h4>
-                    <p className="text-[10px] text-blue-600 font-bold">{profile.role === 'buyer' ? 'ผู้สนใจซื้อ' : 'นายหน้า'}</p>
-                  </div>
-                </div>
-                <Link href="/profile" className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-1.5 rounded hover:bg-slate-200 transition">ตั้งค่า</Link>
-              </div>
-
-              <Link href="/home" className="block px-3 py-2 text-xs text-blue-700 font-bold bg-blue-50 rounded-lg">หน้าแรก</Link>
-              <Link href="/search" className="block px-3 py-2 text-xs text-slate-600 font-medium hover:bg-slate-50 rounded-lg">ค้นหาอสังหาฯ</Link>
-              <Link href="/agents" className="block px-3 py-2 text-xs text-slate-600 font-medium hover:bg-slate-50 rounded-lg">นายหน้าของเรา</Link>
-              
-              <div className="border-t border-slate-100 my-2"></div>
-              
-              <Link href="/favorites" className="flex items-center gap-2 px-3 py-2 text-xs text-slate-600 font-medium hover:bg-slate-50 rounded-lg">
-                <span>❤️</span> รายการโปรด
-              </Link>
-              <Link href="/appointments" className="flex items-center gap-2 px-3 py-2 text-xs text-slate-600 font-medium hover:bg-slate-50 rounded-lg">
-                <span>📅</span> ประวัติการนัดหมาย
-              </Link>
-              
-              <div className="border-t border-slate-100 my-3"></div>
-              <Link href="/login" className="block px-3 py-2 text-xs bg-red-50 text-red-600 font-bold text-center rounded-lg transition hover:bg-red-100">ออกจากระบบ</Link>
-            </div>
-          </div>
-        )}
-      </nav>
-
-      {/* ==================================================== */}
       {/* 🏡 ส่วนหัวต้อนรับ และกล่องตัวกรอง (Hero & Filter)       */}
       {/* ==================================================== */}
-      <header className="relative pt-24 pb-16 lg:pt-32 lg:pb-20 overflow-hidden flex items-center justify-center min-h-[55vh]">
+      <header className="relative pt-8 pb-16 lg:pt-16 lg:pb-20 overflow-hidden flex items-center justify-center min-h-[55vh]">
         <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80')" }}></div>
         <div className="absolute inset-0 bg-slate-900/60 mix-blend-multiply"></div>
         

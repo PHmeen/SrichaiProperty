@@ -6,7 +6,7 @@
  * แล้วนำมาสืบค้นข้อมูลของอสังหาฯ ตัวจริงจาก useApp มานำเสนอรายละเอียด
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useApp } from '@/app/context/AppContext';
@@ -17,8 +17,7 @@ export default function PropertyDetailPage() {
   const id = params.id || '1';
 
   // === 2. ดึงเมธอดข้อมูลอสังหาฯ และโปรไฟล์ปัจจุบัน ===
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { properties, favorites, toggleFavorite, profile } = useApp();
+  const { properties, favorites, toggleFavorite } = useApp();
 
   // ค้นหารายการอสังหาฯ ที่มีรหัสไอดีตรงกัน
   const property = properties.find(p => p.id === Number(id)) || properties[0];
@@ -45,47 +44,6 @@ export default function PropertyDetailPage() {
   return (
     <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm pb-24 lg:pb-0">
       
-      {/* 🧭 แถบนำทางด้านบน (Navigation Bar) */}
-      <nav className="fixed w-full z-50 top-0 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm transition-all duration-300">
-        <div className="max-w-5xl mx-auto px-4">
-          <div className="flex justify-between items-center h-16">
-            
-            {/* โลโก้ */}
-            <Link href="/home" className="flex-shrink-0 flex items-center gap-2 group">
-              <div className="w-8 h-8 bg-blue-700 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-105 transition-transform">S</div>
-              <span className="text-xl font-extrabold text-slate-900 tracking-tight">
-                Srichai<span className="text-blue-600">Property</span>
-              </span>
-            </Link>
-
-            {/* เมนูเชื่อมโยงระดับ Desktop */}
-            <div className="hidden lg:flex space-x-1 items-center bg-slate-100/50 p-0.5 rounded-full border border-slate-200">
-              <Link href="/home" className="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-4 py-1.5 text-xs font-medium transition">หน้าแรก</Link>
-              <Link href="/search" className="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-4 py-1.5 text-xs font-medium transition">ค้นหาอสังหาฯ</Link>
-              <Link href="/agents" className="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-4 py-1.5 text-xs font-medium transition">นายหน้าของเรา</Link>
-              <Link href="/appointments" className="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-4 py-1.5 text-xs font-medium transition">ประวัติการนัดหมาย</Link>
-            </div>
-
-            {/* แถบข้อมูลผู้ใช้งาน */}
-            <div className="flex items-center space-x-3">
-              <Link href="/profile" className="flex items-center space-x-2 bg-slate-50 border border-slate-200 pl-1.5 pr-3 py-1 rounded-full shadow-sm hover:bg-slate-100 transition cursor-pointer">
-                <img src="https://i.pravatar.cc/150?img=68" alt="Profile" className="w-7 h-7 rounded-full border border-white shadow-sm object-cover" />
-                <span className="text-xs font-bold text-slate-900 leading-none hidden sm:inline">{profile.fullName}</span>
-              </Link>
-              
-              <button 
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
-                className="lg:hidden text-slate-600 hover:text-blue-600 focus:outline-none"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      <div className="pt-16"></div>
-
       {/* 📍 แถบเส้นทางตำแหน่ง (Breadcrumb Sticky Bar) */}
       <div className="bg-white border-b border-slate-200 sticky top-16 z-40">
         <div className="max-w-5xl mx-auto px-4 py-2.5 flex justify-between items-center text-xs">
