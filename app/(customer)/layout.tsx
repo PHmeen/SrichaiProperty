@@ -1,5 +1,6 @@
 import React from "react";
 import Navbar from "@/components/Navbar";
+import CookieConsent from "@/components/CookieConsent";
 
 export default function CustomerLayout({
   children,
@@ -12,6 +13,7 @@ export default function CustomerLayout({
       <div className="flex-grow pt-16">
         {children}
       </div>
+      <CookieConsent />
     </div>
   );
 }
