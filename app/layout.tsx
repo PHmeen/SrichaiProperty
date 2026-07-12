@@ -13,6 +13,8 @@ export const metadata: Metadata = {
   description: "ศูนย์รวมอสังหาริมทรัพย์คุณภาพ พร้อมระบบจองนัดหมายเข้าชมและแชทกับนายหน้าโดยตรง",
 };
 
+import { Providers } from "@/app/providers";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -24,7 +26,9 @@ export default function RootLayout({
       className={`${prompt.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans bg-slate-50 text-slate-800">
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );
