@@ -1,3 +1,6 @@
+// === ระบบล็อกอิน (NextAuth Configuration) ===
+// ไฟล์นี้ทำหน้าที่ตั้งค่าการยืนยันตัวตนสำหรับผู้ใช้ เช่น ล็อกอินด้วย Google, Facebook หรือกรอกอีเมล/รหัสผ่านปกติ
+
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
@@ -7,38 +10,47 @@ import bcrypt from "bcryptjs";
 
 const handler = NextAuth({
   providers: [
+    // 1. ระบบล็อกอินด้วย Google
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
     }),
+    
+    // 2. ระบบล็อกอินด้วย Facebook
     FacebookProvider({
       clientId: process.env.FACEBOOK_CLIENT_ID || "",
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET || "",
+      // บังคับขอเฉพาะสิทธิ์ข้อมูลสาธารณะ (public_profile) เพื่อไม่ให้ติดบล็อกจาก Facebook
       authorization: "https://www.facebook.com/v18.0/dialog/oauth?scope=public_profile",
       userinfo: {
         url: "https://graph.facebook.com/me",
         params: { fields: "id,name,picture.width(250).height(250)" },
       },
+      // ฟังก์ชันสำหรับแปลงข้อมูลจาก Facebook ไปเก็บในระบบล็อกอิน
       profile(profile) {
         return {
           id: profile.id,
           name: profile.name,
-          email: profile.email || `fb_${profile.id}@facebook.com`,
-          image: profile.picture?.data?.url || null,
+          email: profile.email || `fb_${profile.id}@facebook.com`, // สร้างอีเมลจำลองกรณีเฟสบุ๊คไม่ส่งอีเมลมา
+          image: profile.picture?.data?.url || null, // ดึงลิงก์รูปภาพโปรไฟล์
         };
       },
     }),
+    
+    // 3. ระบบล็อกอินด้วย อีเมล และ รหัสผ่าน (Credentials)
     CredentialsProvider({
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
       },
+      // ฟังก์ชันตรวจสอบความถูกต้องของรหัสผ่านในฐานข้อมูล
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           throw new Error("กรุณากรอกอีเมลและรหัสผ่าน");
         }
 
+        // ค้นหาผู้ใช้จากอีเมลในฐานข้อมูล PostgreSQL
         const user = await db.users.findUnique({
           where: { email: credentials.email }
         });
@@ -47,6 +59,7 @@ const handler = NextAuth({
           throw new Error("ไม่พบบัญชีผู้ใช้งานนี้");
         }
 
+        // ถอดรหัสลับและตรวจสอบรหัสผ่านว่าตรงกันหรือไม่
         const isPasswordValid = await bcrypt.compare(
           credentials.password,
           user.password_hash
@@ -56,6 +69,7 @@ const handler = NextAuth({
           throw new Error("รหัสผ่านไม่ถูกต้อง");
         }
 
+        // ส่งข้อมูลผู้ใช้กลับไปให้ระบบล็อกอินจำไว้
         return {
           id: user.id,
           email: user.email,
