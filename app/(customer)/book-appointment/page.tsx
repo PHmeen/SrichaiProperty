@@ -15,8 +15,8 @@ function BookAppointmentForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   
-  // 1. ดึงไอดีจาก URL (?propertyId=1) หากไม่มีให้แสดงของชิ้นที่ 1 เป็นค่าเริ่มต้น
-  const propertyId = searchParams.get('propertyId') || '1';
+  // 1. ดึงไอดีจาก URL (?propertyId=...)
+  const propertyId = searchParams.get('propertyId');
 
   // 2. ประกาศสถานะการป้อนข้อมูลฟอร์ม
   const [selectedDate, setSelectedDate] = useState('2026-07-11');
@@ -27,7 +27,7 @@ function BookAppointmentForm() {
   const { properties, addAppointment } = useApp();
 
   // ค้นหารายการอสังหาฯ จากฐานข้อมูลตาม ID
-  const property = properties.find(p => p.id === Number(propertyId)) || properties[0];
+  const property = properties.find(p => String(p.id) === String(propertyId)) || properties[0];
 
   // ช่วงเวลานัดหมายที่มีให้เลือก
   const timeSlots = [
@@ -56,74 +56,91 @@ function BookAppointmentForm() {
   };
 
   return (
-    <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm pb-20">
-      <div className="max-w-4xl mx-auto px-4">
+    <div className="font-sans bg-slate-50/50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm pb-24 pt-12">
+      <div className="max-w-5xl mx-auto px-4">
         
         {/* ลิงก์กดย้อนกลับ */}
-        <div className="mb-6">
-          <button onClick={() => router.back()} className="text-slate-500 hover:text-blue-600 font-bold text-xs flex items-center gap-1.5 mb-2 transition cursor-pointer">
-            &larr; กลับไปหน้ารายละเอียด
+        <div className="mb-8">
+          <button 
+            onClick={() => router.back()} 
+            className="text-slate-500 hover:text-blue-600 font-extrabold text-xs flex items-center gap-1.5 mb-3 transition-colors cursor-pointer group"
+          >
+            <span className="group-hover:-translate-x-0.5 transition-transform">&larr;</span> กลับไปหน้ารายละเอียด
           </button>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">ทำการนัดหมายเข้าชมสถานที่</h1>
-          <p className="text-slate-500 text-xs mt-1">เลือกวันและเวลาที่คุณสะดวก เพื่อเข้าชมสถานที่จริง</p>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">ทำการนัดหมายเข้าชมสถานที่</h1>
+          <p className="text-slate-500 text-xs mt-1">เลือกวันและเวลาที่คุณสะดวก เพื่ออำนวยความสะดวกในการเข้าชมสถานที่จริง</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
           {/* คอลัมน์ซ้าย: การ์ดพรีวิวข้อมูลของบ้านที่จะนัดหมาย */}
-          <div className="lg:col-span-4 flex flex-col gap-4">
-            <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-200">
-              <div className="h-28 relative">
+          <div className="lg:col-span-4 flex flex-col gap-6">
+            <div className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 border border-slate-200/60">
+              <div className="h-40 relative">
                 <img src={property.image} className="w-full h-full object-cover" alt={property.title} />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent"></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
+                <div className="absolute bottom-3 left-3 z-10">
+                  <span className="bg-blue-600 text-white px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider mb-1 inline-block">{property.type}</span>
+                </div>
               </div>
-              <div className="p-4">
-                <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider mb-1.5 inline-block">{property.type}</span>
-                <h3 className="text-slate-900 font-extrabold text-sm leading-tight mb-1">{property.title}</h3>
-                <p className="text-base font-extrabold text-blue-700 mb-2">{property.price}</p>
-                <p className="text-[11px] text-slate-500 leading-relaxed">{property.location}</p>
+              <div className="p-5">
+                <h3 className="text-slate-900 font-extrabold text-base leading-snug mb-1.5 line-clamp-2">{property.title}</h3>
+                <p className="text-lg font-black text-blue-700 mb-3">{property.price}</p>
+                <div className="flex items-center text-slate-500 text-[11px] bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                  <span className="mr-1.5">📍</span>
+                  <span className="line-clamp-1">{property.location.replace("📍 ", "")}</span>
+                </div>
               </div>
             </div>
 
             {/* บล็อกผู้ดูแลนายหน้า */}
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
-              <div className="flex items-center gap-3">
-                <img src={property.agentImage} className="w-10 h-10 rounded-full object-cover border shadow-sm" alt={property.agentName} />
+            <div className="bg-gradient-to-br from-white to-slate-50/50 rounded-3xl p-5 shadow-sm border border-slate-200/60">
+              <div className="flex items-center gap-3.5">
+                <img src={property.agentImage} className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-md" alt={property.agentName} />
                 <div>
-                  <p className="text-[9px] text-slate-500 font-bold uppercase">นายหน้าผู้ดูแล</p>
-                  <h4 className="text-xs font-bold text-slate-900">{property.agentName}</h4>
-                  <p className="text-[10px] text-emerald-600 font-bold">✓ ยืนยันตัวตนแล้ว</p>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">นายหน้าผู้ดูแล</p>
+                  <h4 className="text-xs font-black text-slate-800">{property.agentName}</h4>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-emerald-500 text-[10px]">●</span>
+                    <p className="text-[10px] text-emerald-600 font-extrabold">ยืนยันตัวตนแล้ว</p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
           {/* คอลัมน์ขวา: กรอกข้อมูลลงทะเบียนนัดหมาย */}
-          <div className="lg:col-span-8 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-5">
-            <form onSubmit={handleBooking} className="space-y-4">
+          <div className="lg:col-span-8 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/60 shadow-sm">
+            <form onSubmit={handleBooking} className="space-y-6">
               
               {/* เลือกวันที่ */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">เลือกวันที่ต้องการนัดชม</label>
-                <input 
-                  type="date" 
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-slate-800 font-medium text-xs cursor-pointer" 
-                  required 
-                />
+                <label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-wider">เลือกวันที่ต้องการนัดชม</label>
+                <div className="relative">
+                  <input 
+                    type="date" 
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 focus:bg-white transition-all text-slate-800 font-bold text-xs cursor-pointer" 
+                    required 
+                  />
+                </div>
               </div>
 
               {/* เลือกสล็อตเวลา */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">เลือกช่วงเวลา (Time Slot)</label>
-                <div className="grid grid-cols-2 gap-2">
+                <label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-wider">เลือกช่วงเวลา (Time Slot)</label>
+                <div className="grid grid-cols-2 gap-3">
                   {timeSlots.map((slot) => (
                     <button
                       key={slot}
                       type="button"
                       onClick={() => setSelectedTimeSlot(slot)}
-                      className={`px-3 py-2.5 rounded-xl border text-xs font-bold text-center transition-all cursor-pointer ${selectedTimeSlot === slot ? 'border-blue-600 bg-blue-50/50 text-blue-700' : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600'}`}
+                      className={`px-4 py-3.5 rounded-xl border text-xs font-extrabold text-center transition-all cursor-pointer ${
+                        selectedTimeSlot === slot 
+                          ? 'border-blue-600 bg-blue-50 text-blue-700 ring-2 ring-blue-600/10' 
+                          : 'border-slate-200 bg-slate-50 hover:bg-slate-100/80 text-slate-600'
+                      }`}
                     >
                       {slot}
                     </button>
@@ -133,22 +150,24 @@ function BookAppointmentForm() {
 
               {/* ข้อความเพิ่มเติม */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">ข้อความถึงนายหน้า (ระบุเงื่อนไขเพิ่มเติม)</label>
+                <label className="block text-xs font-black text-slate-700 mb-2 uppercase tracking-wider">ข้อความถึงนายหน้า (ระบุเงื่อนไขเพิ่มเติม)</label>
                 <textarea 
-                  rows={3} 
+                  rows={4} 
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  placeholder="เช่น ต้องการให้นายหน้าจัดเตรียมเอกสารข้อมูลเพิ่มเติม..." 
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-slate-800 font-medium text-xs resize-none" 
+                  placeholder="เช่น ต้องการให้นายหน้าจัดเตรียมเอกสารข้อมูลเพิ่มเติม หรือประสงค์เข้าชมห้องตัวอย่างจริง..." 
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 focus:bg-white transition-all text-slate-800 font-medium text-xs resize-none placeholder-slate-400" 
                 />
               </div>
 
-              <button 
-                type="submit" 
-                className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 rounded-xl transition shadow text-xs cursor-pointer"
-              >
-                ยืนยันการนัดเข้าชม
-              </button>
+              <div className="pt-2">
+                <button 
+                  type="submit" 
+                  className="w-full bg-blue-700 hover:bg-blue-800 text-white font-extrabold py-3.5 px-6 rounded-xl transition-all duration-150 shadow-md hover:shadow-lg active:scale-[0.99] text-xs cursor-pointer flex items-center justify-center gap-2"
+                >
+                  📅 ยืนยันการส่งคำขอนัดเข้าชม
+                </button>
+              </div>
             </form>
           </div>
 

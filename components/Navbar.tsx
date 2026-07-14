@@ -21,9 +21,18 @@ export default function Navbar() {
     return pathname === path;
   };
 
-  // ค้นหารูปภาพผู้ใช้จริง
-  const avatarUrl = session?.user?.image || "https://i.pravatar.cc/150?img=68";
+  // ฟังก์ชันวาดรูปภาพอักษรย่อจากชื่อผู้ใช้แบบ SVG (เข้ารหัส URI เพื่อความง่ายและเสถียร 100% ทั้งฝั่ง Server และ Client)
+  const getInitialsAvatar = (name: string) => {
+    const initials = name.trim().split(/\s+/).map(n => n[0]).slice(0, 2).join("").toUpperCase() || "?";
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#1d4ed8"/><text x="50" y="55" font-family="sans-serif" font-weight="bold" font-size="35" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${initials}</text></svg>`;
+    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  };
+
+  // ค้นหารูปภาพผู้ใช้จริง (ตรวจสอบลิ้งค์ให้ถูกต้องและไม่ใช่คำว่า "null" / "undefined")
   const userFullName = session?.user?.name || "ผู้ใช้งาน";
+  const rawImage = session?.user?.image;
+  const hasValidImage = rawImage && typeof rawImage === 'string' && rawImage.trim() !== '' && rawImage !== 'null' && rawImage !== 'undefined' && (rawImage.startsWith('http') || rawImage.startsWith('/'));
+  const avatarUrl = hasValidImage ? rawImage : getInitialsAvatar(userFullName);
 
   return (
     <nav className="fixed w-full z-50 top-0 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm transition-all duration-300">
@@ -100,7 +109,7 @@ export default function Navbar() {
               {session ? (
                 <div className="flex items-center gap-3">
                   <Link href="/profile" className="flex items-center space-x-2 bg-slate-50 border border-slate-200 pl-1.5 pr-3 py-1 rounded-full shadow-sm hover:bg-slate-100 transition cursor-pointer">
-                    <img src={avatarUrl} alt="Profile" className="w-7 h-7 rounded-full border border-white shadow-sm object-cover" />
+                    <img src={avatarUrl} alt="Profile" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = getInitialsAvatar(userFullName); }} className="w-7 h-7 rounded-full border border-white shadow-sm object-cover" />
                     <div className="flex flex-col text-left">
                       <span className="text-xs font-bold text-slate-900 leading-none">{userFullName}</span>
                       <span className="text-[9px] text-blue-600 font-bold uppercase tracking-widest mt-0.5">โปรไฟล์ของฉัน</span>

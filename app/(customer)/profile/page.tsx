@@ -41,6 +41,19 @@ export default function ProfilePage() {
     }
   };
 
+  // ฟังก์ชันวาดรูปภาพอักษรย่อจากชื่อผู้ใช้แบบ SVG (เข้ารหัส URI เพื่อความง่ายและเสถียร 100% ทั้งฝั่ง Server และ Client)
+  const getInitialsAvatar = (name: string) => {
+    const initials = name.trim().split(/\s+/).map(n => n[0]).slice(0, 2).join("").toUpperCase() || "?";
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#1d4ed8"/><text x="50" y="55" font-family="sans-serif" font-weight="bold" font-size="35" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${initials}</text></svg>`;
+    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  };
+
+  // ตรวจสอบความถูกต้องของลิงก์ภาพโปรไฟล์เพื่อหลีกเลี่ยงภาพแตก
+  const rawImage = session?.user?.image;
+  const hasValidImage = rawImage && typeof rawImage === 'string' && rawImage.trim() !== '' && rawImage !== 'null' && rawImage !== 'undefined' && (rawImage.startsWith('http') || rawImage.startsWith('/'));
+  const userDisplayName = session?.user?.name || fullName || 'User';
+  const avatarUrl = hasValidImage ? rawImage : getInitialsAvatar(userDisplayName);
+
   return (
     <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm flex flex-col">
       {/* ส่วนหัวแสดงชื่อหน้าเพจ */}
@@ -59,7 +72,7 @@ export default function ProfilePage() {
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 lg:sticky lg:top-24 space-y-5">
             <div className="text-center pb-4 border-b border-slate-100 space-y-2">
               <div className="relative inline-block group cursor-pointer">
-                <img src={session?.user?.image || "https://i.pravatar.cc/150?img=68"} alt="Profile" className="w-20 h-20 rounded-full object-cover border-2 border-slate-200 shadow-md" />
+                <img src={avatarUrl} alt="Profile" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = getInitialsAvatar(userDisplayName); }} className="w-20 h-20 rounded-full object-cover border-2 border-slate-200 shadow-md" />
               </div>
               <h3 className="font-extrabold text-slate-900 text-sm">{session?.user?.name || fullName}</h3>
               <p className="text-slate-500 text-[11px]">{session?.user?.email || profile.email}</p>

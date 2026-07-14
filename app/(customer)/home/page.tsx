@@ -13,6 +13,14 @@ import { useApp } from '@/app/context/AppContext';
 export default function CustomerHomePage() {
   // === 1. ประกาศตัวแปรสถานะภายในหน้าเพจ (Local State) ===
   const [activeTab, setActiveTab] = useState<'buy' | 'rent' | 'sell'>('buy'); // เก็บข้อมูลการสลับแท็บเมนู ค้นหา ซื้อ/เช่า/ขาย
+  const [locationInput, setLocationInput] = useState('');
+  const [propertyType, setPropertyType] = useState('');
+  const [priceRange, setPriceRange] = useState('');
+  
+  // สถานะเปิด-ปิด Custom Dropdown Menu
+  const [openType, setOpenType] = useState(false);
+  const [openPrice, setOpenPrice] = useState(false);
+
 
   // === 2. เรียกใช้ข้อมูลและฟังก์ชันจากส่วนกลาง (Global State จาก useApp) ===
   const { properties, favorites, toggleFavorite, profile, appointments } = useApp();
@@ -36,7 +44,7 @@ export default function CustomerHomePage() {
       {/* ==================================================== */}
       {/* 🏡 ส่วนหัวต้อนรับ และกล่องตัวกรอง (Hero & Filter)       */}
       {/* ==================================================== */}
-      <header className="relative pt-8 pb-16 lg:pt-16 lg:pb-20 overflow-hidden flex items-center justify-center min-h-[55vh]">
+      <header className="relative pt-8 pb-16 lg:pt-16 lg:pb-20 flex items-center justify-center min-h-[55vh]">
         <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80')" }}></div>
         <div className="absolute inset-0 bg-slate-900/60 mix-blend-multiply"></div>
         
@@ -63,70 +71,178 @@ export default function CustomerHomePage() {
             Srichai Property Agents ศูนย์รวมอสังหาริมทรัพย์คุณภาพ พร้อมระบบจองนัดหมายเข้าชมและแชทกับนายหน้าโดยตรง
           </p>
 
-          {/* กล่องตัวกรองสลับแท็บ ค้นหาด่วน */}
-          <div className="w-full max-w-3xl bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-2.5 shadow-xl">
-            <div className="flex space-x-1.5 mb-2.5 px-1 pt-1">
+          {/* กล่องตัวกรองสลับแท็บ ค้นหาด่วน (High Readability Card Form) */}
+          <div className="w-full max-w-4xl bg-white rounded-3xl p-6 md:p-8 shadow-xl border border-slate-200/80 mt-4 text-left relative z-30">
+            
+            {/* แถบหัวข้อตัวเลือก ซื้อ / เช่า / ฝากขาย (สีกลมกลืนกับเว็บ) */}
+            <div className="flex border-b border-slate-200 mb-6 w-full overflow-x-auto whitespace-nowrap scrollbar-none">
               <button 
                 onClick={() => setActiveTab("buy")} 
-                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-                  activeTab === "buy" ? "bg-blue-700 text-white shadow-sm" : "text-slate-100 hover:bg-white/10"
+                className={`pb-3 px-6 text-xs sm:text-sm font-extrabold transition-all border-b-2 cursor-pointer ${
+                  activeTab === "buy" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-400 hover:text-slate-600"
                 }`}
               >
-                ซื้อ
+                🏠 ซื้ออสังหาริมทรัพย์
               </button>
               <button 
                 onClick={() => setActiveTab("rent")} 
-                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-                  activeTab === "rent" ? "bg-blue-700 text-white shadow-sm" : "text-slate-100 hover:bg-white/10"
+                className={`pb-3 px-6 text-xs sm:text-sm font-extrabold transition-all border-b-2 cursor-pointer ${
+                  activeTab === "rent" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-400 hover:text-slate-600"
                 }`}
               >
-                เช่า
+                🔑 เช่าอสังหาริมทรัพย์
               </button>
               <button 
                 onClick={() => setActiveTab("sell")} 
-                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-                  activeTab === "sell" ? "bg-blue-700 text-white shadow-sm" : "text-slate-100 hover:bg-white/10"
+                className={`pb-3 px-6 text-xs sm:text-sm font-extrabold transition-all border-b-2 cursor-pointer ${
+                  activeTab === "sell" ? "border-blue-600 text-blue-600" : "border-transparent text-slate-400 hover:text-slate-600"
                 }`}
               >
-                ขาย
+                📣 ฝากขาย / ลงประกาศ
               </button>
             </div>
 
-            <div className="flex flex-col md:flex-row gap-2">
-              <div className="flex-1 bg-white rounded-xl flex items-center px-3 border border-slate-200 focus-within:ring-2 focus-within:ring-blue-500 shadow-sm transition-all">
-                <span className="text-xl mr-1.5">📍</span>
+            {/* ฟิลด์ข้อมูลแบบตอบสนอง (Responsive Grid) */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              
+              {/* ฟิลด์กรอกทำเล */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col justify-center text-left focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">📍 ทำเลที่ตั้ง</span>
                 <input 
                   type="text" 
-                  placeholder="ค้นหาทำเล เช่น หาดใหญ่, สงขลา..." 
-                  className="w-full py-2.5 bg-transparent focus:outline-none text-slate-800 font-medium text-xs"
+                  value={locationInput}
+                  onChange={(e) => setLocationInput(e.target.value)}
+                  placeholder="ระบุทำเล เช่น หาดใหญ่, สงขลา..." 
+                  className="w-full bg-transparent border-none p-0 focus:ring-0 text-slate-800 text-sm font-extrabold placeholder-slate-400 outline-none"
                 />
               </div>
-              
-              <div className="md:w-40 bg-white rounded-xl flex items-center px-3 border border-slate-200 focus-within:ring-2 focus-within:ring-blue-500 shadow-sm transition-all">
-                <span className="text-lg mr-1.5">🏠</span>
-                <select className="w-full py-2.5 bg-transparent focus:outline-none text-slate-800 font-medium text-xs cursor-pointer">
-                  <option value="">ทุกประเภท</option>
-                  <option value="house">บ้านเดี่ยว</option>
-                  <option value="townhome">ทาวน์โฮม</option>
-                  <option value="condo">คอนโดมิเนียม</option>
-                </select>
+
+              {/* ฟิลด์เลือกประเภท (Custom Dropdown) */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col justify-center text-left focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-100 transition-all relative group cursor-pointer select-none">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">🏠 ประเภทอสังหาฯ</span>
+                <div 
+                  className="relative w-full flex items-center justify-between"
+                  onClick={() => {
+                    setOpenType(!openType);
+                    setOpenPrice(false);
+                  }}
+                >
+                  <span className="text-slate-800 text-sm font-extrabold truncate">
+                    {propertyType === 'house' ? '🏠 บ้านเดี่ยว' : propertyType === 'townhome' ? '🏘️ ทาวน์โฮม' : propertyType === 'condo' ? '🏢 คอนโดมิเนียม' : 'ทุกประเภท'}
+                  </span>
+                  <div className="text-slate-400 group-hover:text-blue-600 transition-colors">
+                    <svg className={`w-4 h-4 transform transition-transform ${openType ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* เมนูตัวเลือกแบบป๊อปอัพ */}
+                {openType && (
+                  <>
+                    <div className="fixed inset-0 z-40 cursor-default" onClick={(e) => { e.stopPropagation(); setOpenType(false); }} />
+                    <div className="absolute left-0 right-0 top-full mt-2 bg-white border border-slate-200/80 rounded-2xl shadow-xl z-50 p-1.5 flex flex-col gap-0.5">
+                      <button 
+                        onClick={() => { setPropertyType(''); setOpenType(false); }}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-extrabold rounded-xl transition-all ${propertyType === '' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100 hover:text-blue-600'}`}
+                      >
+                        ทุกประเภท
+                      </button>
+                      <button 
+                        onClick={() => { setPropertyType('house'); setOpenType(false); }}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-extrabold rounded-xl transition-all ${propertyType === 'house' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100 hover:text-blue-600'}`}
+                      >
+                        🏠 บ้านเดี่ยว
+                      </button>
+                      <button 
+                        onClick={() => { setPropertyType('townhome'); setOpenType(false); }}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-extrabold rounded-xl transition-all ${propertyType === 'townhome' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100 hover:text-blue-600'}`}
+                      >
+                        🏘️ ทาวน์โฮม
+                      </button>
+                      <button 
+                        onClick={() => { setPropertyType('condo'); setOpenType(false); }}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-extrabold rounded-xl transition-all ${propertyType === 'condo' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100 hover:text-blue-600'}`}
+                      >
+                        🏢 คอนโดมิเนียม
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
 
-              {activeTab === "sell" ? (
-                <Link
-                  href="/register"
-                  className="bg-blue-700 hover:bg-blue-800 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow w-full md:w-auto flex items-center justify-center text-xs"
+              {/* ฟิลด์เลือกราคา (Custom Dropdown) */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col justify-center text-left focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-100 transition-all relative group cursor-pointer select-none">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">💰 ช่วงราคา</span>
+                <div 
+                  className="relative w-full flex items-center justify-between"
+                  onClick={() => {
+                    setOpenPrice(!openPrice);
+                    setOpenType(false);
+                  }}
                 >
-                  ลงประกาศฟรี
-                </Link>
-              ) : (
-                <Link
-                  href="/search"
-                  className="bg-blue-700 hover:bg-blue-800 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow w-full md:w-auto flex items-center justify-center text-xs"
-                >
-                  ค้นหาเลย
-                </Link>
-              )}
+                  <span className="text-slate-800 text-sm font-extrabold truncate">
+                    {priceRange === 'low' ? '💸 ต่ำกว่า 3 ล้าน' : priceRange === 'mid' ? '💵 3 - 7 ล้าน' : priceRange === 'high' ? '💎 7 ล้านขึ้นไป' : 'ทุกช่วงราคา'}
+                  </span>
+                  <div className="text-slate-400 group-hover:text-blue-600 transition-colors">
+                    <svg className={`w-4 h-4 transform transition-transform ${openPrice ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* เมนูตัวเลือกแบบป๊อปอัพ */}
+                {openPrice && (
+                  <>
+                    <div className="fixed inset-0 z-40 cursor-default" onClick={(e) => { e.stopPropagation(); setOpenPrice(false); }} />
+                    <div className="absolute left-0 right-0 top-full mt-2 bg-white border border-slate-200/80 rounded-2xl shadow-xl z-50 p-1.5 flex flex-col gap-0.5">
+                      <button 
+                        onClick={() => { setPriceRange(''); setOpenPrice(false); }}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-extrabold rounded-xl transition-all ${priceRange === '' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100 hover:text-blue-600'}`}
+                      >
+                        ทุกช่วงราคา
+                      </button>
+                      <button 
+                        onClick={() => { setPriceRange('low'); setOpenPrice(false); }}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-extrabold rounded-xl transition-all ${priceRange === 'low' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100 hover:text-blue-600'}`}
+                      >
+                        💸 ต่ำกว่า 3 ล้าน
+                      </button>
+                      <button 
+                        onClick={() => { setPriceRange('mid'); setOpenPrice(false); }}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-extrabold rounded-xl transition-all ${priceRange === 'mid' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100 hover:text-blue-600'}`}
+                      >
+                        💵 3 - 7 ล้าน
+                      </button>
+                      <button 
+                        onClick={() => { setPriceRange('high'); setOpenPrice(false); }}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-extrabold rounded-xl transition-all ${priceRange === 'high' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100 hover:text-blue-600'}`}
+                      >
+                        💎 7 ล้านขึ้นไป
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* ปุ่มลงมือค้นหา */}
+              <div className="w-full flex items-stretch">
+                {activeTab === "sell" ? (
+                  <Link
+                    href="/register"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-2xl font-black transition-all shadow-md hover:shadow-lg hover:shadow-blue-600/25 active:scale-[0.98] w-full flex items-center justify-center gap-1.5 text-xs text-center cursor-pointer"
+                  >
+                    🚀 ลงประกาศฟรี
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/search?tab=${activeTab}&q=${encodeURIComponent(locationInput)}&type=${propertyType}&price=${priceRange}`}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-2xl font-black transition-all shadow-md hover:shadow-lg hover:shadow-blue-600/25 active:scale-[0.98] w-full flex items-center justify-center gap-1.5 text-xs text-center cursor-pointer"
+                  >
+                    🔍 ค้นหาทันที
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -146,7 +262,7 @@ export default function CustomerHomePage() {
             {locations.map((loc, i) => (
               <Link 
                 key={i} 
-                href="/search"
+                href={`/search?q=${encodeURIComponent(loc.name)}`}
                 className="relative h-44 rounded-2xl overflow-hidden group cursor-pointer shadow-sm border border-slate-100 block"
               >
                 <img 

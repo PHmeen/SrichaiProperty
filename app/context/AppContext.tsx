@@ -14,7 +14,7 @@ import { useSession } from 'next-auth/react';
 
 // รูปแบบข้อมูลของ อสังหาริมทรัพย์ (บ้าน คอนโด ฯลฯ)
 export interface Property {
-  id: number;
+  id: string | number;
   title: string;       // ชื่อบ้าน/โครงการ
   price: string;       // ราคา
   type: string;        // ประเภท เช่น บ้านเดี่ยว, คอนโด
@@ -28,11 +28,14 @@ export interface Property {
   agentName: string;   // ชื่อตัวแทนนายหน้า
   agentImage: string;  // รูปภาพของตัวแทนนายหน้า
   isPremium?: boolean; // ทรัพย์พิเศษ/แนะนำหรือไม่
+  description?: string; // รายละเอียดเพิ่มเติม
+  latitude?: number;    // ละติจูด
+  longitude?: number;   // ลองจิจูด
 }
 
 // รูปแบบข้อมูลของ การนัดหมายชมบ้าน
 export interface Appointment {
-  id: number;
+  id: string | number;
   propertyId: number | string;
   date: string;        // วันที่นัด
   timeSlot: string;    // ช่วงเวลาที่นัด
@@ -76,14 +79,14 @@ export interface Profile {
 // === 2. กำหนดเมธอดและตัวแปรที่จะแชร์ไปทุกหน้า (Context Interface) ===
 interface AppContextType {
   properties: Property[];
-  favorites: number[];
+  favorites: (string | number)[];
   appointments: Appointment[];
   chatSessions: ChatSession[];
   profile: Profile;
   addProperty: (property: Omit<Property, 'id'>) => void;
-  toggleFavorite: (id: number) => void;
+  toggleFavorite: (id: string | number) => void;
   addAppointment: (appointment: Omit<Appointment, 'id' | 'status' | 'propertyName' | 'propertyPrice' | 'propertyImage' | 'propertyType' | 'agentName' | 'agentImage'>) => void;
-  cancelAppointment: (id: number) => void;
+  cancelAppointment: (id: string | number) => void;
   sendChatMessage: (sessionId: number, text: string) => void;
   updateProfile: (profileData: Partial<Profile>) => void;
 }
@@ -129,6 +132,22 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   
+  // ฟังก์ชันตัวช่วย: บันทึกลง LocalStorage (บราวเซอร์เมมโมรี่)
+  const saveToLocal = (key: string, data: unknown) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(key, JSON.stringify(data));
+    }
+  };
+  
+  // โหลดประวัติการนัดหมาย
+  const [appointments, setAppointments] = useState<Appointment[]>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('srichai_appointments');
+      return stored ? JSON.parse(stored) : [];
+    }
+    return [];
+  });
+
   // โหลดรายการบ้าน/อสังหาริมทรัพย์ จาก API หลังบ้านจริง
   const [properties, setProperties] = useState<Property[]>(defaultProperties);
 
@@ -143,19 +162,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .catch(err => console.error("Error fetching properties:", err));
   }, []);
 
+  // ดึงข้อมูลนัดหมายจากฐานข้อมูลจริงเมื่อผู้ใช้ล็อกอิน
+  useEffect(() => {
+    if (session?.user) {
+      fetch('/api/appointments')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setAppointments(data);
+            saveToLocal('srichai_appointments', data);
+          }
+        })
+        .catch(err => console.error("Error fetching appointments:", err));
+    }
+  }, [session]);
+
   // โหลดรายชื่อทรัพย์ที่กดหัวใจ (Favorite IDs)
-  const [favorites, setFavorites] = useState<number[]>(() => {
+  const [favorites, setFavorites] = useState<(string | number)[]>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('srichai_favorites');
-      return stored ? JSON.parse(stored) : [1, 2];
-    }
-    return [1, 2];
-  });
-
-  // โหลดประวัติการนัดหมาย
-  const [appointments, setAppointments] = useState<Appointment[]>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('srichai_appointments');
       return stored ? JSON.parse(stored) : [];
     }
     return [];
@@ -181,12 +206,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     role: customProfile.role || ((session?.user as { role?: string | null })?.role as 'buyer' | 'agent' | 'admin') || "buyer"
   };
 
-  // ฟังก์ชันตัวช่วย: บันทึกลง LocalStorage (บราวเซอร์เมมโมรี่)
-  const saveToLocal = (key: string, data: unknown) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(key, JSON.stringify(data));
-    }
-  };
+
 
   // ฟังก์ชัน: ตัวแทนนายหน้าลงประกาศอสังหาฯ เพิ่มเติม
   const addProperty = (newProp: Omit<Property, 'id'>) => {
@@ -196,7 +216,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ฟังก์ชัน: บันทึก/ยกเลิก รายการโปรด (กดไอคอนหัวใจ)
-  const toggleFavorite = (id: number) => {
+  const toggleFavorite = (id: string | number) => {
     const updated = favorites.includes(id) 
       ? favorites.filter(favId => favId !== id)
       : [...favorites, id];
@@ -206,11 +226,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ฟังก์ชัน: สร้างคิวนัดหมายชมบ้านเดี่ยว/คอนโด
   const addAppointment = (appt: Omit<Appointment, 'id' | 'status' | 'propertyName' | 'propertyPrice' | 'propertyImage' | 'propertyType' | 'agentName' | 'agentImage'>) => {
-    const prop = properties.find(p => p.id === Number(appt.propertyId)) || properties[0];
+    const prop = properties.find(p => String(p.id) === String(appt.propertyId)) || properties[0];
+    const tempId = "temp_" + Date.now();
     const newAppt: Appointment = {
       ...appt,
-      id: Date.now(),
-      status: 'pending', // เริ่มต้นจะเป็น "รอยืนยัน" (Pending) เสมอ
+      id: tempId,
+      status: 'pending',
       propertyName: prop.title,
       propertyPrice: prop.price,
       propertyImage: prop.image,
@@ -218,13 +239,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       agentName: prop.agentName,
       agentImage: prop.agentImage
     };
+    
+    // อัปเดตหน้าจอทันทีแบบรวดเร็ว (Optimistic)
     const updated = [...appointments, newAppt];
     setAppointments(updated);
     saveToLocal('srichai_appointments', updated);
+
+    // ยิงบันทึกข้อมูลเข้าฐานข้อมูลของจริงผ่าน API หลังบ้าน
+    fetch('/api/appointments', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        propertyId: appt.propertyId,
+        date: appt.date,
+        timeSlot: appt.timeSlot,
+        note: appt.note
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      // ดึงข้อมูลนัดหมายล่าสุดเพื่อนำ ID จริง (UUID) จาก DB มาทับสเตตแทนตัวชั่วคราว
+      if (data.success) {
+        fetch('/api/appointments')
+          .then(res => res.json())
+          .then(latestData => {
+            if (Array.isArray(latestData)) {
+              setAppointments(latestData);
+              saveToLocal('srichai_appointments', latestData);
+            }
+          });
+      }
+    })
+    .catch(err => console.error("Error creating appointment in database:", err));
   };
 
   // ฟังก์ชัน: ยกเลิกคำขอนัดหมายชมสถานที่
-  const cancelAppointment = (id: number) => {
+  const cancelAppointment = (id: string | number) => {
     const updated = appointments.map(appt => 
       appt.id === id ? { ...appt, status: 'cancelled' as const } : appt
     );

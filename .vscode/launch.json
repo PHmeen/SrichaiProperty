@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Flutter Client (8080)",
+      "request": "launch",
+      "type": "dart",
+      "cwd": "d:\\miniproject-flutter\\miniproject_client",
+      "program": "d:\\miniproject-flutter\\miniproject_client\\lib\\main.dart",
+      "args": [
+        "--web-port",
+        "8080"
+      ]
+    }
+  ]
+}

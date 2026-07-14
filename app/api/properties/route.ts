@@ -14,6 +14,12 @@ export async function GET() {
             last_name: true,
             email: true
           }
+        },
+        property_types: true,
+        property_images: {
+          orderBy: {
+            order_index: "asc"
+          }
         }
       },
       orderBy: {
@@ -24,21 +30,27 @@ export async function GET() {
     // แปลงโครงสร้างให้ตรงกับการใช้งานหน้าบ้าน Next.js (Property Interface)
     const formattedProperties = properties.map((p) => {
       const fullName = p.users ? `${p.users.first_name} ${p.users.last_name}` : "ไม่ระบุตัวแทน";
+      const mainImage = p.property_images[0]?.image_url || "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80";
+      const isPremium = Number(p.price) > 7000000;
+      
       return {
         id: p.id,
         title: p.title,
-        price: "฿" + p.price.toLocaleString(),
-        type: p.type_id === 1 ? "บ้านเดี่ยว" : p.type_id === 2 ? "ทาวน์โฮม" : "คอนโดมิเนียม",
-        tag: p.price.greaterThan(7000000) ? "ทรัพย์แนะนำ" : "ทรัพย์ทั่วไป",
-        tagBg: p.price.greaterThan(7000000) ? "bg-blue-600" : "bg-slate-500",
+        price: "฿" + Number(p.price).toLocaleString(),
+        type: p.property_types?.name || "อสังหาริมทรัพย์",
+        tag: isPremium ? "ทรัพย์แนะนำ" : "ทรัพย์ทั่วไป",
+        tagBg: isPremium ? "bg-amber-600" : "bg-blue-600",
         location: "📍 " + p.location,
         bedrooms: p.bedrooms || 0,
         bathrooms: p.bathrooms || 0,
         area: Number(p.area_sqm) || 0,
-        image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+        image: mainImage,
         agentName: fullName,
         agentImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=1e40af&color=fff`,
-        isPremium: p.price.greaterThan(7000000)
+        isPremium: isPremium,
+        description: p.description || "",
+        latitude: p.latitude ? Number(p.latitude) : null,
+        longitude: p.longitude ? Number(p.longitude) : null
       };
     });
 
