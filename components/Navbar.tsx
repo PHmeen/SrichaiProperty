@@ -40,7 +40,7 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-16">
           
           {/* ส่วนของโลโก้บริษัท (Brand Logo) */}
-          <Link href={session ? "/home" : "/"} className="flex-shrink-0 flex items-center gap-2 cursor-pointer group">
+          <Link href="/home" className="flex-shrink-0 flex items-center gap-2 cursor-pointer group">
             {/* กล่องตัวอักษร 'S' มีสีพื้นหลังน้ำเงินและเงา */}
             <div className="w-8 h-8 bg-blue-700 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-blue-700/30 group-hover:scale-105 transition-transform">
               S
@@ -55,7 +55,7 @@ export default function Navbar() {
           <div className="hidden md:flex space-x-1 items-center bg-slate-100/50 p-0.5 rounded-full border border-slate-200">
             {/* เมนูหน้าแรก */}
             <Link
-              href={session ? "/home" : "/"}
+              href="/home"
               className={`rounded-full px-5 py-2 text-sm transition ${
                 isActive("/") 
                   ? "text-blue-700 bg-white shadow-sm font-bold" // ไฮไลท์ถ้ากดหน้านี้อยู่
@@ -164,7 +164,7 @@ export default function Navbar() {
         <div className="md:hidden bg-white border-t border-slate-100 absolute w-full shadow-lg">
           <div className="px-4 pt-2 pb-6 space-y-2">
             <Link
-              href={session ? "/home" : "/"}
+              href="/home"
               onClick={() => setIsOpen(false)} // คลิกไปแล้วปิดแถบเมนูมือถือ
               className={`block px-3 py-3 rounded-xl ${
                 isActive("/") ? "text-blue-700 font-bold bg-blue-50" : "text-slate-600 font-medium hover:bg-slate-50"

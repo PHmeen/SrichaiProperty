@@ -15,6 +15,7 @@ export default function CustomerHomePage() {
   const [activeTab, setActiveTab] = useState<'buy' | 'rent' | 'sell'>('buy'); // เก็บข้อมูลการสลับแท็บเมนู ค้นหา ซื้อ/เช่า/ขาย
   const [locationInput, setLocationInput] = useState('');
   const [propertyType, setPropertyType] = useState('');
+  const [isTypeOpen, setIsTypeOpen] = useState(false);
 
 
   // === 2. เรียกใช้ข้อมูลและฟังก์ชันจากส่วนกลาง (Global State จาก useApp) ===
@@ -25,12 +26,17 @@ export default function CustomerHomePage() {
   // รายการแนะนำทั่วไป (แสดงรายการทั้งหมด)
   const featuredProperties = properties;
 
-  // รายชื่อพิกัดหรือเขตพื้นที่ยอดนิยม (พรีเซ็ตข้อมูลคงที่สำหรับแสดงภาพรวม)
+  // ฟังก์ชันคำนวณจำนวนประกาศสำหรับแต่ละทำเลจากฐานข้อมูลจริง
+  const getPropertyCountForLocation = (locName: string) => {
+    return properties.filter(p => p.location.includes(locName)).length;
+  };
+
+  // รายชื่อพิกัดหรือเขตพื้นที่ยอดนิยม (นับจำนวนประกาศจริงเชื่อมตรงจากฐานข้อมูล)
   const locations = [
-    { name: "หาดใหญ่", count: 124, image: "https://images.unsplash.com/photo-1563492065599-3520f775eeed?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" },
-    { name: "เมืองสงขลา", count: 86, image: "https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" },
-    { name: "สะเดา", count: 45, image: "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" },
-    { name: "ระโนด", count: 28, image: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" },
+    { name: "หาดใหญ่", count: getPropertyCountForLocation("หาดใหญ่"), image: "https://images.unsplash.com/photo-1563492065599-3520f775eeed?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" },
+    { name: "เมืองสงขลา", count: getPropertyCountForLocation("สงขลา"), image: "https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" },
+    { name: "สะเดา", count: getPropertyCountForLocation("สะเดา"), image: "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" },
+    { name: "ระโนด", count: getPropertyCountForLocation("ระโนด"), image: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" },
   ];
 
   return (
@@ -51,7 +57,7 @@ export default function CustomerHomePage() {
           {/* กล่องสถานะแจ้งเตือนนัดหมายที่จะมาถึง (Conditional Rendering: แสดงเฉพาะเมื่อมีนัดหมาย) */}
           {appointments.length > 0 && (
             <div className="mb-5 bg-white/10 backdrop-blur-md border border-white/20 text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-3 shadow cursor-pointer hover:bg-white/20 transition max-w-xl w-full">
-              <span className="text-xl">📅</span>
+              <span className="text-xl"></span>
               <div className="text-left">
                 <p className="font-bold text-xs sm:text-sm text-blue-200">คุณมี {appointments.length} นัดหมายที่กำลังจะมาถึง</p>
               </div>
@@ -67,75 +73,124 @@ export default function CustomerHomePage() {
           </p>
 
           {/* Search Box Panel */}
-          <div className="w-full max-w-3xl glass-panel rounded-2xl p-2.5 shadow-xl">
-            <div className="flex space-x-1.5 mb-2.5 px-1 pt-1">
+          <div className="w-full max-w-3xl bg-white/85 backdrop-blur-lg border border-white/40 shadow-2xl rounded-3xl p-4 transition-all duration-300">
+            {/* Tab Selectors (Removed "ขาย") */}
+            <div className="flex space-x-1 mb-4 bg-slate-200/50 p-1 rounded-full w-fit border border-slate-300/40 backdrop-blur-sm">
               <button 
                 onClick={() => setActiveTab("buy")} 
-                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-                  activeTab === "buy" ? "bg-blue-700 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"
+                className={`px-6 py-1.5 rounded-full text-xs font-extrabold transition-all duration-200 ${
+                  activeTab === "buy" 
+                    ? "bg-white text-blue-700 shadow-md scale-[1.02]" 
+                    : "text-slate-600 hover:text-slate-900 hover:bg-white/30"
                 }`}
               >
                 ซื้อ
               </button>
               <button 
                 onClick={() => setActiveTab("rent")} 
-                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-                  activeTab === "rent" ? "bg-blue-700 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"
+                className={`px-6 py-1.5 rounded-full text-xs font-extrabold transition-all duration-200 ${
+                  activeTab === "rent" 
+                    ? "bg-white text-blue-700 shadow-md scale-[1.02]" 
+                    : "text-slate-600 hover:text-slate-900 hover:bg-white/30"
                 }`}
               >
                 เช่า
               </button>
-              <button 
-                onClick={() => setActiveTab("sell")} 
-                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-                  activeTab === "sell" ? "bg-blue-700 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"
-                }`}
-              >
-                ขาย
-              </button>
             </div>
 
-            <div className="flex flex-col md:flex-row gap-2">
-              <div className="flex-1 bg-white rounded-xl flex items-center px-3 border border-slate-200 focus-within:ring-2 focus-within:ring-blue-500 shadow-sm transition-all">
-                <span className="text-xl mr-1.5">📍</span>
-                <input 
-                  type="text" 
-                  value={locationInput}
-                  onChange={(e) => setLocationInput(e.target.value)}
-                  placeholder="ค้นหาทำเล เช่น หาดใหญ่, สงขลา..." 
-                  className="w-full py-2.5 bg-transparent focus:outline-none text-slate-800 font-medium text-xs outline-none"
-                />
+            {/* Unified Input Bar */}
+            <div className="flex flex-col md:flex-row items-stretch bg-white rounded-2xl border border-slate-200 shadow-inner p-1.5 gap-1.5 focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all duration-300">
+              
+              {/* Location Input Group */}
+              <div className="flex-1 flex items-center px-4 py-2 hover:bg-slate-50/50 rounded-xl transition-all duration-200 group">
+                <span className="text-xl mr-3 text-slate-400 group-focus-within:text-blue-600 transition-colors"></span>
+                <div className="flex flex-col text-left w-full">
+                  <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">ทำเลที่ตั้ง</span>
+                  <input 
+                    type="text" 
+                    value={locationInput}
+                    onChange={(e) => setLocationInput(e.target.value)}
+                    placeholder="หาดใหญ่, สงขลา, สะเดา..." 
+                    className="w-full bg-transparent focus:outline-none text-slate-800 font-bold text-sm outline-none placeholder:text-slate-400"
+                  />
+                </div>
               </div>
               
-              <div className="md:w-40 bg-white rounded-xl flex items-center px-3 border border-slate-200 focus-within:ring-2 focus-within:ring-blue-500 shadow-sm transition-all">
-                <span className="text-lg mr-1.5">🏠</span>
-                <select 
-                  value={propertyType}
-                  onChange={(e) => setPropertyType(e.target.value)}
-                  className="w-full py-2.5 bg-transparent focus:outline-none text-slate-800 font-medium text-xs cursor-pointer outline-none"
-                >
-                  <option value="">ทุกประเภท</option>
-                  <option value="house">บ้านเดี่ยว</option>
-                  <option value="townhome">ทาวน์โฮม</option>
-                  <option value="condo">คอนโดมิเนียม</option>
-                </select>
+              {/* Vertical Divider */}
+              <div className="hidden md:block w-px h-10 bg-slate-200 self-center" />
+              
+              {/* Property Type Group (Beautiful Custom Dropdown) */}
+              <div id="property-type-dropdown" className="relative md:w-48 flex items-center px-4 py-2 hover:bg-slate-50/50 rounded-xl transition-all duration-200 group cursor-pointer select-none" onClick={() => setIsTypeOpen(!isTypeOpen)}>
+                <span className="text-lg mr-3 text-slate-400 group-hover:text-blue-600 transition-colors">🏠</span>
+                <div className="flex flex-col text-left w-full">
+                  <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">ประเภทอสังหาฯ</span>
+                  <div className="text-slate-800 font-bold text-sm flex items-center justify-between">
+                    <span>
+                      {propertyType === "house" && "บ้านเดี่ยว"}
+                      {propertyType === "townhome" && "ทาวน์โฮม"}
+                      {propertyType === "condo" && "คอนโดมิเนียม"}
+                      {propertyType === "" && "ทุกประเภท"}
+                    </span>
+                    <svg 
+                      className="w-3.5 h-3.5 text-slate-400 transition-transform duration-200" 
+                      style={{ transform: isTypeOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24" 
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                  </div>
+                </div>
+
+                {isTypeOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40 cursor-default" onClick={(e) => { e.stopPropagation(); setIsTypeOpen(false); }} />
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-2xl shadow-xl py-2.5 z-50 transition-all duration-200 animate-in fade-in slide-in-from-top-2" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => { setPropertyType(""); setIsTypeOpen(false); }}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-extrabold transition flex items-center gap-2.5 ${propertyType === "" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"}`}
+                      >
+                        <span className="text-sm">🏠</span> ทุกประเภท
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setPropertyType("house"); setIsTypeOpen(false); }}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-extrabold transition flex items-center gap-2.5 ${propertyType === "house" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"}`}
+                      >
+                        <span className="text-sm">🏡</span> บ้านเดี่ยว
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setPropertyType("townhome"); setIsTypeOpen(false); }}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-extrabold transition flex items-center gap-2.5 ${propertyType === "townhome" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"}`}
+                      >
+                        <span className="text-sm">🏢</span> ทาวน์โฮม
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setPropertyType("condo"); setIsTypeOpen(false); }}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-extrabold transition flex items-center gap-2.5 ${propertyType === "condo" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"}`}
+                      >
+                        <span className="text-sm">🏙️</span> คอนโดมิเนียม
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
 
-              {activeTab === "sell" ? (
-                <Link
-                  href="/register"
-                  className="bg-blue-700 hover:bg-blue-800 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow w-full md:w-auto flex items-center justify-center text-xs"
-                >
-                  ลงประกาศฟรี
-                </Link>
-              ) : (
-                <Link
-                  href={`/search?tab=${activeTab}&q=${encodeURIComponent(locationInput)}&type=${propertyType}`}
-                  className="bg-blue-700 hover:bg-blue-800 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow w-full md:w-auto flex items-center justify-center text-xs"
-                >
-                  ค้นหาเลย
-                </Link>
-              )}
+              {/* Action Button */}
+              <Link
+                href={`/search?tab=${activeTab}&q=${encodeURIComponent(locationInput)}&type=${propertyType}`}
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-8 font-bold transition-all duration-200 shadow-md shadow-blue-600/20 hover:shadow-blue-600/30 flex items-center justify-center gap-2 text-sm w-full md:w-auto h-full min-h-[48px] self-stretch"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <span>ค้นหาเลย</span>
+              </Link>
             </div>
           </div>
         </div>
