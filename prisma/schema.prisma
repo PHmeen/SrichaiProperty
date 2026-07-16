@@ -182,12 +182,18 @@ model properties {
   area_sqm               Decimal?                 @db.Decimal(8, 2)
   status                 String?                  @default("pending") @db.VarChar(20)
   agent_id               String?                  @db.Uuid
+  province_id            Int?
+  amphure_id             Int?
+  district_id            Int?
   created_at             DateTime                 @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   appointments           appointments[]
   chat_sessions          chat_sessions[]
   listing_package_orders listing_package_orders[]
   users                  users?                   @relation(fields: [agent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   property_types         property_types?          @relation(fields: [type_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  provinces              provinces?               @relation(fields: [province_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  amphures               amphures?                @relation(fields: [amphure_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  districts              districts?               @relation(fields: [district_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   property_amenities     property_amenities[]
   property_documents     property_documents[]
   property_images        property_images[]
@@ -198,6 +204,9 @@ model properties {
 
   @@index([agent_id], map: "idx_properties_agent")
   @@index([status], map: "idx_properties_status")
+  @@index([province_id], map: "idx_properties_province")
+  @@index([amphure_id], map: "idx_properties_amphure")
+  @@index([district_id], map: "idx_properties_district")
 }
 
 model property_amenities {
@@ -352,4 +361,39 @@ model users {
   sale_transactions_sale_transactions_buyer_idTousers sale_transactions[]     @relation("sale_transactions_buyer_idTousers")
   saved_properties                                    saved_properties[]
   roles                                               roles?                  @relation(fields: [role_id], references: [id], onUpdate: NoAction)
+}
+
+model provinces {
+  id         Int          @id
+  name_th    String       @db.VarChar(150)
+  name_en    String       @db.VarChar(150)
+  created_at DateTime     @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  amphures   amphures[]
+  properties properties[]
+}
+
+model amphures {
+  id          Int          @id
+  name_th     String       @db.VarChar(150)
+  name_en     String       @db.VarChar(150)
+  province_id Int
+  created_at  DateTime     @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  provinces   provinces    @relation(fields: [province_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  districts   districts[]
+  properties  properties[]
+
+  @@index([province_id], map: "idx_amphures_province")
+}
+
+model districts {
+  id         Int          @id
+  name_th    String       @db.VarChar(150)
+  name_en    String       @db.VarChar(150)
+  zip_code   Int
+  amphure_id Int
+  created_at DateTime     @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  amphures   amphures     @relation(fields: [amphure_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  properties properties[]
+
+  @@index([amphure_id], map: "idx_districts_amphure")
 }
