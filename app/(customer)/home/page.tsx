@@ -9,6 +9,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/app/context/AppContext';
+import PropertyCard from '../../../components/PropertyCard';
 
 export default function CustomerHomePage() {
   // === 1. ประกาศตัวแปรสถานะภายในหน้าเพจ (Local State) ===
@@ -291,83 +292,12 @@ export default function CustomerHomePage() {
             {featuredProperties.map((prop) => {
               const isFav = favorites.includes(prop.id);
               return (
-                <div 
+                <PropertyCard 
                   key={prop.id}
-                  className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 border border-slate-100 relative group cursor-pointer"
-                >
-                  {/* ปุ่มหัวใจเพื่อเพิ่ม/ลบจากรายการโปรด (Favorites) */}
-                  <button 
-                    onClick={(e) => {
-                      e.preventDefault(); // ป้องกันการกดลิงก์ซ้อน
-                      toggleFavorite(prop.id);
-                    }} 
-                    className="absolute top-3 right-3 z-10 w-8 h-8 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center hover:scale-110 transition shadow-sm cursor-pointer"
-                  >
-                    <svg 
-                      className={`w-4 h-4 transition-colors ${isFav ? "text-red-500" : "text-slate-400"}`} 
-                      fill={isFav ? "currentColor" : "none"} 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                    >
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth="2" 
-                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" 
-                      />
-                    </svg>
-                  </button>
-                  
-                  {/* ป้ายแท็กของอสังหาฯ */}
-                  <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5">
-                    <span className={`${prop.tagBg} text-white px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-sm`}>
-                      {prop.tag}
-                    </span>
-                    <span className="bg-slate-900/80 backdrop-blur-md text-white px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-sm">
-                      {prop.type}
-                    </span>
-                  </div>
-                  
-                  {/* ลิงก์รายละเอียดตัวการ์ด */}
-                  <Link href={`/property/${prop.id}`} className="block">
-                    <div className="relative h-44 overflow-hidden">
-                      <img 
-                        src={prop.image} 
-                        alt={prop.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                      />
-                    </div>
-
-                    {/* รายละเอียดข้อความการ์ด */}
-                    <div className="p-4">
-                      <div className="text-xl font-extrabold text-blue-700 mb-1">{prop.price}</div>
-                      <h3 className="text-sm font-bold text-slate-900 mb-1 line-clamp-1">{prop.title}</h3>
-                      <p className="text-slate-500 text-xs mb-4 flex items-center">{prop.location}</p>
-                      
-                      {/* รายละเอียด สเปคห้อง */}
-                      <div className="flex items-center justify-between text-slate-600 border-t border-b border-slate-100 py-2.5 mb-3 bg-slate-50 px-3 rounded-lg text-xs">
-                        <span>🛏️ {prop.bedrooms} ห้องนอน</span>
-                        <div className="w-px h-5 bg-slate-200" />
-                        <span>🚿 {prop.bathrooms} ห้องน้ำ</span>
-                        <div className="w-px h-5 bg-slate-200" />
-                        <span>📏 {prop.area} ตร.ม.</span>
-                      </div>
-
-                      {/* ชื่อและภาพนายหน้าผู้ดูแล */}
-                      <div className="flex items-center gap-2">
-                        <img 
-                          src={prop.agentImage} 
-                          alt={prop.agentName}
-                          className="w-8 h-8 rounded-full border border-white shadow-sm"
-                        />
-                        <div>
-                          <div className="text-xs font-bold text-slate-900">{prop.agentName}</div>
-                          <div className="text-[10px] text-slate-500">Srichai Agent</div>
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                </div>
+                  prop={prop}
+                  isFav={isFav}
+                  toggleFavorite={toggleFavorite}
+                />
               );
             })}
           </div>
