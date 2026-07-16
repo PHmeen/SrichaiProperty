@@ -45,6 +45,49 @@ function SearchPageContent() {
   // === 2. ดึงข้อมูลรายการอสังหาฯ จากฐานข้อมูลกลาง ===
   const { properties, favorites, toggleFavorite } = useApp();
 
+  // ตัวเลือกภูมิศาสตร์
+  const [selectedProvince, setSelectedProvince] = useState<string>('');
+  const [selectedAmphure, setSelectedAmphure] = useState<string>('');
+  const [selectedDistrict, setSelectedDistrict] = useState<string>('');
+
+  const [provincesList, setProvincesList] = useState<{ id: number; name_th: string; name_en: string }[]>([]);
+  const [amphuresList, setAmphuresList] = useState<{ id: number; name_th: string; name_en: string }[]>([]);
+  const [districtsList, setDistrictsList] = useState<{ id: number; name_th: string; name_en: string; zip_code: number }[]>([]);
+
+  // โหลดรายชื่อจังหวัดทั้งหมดเมื่อ mount หน้าจอ
+  useEffect(() => {
+    fetch('/api/locations?type=provinces')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setProvincesList(data);
+      })
+      .catch(console.error);
+  }, []);
+
+  // โหลดรายชื่ออำเภอเมื่อเปลี่ยนจังหวัด
+  useEffect(() => {
+    if (!selectedProvince) return;
+    
+    fetch(`/api/locations?type=amphures&provinceId=${selectedProvince}`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setAmphuresList(data);
+      })
+      .catch(console.error);
+  }, [selectedProvince]);
+
+  // โหลดรายชื่อตำบลเมื่อเปลี่ยนอำเภอ
+  useEffect(() => {
+    if (!selectedAmphure) return;
+
+    fetch(`/api/locations?type=districts&amphureId=${selectedAmphure}`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setDistrictsList(data);
+      })
+      .catch(console.error);
+  }, [selectedAmphure]);
+
   // ซิงค์ข้อมูลเริ่มต้นจาก Query Parameters (ที่กดมาจากหน้าแรก)
   useEffect(() => {
     const q = searchParams.get('q');
@@ -62,7 +105,6 @@ function SearchPageContent() {
 
     return () => clearTimeout(timer);
   }, [searchParams]);
-
   // ฟังก์ชันล้างค่าตัวกรองทั้งหมด
   const handleClearFilters = () => {
     setSearchTerm('');
@@ -77,6 +119,9 @@ function SearchPageContent() {
       parking: false,
       security: false,
     });
+    setSelectedProvince('');
+    setSelectedAmphure('');
+    setSelectedDistrict('');
   };
 
   // === 3. ฟังก์ชันการกรองข้อมูล (Filtering Logic) ===
@@ -91,6 +136,11 @@ function SearchPageContent() {
     const matchesSearch = prop.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           prop.location.toLowerCase().includes(searchTerm.toLowerCase());
     if (!matchesSearch) return false;
+
+    // 3.2.1 คัดกรองตามตารางภูมิศาสตร์ (จังหวัด / อำเภอ / ตำบล) จากฐานข้อมูลโดยตรง
+    if (selectedProvince && prop.province_id !== parseInt(selectedProvince)) return false;
+    if (selectedAmphure && prop.amphure_id !== parseInt(selectedAmphure)) return false;
+    if (selectedDistrict && prop.district_id !== parseInt(selectedDistrict)) return false;
 
     // 3.3 กรองประเภทอสังหาฯ
     const matchesType = propertyType === 'all' || 
@@ -227,6 +277,76 @@ function SearchPageContent() {
               >
                 ล้างค่า
               </button>
+            </div>
+
+            {/* ทำเลที่ตั้งแบบขั้นบันได */}
+            <div className="space-y-3 pb-3 border-b border-slate-100">
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">ทำเลที่ตั้ง (ระบุตามเขตพื้นที่)</label>
+              
+              <div className="space-y-2">
+                {/* เลือกจังหวัด */}
+                <div className="flex flex-col gap-1 text-xs">
+                  <span className="font-bold text-slate-500">จังหวัด</span>
+                  <select 
+                    value={selectedProvince}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSelectedProvince(val);
+                      setSelectedAmphure('');
+                      setSelectedDistrict('');
+                      if (!val) {
+                        setAmphuresList([]);
+                        setDistrictsList([]);
+                      }
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none cursor-pointer"
+                  >
+                    <option value="">-- เลือกจังหวัด --</option>
+                    {provincesList.map(prov => (
+                      <option key={prov.id} value={prov.id}>{prov.name_th}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* เลือกอำเภอ */}
+                <div className="flex flex-col gap-1 text-xs">
+                  <span className={`font-bold ${selectedProvince ? 'text-slate-500' : 'text-slate-300'}`}>อำเภอ / เขต</span>
+                  <select 
+                    value={selectedAmphure}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSelectedAmphure(val);
+                      setSelectedDistrict('');
+                      if (!val) {
+                        setDistrictsList([]);
+                      }
+                    }}
+                    disabled={!selectedProvince}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="">-- เลือกอำเภอ --</option>
+                    {amphuresList.map(amp => (
+                      <option key={amp.id} value={amp.id}>{amp.name_th}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* เลือกตำบล */}
+                <div className="flex flex-col gap-1 text-xs">
+                  <span className={`font-bold ${selectedAmphure ? 'text-slate-500' : 'text-slate-300'}`}>ตำบล / แขวง</span>
+                  <select 
+                    value={selectedDistrict}
+                    onChange={(e) => setSelectedDistrict(e.target.value)}
+                    disabled={!selectedAmphure}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="">-- เลือกตำบล --</option>
+                    {districtsList.map(dist => (
+                      <option key={dist.id} value={dist.id}>{dist.name_th}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
 
             {/* ช่วงราคา */}
@@ -429,7 +549,9 @@ function SearchPageContent() {
 
                           {/* ทำเลที่ตั้ง */}
                           <p className="text-slate-400 text-[11px] font-semibold flex items-center gap-1">
-                            📍 {prop.location.replace("📍 ", "")}
+                            📍 {prop.districtName && prop.amphureName && prop.provinceName 
+                              ? `${prop.districtName}, ${prop.amphureName}, ${prop.provinceName}` 
+                              : prop.location.replace("📍 ", "")}
                           </p>
 
                           {/* สเปคข้อมูลห้อง */}

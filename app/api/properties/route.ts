@@ -20,7 +20,10 @@ export async function GET() {
           orderBy: {
             order_index: "asc"
           }
-        }
+        },
+        provinces: true,
+        amphures: true,
+        districts: true
       },
       orderBy: {
         created_at: "desc"
@@ -50,7 +53,13 @@ export async function GET() {
         isPremium: isPremium,
         description: p.description || "",
         latitude: p.latitude ? Number(p.latitude) : null,
-        longitude: p.longitude ? Number(p.longitude) : null
+        longitude: p.longitude ? Number(p.longitude) : null,
+        province_id: p.province_id,
+        amphure_id: p.amphure_id,
+        district_id: p.district_id,
+        provinceName: p.provinces?.name_th || "",
+        amphureName: p.amphures?.name_th || "",
+        districtName: p.districts?.name_th || ""
       };
     });
 

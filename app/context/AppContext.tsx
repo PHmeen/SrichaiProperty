@@ -31,6 +31,12 @@ export interface Property {
   description?: string; // รายละเอียดเพิ่มเติม
   latitude?: number;    // ละติจูด
   longitude?: number;   // ลองจิจูด
+  province_id?: number | null;
+  amphure_id?: number | null;
+  district_id?: number | null;
+  provinceName?: string;
+  amphureName?: string;
+  districtName?: string;
 }
 
 // รูปแบบข้อมูลของ การนัดหมายชมบ้าน
