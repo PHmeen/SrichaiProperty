@@ -1,19 +1,8 @@
-import { Client } from 'pg';
-import * as dotenv from 'dotenv';
-import * as path from 'path';
+-- =========================================================================
+-- Srichai Property - Database DDL Script (27 Tables)
+-- สำหรับรันบน Supabase SQL Editor หรือเครื่องคอมพิวเตอร์ผ่าน PostgreSQL Client
+-- =========================================================================
 
-// Load environment variables from .env
-dotenv.config({ path: path.join(process.cwd(), '.env') });
-
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
-  console.error('❌ Error: DATABASE_URL is not set in .env file');
-  process.exit(1);
-}
-
-// SQL Script containing the 27 tables, inserts, indexes, and RLS
-const sql = `
 -- เปิดส่วนขยาย UUID สำหรับสุ่มไอดีความปลอดภัยสูง
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -358,39 +347,7 @@ ALTER TABLE properties ENABLE ROW LEVEL SECURITY;
 ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 
--- นโยบาย RLS (ลบอันเดิมออกก่อนถ้ามี เพื่อกันชนกัน)
+-- นโยบาย RLS
 DROP POLICY IF EXISTS "Public read approved properties" ON properties;
 CREATE POLICY "Public read approved properties" ON properties 
     FOR SELECT USING (status = 'approved');
-
-DROP POLICY IF EXISTS "Participants can read messages" ON messages;
-CREATE POLICY "Participants can read messages" ON messages 
-    FOR ALL USING (
-        auth.uid() = sender_id 
-        OR auth.uid() IN (
-            SELECT customer_id FROM chat_sessions WHERE id = session_id
-            UNION
-            SELECT agent_id FROM chat_sessions WHERE id = session_id
-        )
-    );
-`;
-
-async function main() {
-  console.log('🔄 Connecting to PostgreSQL database...');
-  const client = new Client({ connectionString });
-  
-  try {
-    await client.connect();
-    console.log('✅ Connected successfully.');
-    console.log('⏳ Running DDL scripts to create 27 tables, insert default values, create indexes, and enable RLS...');
-    await client.query(sql);
-    console.log('🎉 Successfully applied database schema!');
-  } catch (error) {
-    console.error('❌ Error executing SQL script:', error);
-    process.exit(1);
-  } finally {
-    await client.end();
-  }
-}
-
-main();

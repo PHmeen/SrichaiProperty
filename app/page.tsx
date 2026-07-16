@@ -5,12 +5,14 @@ import Link from 'next/link';
 import { useApp } from '@/app/context/AppContext';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import Navbar from '@/components/Navbar';
 
 export default function Home() {
   const { status } = useSession();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'buy' | 'rent' | 'sell'>('buy');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [locationInput, setLocationInput] = useState('');
+  const [propertyType, setPropertyType] = useState('');
   const { properties, favorites, toggleFavorite } = useApp();
 
   // หากตรวจพบว่าผู้ใช้งานเข้าระบบอยู่แล้ว ให้พาไปยังหน้าแรกฝั่งลูกค้าที่ล็อกอินทันที
@@ -29,54 +31,7 @@ export default function Home() {
 
   return (
     <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm">
-      {/* Navigation */}
-      <nav className="fixed w-full z-50 top-0 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm transition-all duration-300">
-        <div className="max-w-5xl mx-auto px-4">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/" className="flex-shrink-0 flex items-center gap-2 group">
-              <div className="w-8 h-8 bg-blue-700 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-blue-700/30">S</div>
-              <span className="text-xl font-extrabold text-slate-900 tracking-tight">
-                Srichai<span className="text-blue-600">Property</span>
-              </span>
-            </Link>
-
-            <div className="hidden md:flex space-x-1 items-center bg-slate-100/50 p-0.5 rounded-full border border-slate-200">
-              <Link href="/" className="text-blue-700 bg-white shadow-sm rounded-full px-4 py-1.5 text-xs font-bold transition">หน้าแรก</Link>
-              <Link href="/search" className="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-4 py-1.5 text-xs font-medium transition">ค้นหาอสังหาฯ</Link>
-              <Link href="/agents" className="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-4 py-1.5 text-xs font-medium transition">นายหน้าของเรา</Link>
-              <Link href="/appointments" className="text-slate-600 hover:text-blue-600 hover:bg-white/50 rounded-full px-4 py-1.5 text-xs font-medium transition">ประวัติการนัดหมาย</Link>
-            </div>
-
-            <div className="flex items-center space-x-3">
-              <div className="hidden md:flex items-center space-x-3">
-                <Link href="/login" className="text-slate-600 text-xs font-medium hover:text-blue-700 transition">เข้าสู่ระบบ</Link>
-                <Link href="/register" className="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-full text-xs font-bold transition shadow">สมัครสมาชิก</Link>
-              </div>
-              <button 
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden text-slate-600 hover:text-blue-600 focus:outline-none"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-slate-100 absolute w-full shadow-lg z-50">
-            <div className="px-4 pt-3 pb-5 space-y-1.5">
-              <Link href="/" className="block px-3 py-2 text-xs text-blue-700 font-bold bg-blue-50 rounded-lg">หน้าแรก</Link>
-              <Link href="/search" className="block px-3 py-2 text-xs text-slate-600 font-medium hover:bg-slate-50 rounded-lg">ค้นหาอสังหาฯ</Link>
-              <Link href="/agents" className="block px-3 py-2 text-xs text-slate-600 font-medium hover:bg-slate-50 rounded-lg">นายหน้าของเรา</Link>
-              <Link href="/appointments" className="block px-3 py-2 text-xs text-slate-600 font-medium hover:bg-slate-50 rounded-lg">ประวัติการนัดหมาย</Link>
-              <div className="border-t border-slate-100 my-2 pt-2"></div>
-              <Link href="/login" className="block px-3 py-2 text-xs text-slate-600 font-medium text-center border border-slate-200 rounded-lg mb-1.5">เข้าสู่ระบบ</Link>
-              <Link href="/register" className="block px-3 py-2 text-xs bg-blue-700 text-white font-bold text-center rounded-lg shadow-sm">สมัครสมาชิก</Link>
-            </div>
-          </div>
-        )}
-      </nav>
+      <Navbar />
 
       {/* Hero Header */}
       <header className="relative pt-24 pb-16 lg:pt-32 lg:pb-20 overflow-hidden flex items-center justify-center min-h-[55vh]">
@@ -128,14 +83,20 @@ export default function Home() {
                 <span className="text-xl mr-1.5">📍</span>
                 <input 
                   type="text" 
+                  value={locationInput}
+                  onChange={(e) => setLocationInput(e.target.value)}
                   placeholder="ค้นหาทำเล เช่น หาดใหญ่, สงขลา..." 
-                  className="w-full py-2.5 bg-transparent focus:outline-none text-slate-800 font-medium text-xs"
+                  className="w-full py-2.5 bg-transparent focus:outline-none text-slate-800 font-medium text-xs outline-none"
                 />
               </div>
               
               <div className="md:w-40 bg-white rounded-xl flex items-center px-3 border border-slate-200 focus-within:ring-2 focus-within:ring-blue-500 shadow-sm transition-all">
                 <span className="text-lg mr-1.5">🏠</span>
-                <select className="w-full py-2.5 bg-transparent focus:outline-none text-slate-800 font-medium text-xs cursor-pointer">
+                <select 
+                  value={propertyType}
+                  onChange={(e) => setPropertyType(e.target.value)}
+                  className="w-full py-2.5 bg-transparent focus:outline-none text-slate-800 font-medium text-xs cursor-pointer outline-none"
+                >
                   <option value="">ทุกประเภท</option>
                   <option value="house">บ้านเดี่ยว</option>
                   <option value="townhome">ทาวน์โฮม</option>
@@ -152,7 +113,7 @@ export default function Home() {
                 </Link>
               ) : (
                 <Link
-                  href="/search"
+                  href={`/search?tab=${activeTab}&q=${encodeURIComponent(locationInput)}&type=${propertyType}`}
                   className="bg-blue-700 hover:bg-blue-800 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow w-full md:w-auto flex items-center justify-center text-xs"
                 >
                   ค้นหาเลย

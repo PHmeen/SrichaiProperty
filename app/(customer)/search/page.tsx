@@ -5,12 +5,12 @@
  * รูปแบบพรีเมียมตามดีไซน์: แบ่ง 2 คอลัมน์ (ตัวกรองขั้นสูงด้านซ้าย และผลลัพธ์การ์ดด้านขวา)
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useApp } from '@/app/context/AppContext';
 
-export default function SearchPage() {
+function SearchPageContent() {
   const searchParams = useSearchParams();
   const resultsRef = React.useRef<HTMLDivElement>(null);
 
@@ -526,5 +526,13 @@ export default function SearchPage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div className="p-10 text-center text-slate-500">กำลังโหลด...</div>}>
+      <SearchPageContent />
+    </Suspense>
   );
 }

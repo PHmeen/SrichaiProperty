@@ -4,7 +4,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import * as dotenv from "dotenv";
 import * as path from "path";
 
-dotenv.config({ path: path.join(__dirname, "../.env") });
+dotenv.config({ path: path.join(process.cwd(), ".env") });
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
