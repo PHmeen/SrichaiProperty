@@ -109,3 +109,30 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, status } = body;
+
+    if (!id || !status) {
+      return NextResponse.json(
+        { error: "กรุณาระบุรหัสอสังหาฯ และสถานะที่ต้องการเปลี่ยน" },
+        { status: 400 }
+      );
+    }
+
+    const updatedProperty = await db.properties.update({
+      where: { id },
+      data: { status }
+    });
+
+    return NextResponse.json({ success: true, data: updatedProperty });
+  } catch (error) {
+    const err = error as Error;
+    return NextResponse.json(
+      { error: "ไม่สามารถอัปเดตสถานะประกาศได้: " + err.message },
+      { status: 500 }
+    );
+  }
+}
