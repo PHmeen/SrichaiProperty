@@ -137,10 +137,6 @@ export default function BookingCalendar({
               >
                 {dayNum}
               </button>
-              {/* จุดบลูตกแต่งพิเศษสำหรับดีไซน์ */}
-              {dayNum === 11 && currentMonth === 2 && currentYear === 2026 && (
-                <span className="absolute top-1 right-2 w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-              )}
             </div>
           );
         })}

@@ -356,6 +356,7 @@ export default function PropertyDetailPage() {
                     src={property.agentImage || getInitialsAvatar(property.agentName)} 
                     className="w-16 h-16 rounded-full border-2 border-white shadow-md object-cover mx-auto" 
                     referrerPolicy="no-referrer"
+                    alt={property.agentName}
                     onError={(e) => { e.currentTarget.src = getInitialsAvatar(property.agentName); }}
                   />
                   <span className="absolute bottom-0 right-1 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white shadow"></span>

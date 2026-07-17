@@ -12,11 +12,8 @@ interface PropertyCardProps {
 
 export default function PropertyCard({ prop, isFav, toggleFavorite }: PropertyCardProps) {
   // สร้างฟังก์ชันวาดรูปภาพอักษรย่อกรณีไม่มีรูปนายหน้า
-  const getInitialsAvatar = (name: string) => {
-    const initials = name.trim().split(/\s+/).map(n => n[0]).slice(0, 2).join("").toUpperCase() || "?";
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#1d4ed8"/><text x="50" y="55" font-family="sans-serif" font-weight="bold" font-size="35" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${initials}</text></svg>`;
-    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-  };
+  const getInitialsAvatar = (name: string) => 
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1d4ed8&color=fff`;
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col group relative">

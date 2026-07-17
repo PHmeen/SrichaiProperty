@@ -98,24 +98,6 @@ interface AppContextType {
 }
 
 // === 3. กำหนดค่าเริ่มต้นของระบบ (Default Setup) ===
-const defaultProperties: Property[] = [
-  {
-    id: 1,
-    title: "บ้านเดี่ยวสไตล์นอร์ดิก พื้นที่กว้าง",
-    price: "฿5,500,000",
-    type: "บ้านเดี่ยว",
-    tag: "ขายด่วน",
-    tagBg: "bg-blue-600",
-    location: "📍 ถ.เพชรเกษม, หาดใหญ่",
-    bedrooms: 3,
-    bathrooms: 3,
-    area: 200,
-    image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
-    agentName: "สมชาย นายหน้าดี",
-    agentImage: "https://ui-avatars.com/api/?name=Agent+1&background=1e40af&color=fff",
-    isPremium: true
-  }
-];
 
 const defaultChatSessions: ChatSession[] = [
   {
@@ -138,24 +120,27 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   
-  // ฟังก์ชันตัวช่วย: บันทึกลง LocalStorage (บราวเซอร์เมมโมรี่)
+  // ฟังก์ชันตัวช่วย: โหลดข้อมูลจาก LocalStorage
+  const getLocal = <T,>(key: string, fallback: T): T => {
+    if (typeof window === 'undefined') return fallback;
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : fallback;
+  };
+
+  // ฟังก์ชันตัวช่วย: บันทึกลง LocalStorage
   const saveToLocal = (key: string, data: unknown) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem(key, JSON.stringify(data));
     }
   };
   
-  // โหลดประวัติการนัดหมาย
-  const [appointments, setAppointments] = useState<Appointment[]>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('srichai_appointments');
-      return stored ? JSON.parse(stored) : [];
-    }
-    return [];
-  });
+  // โหลดข้อมูลต่าง ๆ จาก LocalStorage
+  const [appointments, setAppointments] = useState<Appointment[]>(() => getLocal('srichai_appointments', []));
+  const [favorites, setFavorites] = useState<(string | number)[]>(() => getLocal('srichai_favorites', []));
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>(() => getLocal('srichai_chats', defaultChatSessions));
 
-  // โหลดรายการบ้าน/อสังหาริมทรัพย์ จาก API หลังบ้านจริง
-  const [properties, setProperties] = useState<Property[]>(defaultProperties);
+  // โหลดรายการบ้าน/อสังหาริมทรัพย์ จาก API หลังบ้านจริง (เริ่มต้นเป็นอาเรย์ว่างเพื่อรอโหลดข้อมูลจริงจากฐานข้อมูล)
+  const [properties, setProperties] = useState<Property[]>([]);
 
   useEffect(() => {
     fetch('/api/properties')
@@ -182,24 +167,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         .catch(err => console.error("Error fetching appointments:", err));
     }
   }, [session]);
-
-  // โหลดรายชื่อทรัพย์ที่กดหัวใจ (Favorite IDs)
-  const [favorites, setFavorites] = useState<(string | number)[]>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('srichai_favorites');
-      return stored ? JSON.parse(stored) : [];
-    }
-    return [];
-  });
-
-  // โหลดกล่องแชท
-  const [chatSessions, setChatSessions] = useState<ChatSession[]>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('srichai_chats');
-      return stored ? JSON.parse(stored) : defaultChatSessions;
-    }
-    return defaultChatSessions;
-  });
 
   // กำหนดสเตตสำหรับข้อมูลโปรไฟล์ที่แก้ไขชั่วคราวในแอป (เช่น การสลับโหมดผู้ซื้อ/นายหน้า)
   const [customProfile, setCustomProfile] = useState<Partial<Profile>>({});
