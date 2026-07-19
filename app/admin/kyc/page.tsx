@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface AgentData {
   id: string;
@@ -130,7 +131,7 @@ export default function AdminKycPage() {
 
                       <div className="flex items-center gap-4">
                         {agent.profile_image ? (
-                           <img src={agent.profile_image} alt="Profile" className="w-16 h-16 rounded-full object-cover border-2 border-slate-100 shadow-sm" />
+                           <Image src={agent.profile_image} alt="Profile" width={64} height={64} className="w-16 h-16 rounded-full object-cover border-2 border-slate-100 shadow-sm" />
                         ) : (
                            <div className="w-16 h-16 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl font-black border-2 border-white shadow-sm">
                              {agent.first_name?.[0]}{agent.last_name?.[0]}
@@ -187,7 +188,7 @@ export default function AdminKycPage() {
                        <div className="relative min-w-[320px] max-w-[400px] h-[240px] rounded-xl border border-slate-200 bg-slate-50 overflow-hidden group">
                          <div className="absolute top-3 left-3 bg-slate-900/70 backdrop-blur-sm text-white text-[9px] font-bold px-2 py-1 rounded-md z-10">ภาพถ่ายบัตรประชาชน</div>
                          {agent.kyc_doc ? (
-                           <img src={agent.kyc_doc} alt="KYC Document" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                           <Image src={agent.kyc_doc} alt="KYC Document" width={400} height={240} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                          ) : (
                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
                              <span className="text-4xl mb-2">📸</span>
@@ -200,7 +201,7 @@ export default function AdminKycPage() {
                        <div className="relative min-w-[200px] max-w-[280px] h-[240px] rounded-xl border border-slate-200 bg-slate-50 overflow-hidden group">
                          <div className="absolute top-3 left-3 bg-slate-900/70 backdrop-blur-sm text-white text-[9px] font-bold px-2 py-1 rounded-md z-10">ภาพถ่ายหน้าตัวเอง</div>
                          {agent.profile_image ? (
-                           <img src={agent.profile_image} alt="Selfie" className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500" />
+                           <Image src={agent.profile_image} alt="Selfie" width={280} height={240} className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500" />
                          ) : (
                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
                              <span className="text-4xl mb-2">👤</span>

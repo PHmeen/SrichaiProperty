@@ -23,9 +23,12 @@ export default async function proxy(request: NextRequest) {
     }
   }
 
-  // 2. ป้องกันหน้าของแอดมิน (Admin Pages)
-  if (url.pathname.startsWith('/admin') || url.pathname.includes('/admin/')) {
+  // 2. ป้องกันหน้าของแอดมิน (Admin Pages & APIs)
+  if (url.pathname.startsWith('/admin') || url.pathname.startsWith('/api/admin')) {
     if (!isLoggedIn || userRole !== 'admin') {
+      if (url.pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: "Unauthorized: Admins only" }, { status: 401 });
+      }
       url.pathname = '/login';
       return NextResponse.redirect(url);
     }
@@ -34,7 +37,7 @@ export default async function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
-// กำหนดเส้นทางที่จะรัน middleware ตัวนี้ (คุ้มครองทั้งหน้าแอดมินและนายหน้า)
+// กำหนดเส้นทางที่จะรัน middleware ตัวนี้ (คุ้มครองทั้งหน้าแอดมิน นายหน้า และ API)
 export const config = {
-  matcher: ['/agent/:path*', '/admin/:path*'],
+  matcher: ['/agent/:path*', '/admin/:path*', '/api/admin/:path*'],
 };

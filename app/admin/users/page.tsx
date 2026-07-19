@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import Image from 'next/image';
+import Badge from '@/components/ui/Badge';
 
 interface UserData {
   id: string;
@@ -125,7 +127,7 @@ export default function AdminUsersPage() {
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             {user.profile_image ? (
-                              <img src={user.profile_image} className="w-10 h-10 rounded-full object-cover border border-slate-200" alt="profile" />
+                              <Image src={user.profile_image} width={40} height={40} className="w-10 h-10 rounded-full object-cover border border-slate-200" alt="profile" />
                             ) : (
                               <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-black border border-blue-200">
                                 {user.first_name?.[0]}{user.last_name?.[0]}
@@ -152,14 +154,7 @@ export default function AdminUsersPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-center">
-                          <span className={`px-3 py-1 rounded-full text-[10px] font-black inline-flex items-center gap-1.5 border ${
-                            user.status === 'approved' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                            user.status === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-200' :
-                            'bg-red-50 text-red-600 border-red-100'
-                          }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${user.status === 'approved' ? 'bg-emerald-500' : user.status === 'pending' ? 'bg-amber-500 animate-pulse' : 'bg-red-500'}`}></span>
-                            {user.status === 'approved' ? 'Approved' : user.status === 'pending' ? 'Pending KYC' : 'Rejected'}
-                          </span>
+                          <Badge status={user.status} />
                         </td>
                         <td className="px-6 py-4 text-right">
                           {user.status === 'pending' && user.role_id === 'agent' ? (

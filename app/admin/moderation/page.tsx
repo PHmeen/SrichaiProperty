@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface PropertyData {
   id: string;
@@ -116,7 +117,7 @@ export default function AdminModerationPage() {
                       <div className="xl:w-[280px] shrink-0 space-y-2">
                         <div className="relative h-44 rounded-xl overflow-hidden bg-slate-100 group">
                            {property.image ? (
-                             <img src={property.image} alt={property.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                             <Image src={property.image} alt={property.title} width={280} height={176} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                            ) : (
                              <div className="w-full h-full flex items-center justify-center text-slate-300">ไม่มีรูปภาพ</div>
                            )}
@@ -126,8 +127,8 @@ export default function AdminModerationPage() {
                         </div>
                         {property.imageCount > 1 && (
                           <div className="grid grid-cols-3 gap-2">
-                            <div className="h-16 rounded-lg bg-slate-100 overflow-hidden"><img src={property.image} className="w-full h-full object-cover opacity-70" /></div>
-                            <div className="h-16 rounded-lg bg-slate-100 overflow-hidden"><img src={property.image} className="w-full h-full object-cover opacity-70" /></div>
+                            <div className="h-16 rounded-lg bg-slate-100 overflow-hidden"><Image src={property.image} alt={property.title} width={90} height={64} className="w-full h-full object-cover opacity-70" /></div>
+                            <div className="h-16 rounded-lg bg-slate-100 overflow-hidden"><Image src={property.image} alt={property.title} width={90} height={64} className="w-full h-full object-cover opacity-70" /></div>
                             <div className="h-16 rounded-lg bg-slate-100 flex items-center justify-center font-bold text-slate-500 text-xs shadow-inner">+{property.imageCount - 3 > 0 ? property.imageCount - 3 : 'รูป'}</div>
                           </div>
                         )}

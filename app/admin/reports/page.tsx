@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Badge from '@/components/ui/Badge';
 
 interface ReportData {
   id: string;
@@ -129,11 +130,7 @@ export default function AdminReportsPage() {
                       {/* Left Block: Users and Severity */}
                       <div className="xl:w-2/5 flex flex-col gap-4 border-r border-slate-100 pr-6">
                         <div className="flex items-center justify-between">
-                          <span className={`px-2.5 py-1 rounded text-[9px] font-black uppercase border ${
-                            isScam ? 'bg-red-50 text-red-600 border-red-100' : 'bg-amber-50 text-amber-600 border-amber-100'
-                          }`}>
-                            ⚠️ {report.reason}
-                          </span>
+                          <Badge status={report.reason} />
                           <span className="text-[10px] text-slate-400 font-bold">Ticket: RP-00{idx + 1}</span>
                         </div>
 
