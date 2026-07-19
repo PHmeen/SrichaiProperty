@@ -1,14 +1,14 @@
 // === ระบบล็อกอิน (NextAuth Configuration) ===
 // ไฟล์นี้ทำหน้าที่ตั้งค่าการยืนยันตัวตนสำหรับผู้ใช้ เช่น ล็อกอินด้วย Google, Facebook หรือกรอกอีเมล/รหัสผ่านปกติ
 
-import NextAuth from "next-auth";
+import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
-const handler = NextAuth({
+export const authOptions: NextAuthOptions = {
   providers: [
     // 1. ระบบล็อกอินด้วย Google
     GoogleProvider({
@@ -75,13 +75,14 @@ const handler = NextAuth({
           email: user.email,
           name: `${user.first_name} ${user.last_name}`,
           role: user.role_id || "buyer",
-          phone: user.phone
+          phone: user.phone,
+          status: user.status || "pending"
         };
       }
     })
   ],
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user, account }: { user: any, account: any }) {
       // ตรวจสอบเมื่อมีการล็อกอินด้วย Google หรือ Facebook
       if (account?.provider === "google" || account?.provider === "facebook") {
         // หากเป็นการล็อกอินผ่าน Facebook ที่ไม่มีสิทธิ์ email ให้สร้าง synthetic email ปลอดภัยระดับ ID
@@ -107,7 +108,7 @@ const handler = NextAuth({
               last_name: lastName,
               profile_image: user.image || null,
               role_id: "buyer", // กำหนดบทบาทเริ่มต้น
-              status: "pending", // ยืนยันรอก่อน
+              status: "approved", // โซเชียลล็อกอินอนุมัติให้เลย
               is_verified: true
             }
           });
@@ -115,13 +116,14 @@ const handler = NextAuth({
       }
       return true;
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account }: { token: any, user: any, account: any }) {
       if (user) {
-        const u = user as { id: string; role: string; phone?: string | null; image?: string | null };
+        const u = user as { id: string; role: string; phone?: string | null; image?: string | null; status?: string | null };
         token.id = u.id;
         token.role = u.role || "buyer";
         token.phone = u.phone || null;
         token.picture = u.image || null;
+        token.status = u.status || "pending";
       }
       // ถ้าเป็นการล็อกอินผ่าน Google หรือ Facebook ให้ไปดึงข้อมูล ID และ Role ล่าสุดจาก DB
       if ((account?.provider === "google" || account?.provider === "facebook") && token.email) {
@@ -133,20 +135,23 @@ const handler = NextAuth({
           token.role = dbUser.role_id || "buyer";
           token.phone = dbUser.phone || null;
           token.picture = dbUser.profile_image || token.picture || null;
+          token.status = dbUser.status || "pending";
         }
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: { session: any, token: any }) {
       if (session.user) {
-        const s = session.user as { id: string; role: string; phone?: string | null; image?: string | null };
+        const s = session.user as { id: string; role: string; phone?: string | null; image?: string | null; status?: string | null };
         s.id = token.id as string;
         s.role = token.role as string;
         s.phone = token.phone as string | null;
+        s.status = token.status as string | null;
         session.user.image = token.picture as string | null;
       }
       return session;
     }
+
   },
   pages: {
     signIn: "/login",
@@ -155,6 +160,8 @@ const handler = NextAuth({
     strategy: "jwt",
   },
   secret: process.env.NEXTAUTH_SECRET,
-});
+};
+
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };
