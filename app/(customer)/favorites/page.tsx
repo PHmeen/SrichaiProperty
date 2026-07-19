@@ -105,13 +105,7 @@ export default function FavoritesPage() {
           </div>
         )}
       </main>
-
-      {/* ส่วนท้ายเว็บไซต์ */}
-      <footer className="bg-slate-900 text-slate-400 py-8 border-t border-slate-800">
-        <div className="max-w-5xl mx-auto px-4 text-center text-xs">
-          <p>&copy; 2026 Srichai Property Agents. All rights reserved.</p>
-        </div>
-      </footer>
     </div>
   );
 }
+

@@ -122,7 +122,7 @@ export default function CustomerHomePage() {
               
               {/* Property Type Group (Beautiful Custom Dropdown) */}
               <div id="property-type-dropdown" className="relative md:w-48 flex items-center px-4 py-2 hover:bg-slate-50/50 rounded-xl transition-all duration-200 group cursor-pointer select-none" onClick={() => setIsTypeOpen(!isTypeOpen)}>
-                <span className="text-lg mr-3 text-slate-400 group-hover:text-blue-600 transition-colors">🏠</span>
+                <span className="text-lg mr-3 text-slate-400 group-hover:text-blue-600 transition-colors"></span>
                 <div className="flex flex-col text-left w-full">
                   <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">ประเภทอสังหาฯ</span>
                   <div className="text-slate-800 font-bold text-sm flex items-center justify-between">
@@ -154,28 +154,28 @@ export default function CustomerHomePage() {
                         onClick={() => { setPropertyType(""); setIsTypeOpen(false); }}
                         className={`w-full text-left px-4 py-2.5 text-xs font-extrabold transition flex items-center gap-2.5 ${propertyType === "" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"}`}
                       >
-                        <span className="text-sm">🏠</span> ทุกประเภท
+                        <span className="text-sm"></span> ทุกประเภท
                       </button>
                       <button
                         type="button"
                         onClick={() => { setPropertyType("house"); setIsTypeOpen(false); }}
                         className={`w-full text-left px-4 py-2.5 text-xs font-extrabold transition flex items-center gap-2.5 ${propertyType === "house" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"}`}
                       >
-                        <span className="text-sm">🏡</span> บ้านเดี่ยว
+                        <span className="text-sm"></span> บ้านเดี่ยว
                       </button>
                       <button
                         type="button"
                         onClick={() => { setPropertyType("townhome"); setIsTypeOpen(false); }}
                         className={`w-full text-left px-4 py-2.5 text-xs font-extrabold transition flex items-center gap-2.5 ${propertyType === "townhome" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"}`}
                       >
-                        <span className="text-sm">🏢</span> ทาวน์โฮม
+                        <span className="text-sm"></span> ทาวน์โฮม
                       </button>
                       <button
                         type="button"
                         onClick={() => { setPropertyType("condo"); setIsTypeOpen(false); }}
                         className={`w-full text-left px-4 py-2.5 text-xs font-extrabold transition flex items-center gap-2.5 ${propertyType === "condo" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"}`}
                       >
-                        <span className="text-sm">🏙️</span> คอนโดมิเนียม
+                        <span className="text-sm"></span> คอนโดมิเนียม
                       </button>
                     </div>
                   </>
@@ -303,15 +303,7 @@ export default function CustomerHomePage() {
           </div>
         </div>
       </section>
-
-      {/* ==================================================== */}
-      {/* 📋 ส่วนท้ายเว็บไซต์ (Footer)                             */}
-      {/* ==================================================== */}
-      <footer className="bg-slate-900 text-slate-400 py-8 border-t border-slate-800">
-        <div className="max-w-5xl mx-auto px-4 text-center">
-          <p className="text-xs">&copy; 2026 Srichai Property Agents. All rights reserved.</p>
-        </div>
-      </footer>
     </div>
   );
 }
+
