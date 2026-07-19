@@ -31,7 +31,7 @@ export default function AgentLoginPage() {
         setErrorMsg(res.error);
         setIsLoading(false);
       } else {
-        window.location.href = '/agent/dashboard';
+        window.location.href = '/agent/home';
       }
     } catch {
       setErrorMsg("ไม่สามารถเชื่อมต่อระบบความปลอดภัยหลังบ้านได้");
