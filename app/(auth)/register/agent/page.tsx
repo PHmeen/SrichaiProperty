@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 
@@ -21,6 +21,43 @@ export default function AgentRegisterPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [agreed, setAgreed] = useState(false);
+
+  // สเตตข้อมูลภูมิศาสตร์จริงจากฐานข้อมูล
+  const [provinces, setProvinces] = useState<{ id: number; name_th: string }[]>([]);
+  const [amphures, setAmphures] = useState<{ id: number; name_th: string }[]>([]);
+  const [selectedProvinceId, setSelectedProvinceId] = useState('');
+
+  // โหลดรายชื่อจังหวัดทั้งหมดเมื่อเข้าสู่หน้าเว็บครั้งแรก
+  useEffect(() => {
+    fetch('/api/locations?type=provinces')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setProvinces(data);
+        }
+      })
+      .catch(err => console.error("Error fetching provinces:", err));
+  }, []);
+
+  // เมื่อเลือกจังหวัด ให้ไปดึงรายชื่ออำเภอ/เขตของจังหวัดนั้นมาแสดงผล
+  const handleProvinceChange = (provinceId: string) => {
+    setSelectedProvinceId(provinceId);
+    setZone(''); // รีเซ็ตอำเภอที่เลือก
+    setAmphures([]);
+
+    if (provinceId) {
+      fetch(`/api/locations?type=amphures&provinceId=${provinceId}`)
+
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setAmphures(data);
+          }
+        })
+        .catch(err => console.error("Error fetching amphures:", err));
+    }
+  };
+
 
   const verifyOtp = async () => {
     const fullName = `${firstName} ${lastName}`.trim();
@@ -258,35 +295,49 @@ export default function AgentRegisterPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-700 mb-1.5 ml-0.5">โซนพื้นที่หลักที่เชี่ยวชาญ</label>
+                  <label className="block text-[10px] font-bold text-slate-700 mb-1.5 ml-0.5">จังหวัดหลักที่เชี่ยวชาญ</label>
+                  <select 
+                    value={selectedProvinceId}
+                    onChange={(e) => handleProvinceChange(e.target.value)}
+                    className="w-full px-4 py-3 bg-[#f8fafc] border border-slate-200 rounded-xl focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 focus:bg-white outline-none transition-all font-medium text-slate-500 text-xs cursor-pointer"
+                  >
+                    <option value="">เลือกจังหวัด</option>
+                    {provinces.map(p => (
+                      <option key={p.id} value={p.id}>{p.name_th}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-700 mb-1.5 ml-0.5">อำเภอ/เขตหลักที่เชี่ยวชาญ</label>
                   <select 
                     value={zone}
                     onChange={(e) => setZone(e.target.value)}
                     className="w-full px-4 py-3 bg-[#f8fafc] border border-slate-200 rounded-xl focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 focus:bg-white outline-none transition-all font-medium text-slate-500 text-xs cursor-pointer"
+                    disabled={!selectedProvinceId}
                   >
-                    <option value="">เลือกพื้นที่</option>
-                    <option value="หาดใหญ่">หาดใหญ่</option>
-                    <option value="เมืองสงขลา">เมืองสงขลา</option>
-                    <option value="สะเดา">สะเดา</option>
-                    <option value="อื่นๆ">พื้นที่อื่นในจังหวัดสงขลา</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-700 mb-1.5 ml-0.5">ประเภททรัพย์ที่ถนัด</label>
-                  <select 
-                    value={propertyType}
-                    onChange={(e) => setPropertyType(e.target.value)}
-                    className="w-full px-4 py-3 bg-[#f8fafc] border border-slate-200 rounded-xl focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 focus:bg-white outline-none transition-all font-medium text-slate-500 text-xs cursor-pointer"
-                  >
-                    <option value="">เลือกประเภท</option>
-                    <option value="บ้านเดี่ยว">บ้านเดี่ยว / บ้านแฝด</option>
-                    <option value="ทาวน์โฮม">ทาวน์เฮ้าส์ / ทาวน์โฮม</option>
-                    <option value="คอนโด">คอนโดมิเนียม</option>
-                    <option value="ที่ดิน">ที่ดินเปล่า / อสังหาฯ เชิงพาณิชย์</option>
+                    <option value="">เลือกอำเภอ/เขต</option>
+                    {amphures.map(a => (
+                      <option key={a.id} value={a.name_th}>{a.name_th}</option>
+                    ))}
                   </select>
                 </div>
               </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-700 mb-1.5 ml-0.5">ประเภททรัพย์ที่ถนัด</label>
+                <select 
+                  value={propertyType}
+                  onChange={(e) => setPropertyType(e.target.value)}
+                  className="w-full px-4 py-3 bg-[#f8fafc] border border-slate-200 rounded-xl focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 focus:bg-white outline-none transition-all font-medium text-slate-500 text-xs cursor-pointer"
+                >
+                  <option value="">เลือกประเภท</option>
+                  <option value="บ้านเดี่ยว">บ้านเดี่ยว / บ้านแฝด</option>
+                  <option value="ทาวน์โฮม">ทาวน์โฮม</option>
+                  <option value="คอนโดมิเนียม">คอนโดมิเนียม</option>
+                </select>
+              </div>
             </div>
+
 
             {/* Step 3: Account & KYC */}
             <div className="space-y-4">

@@ -8,6 +8,11 @@ export default function RegisterPage() {
   const role = 'buyer';
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpValues, setOtpValues] = useState(['', '', '', '', '', '']);
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  
+  const togglePassword = () => {
+    setPasswordVisible(!passwordVisible);
+  };
   
   // สร้างสเตตสำหรับเก็บค่าจากฟอร์ม
   const [fullName, setFullName] = useState('');
@@ -143,90 +148,142 @@ export default function RegisterPage() {
           </div>
 
           <form onSubmit={handleRegister} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">ชื่อ-นามสกุล <span className="text-red-500">*</span></label>
-                <input 
-                  type="text" 
-                  placeholder="สมชาย ใจดี" 
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-slate-800 font-medium text-xs" 
-                  required 
-                />
+                <label className="block text-[11px] font-bold text-slate-700 mb-1.5 ml-0.5 uppercase tracking-wider">ชื่อ-นามสกุล <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </span>
+                  <input 
+                    type="text" 
+                    placeholder="สมชาย ใจดี" 
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-[#f8fafc] border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-700 focus:bg-white outline-none transition-all font-medium text-slate-800 text-xs" 
+                    required 
+                  />
+                </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">เบอร์โทรศัพท์ <span className="text-red-500">*</span></label>
-                <input 
-                  type="tel" 
-                  placeholder="08X-XXX-XXXX" 
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-slate-800 font-medium text-xs" 
-                  required 
-                />
+                <label className="block text-[11px] font-bold text-slate-700 mb-1.5 ml-0.5 uppercase tracking-wider">เบอร์โทรศัพท์ <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                  </span>
+                  <input 
+                    type="tel" 
+                    placeholder="08X-XXX-XXXX" 
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-[#f8fafc] border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-700 focus:bg-white outline-none transition-all font-medium text-slate-800 text-xs" 
+                    required 
+                  />
+                </div>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">อีเมล (Email) <span className="text-red-500">*</span></label>
-              <input 
-                type="email" 
-                placeholder="example@email.com" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-slate-800 font-medium text-xs" 
-                required 
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">รหัสผ่าน <span className="text-red-500">*</span></label>
+              <label className="block text-[11px] font-bold text-slate-700 mb-1.5 ml-0.5 uppercase tracking-wider">อีเมล (Email) <span className="text-red-500">*</span></label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L22 8m-2 11H4a2 2 0 01-2-2V7a2 2 0 012-2h16a2 2 0 012 2v10a2 2 0 01-2 2z" />
+                  </svg>
+                </span>
                 <input 
-                  type="password" 
-                  placeholder="••••••••" 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-slate-800 font-medium text-xs" 
-                  required 
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">ยืนยันรหัสผ่าน <span className="text-red-500">*</span></label>
-                <input 
-                  type="password" 
-                  placeholder="••••••••" 
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-slate-800 font-medium text-xs" 
+                  type="email" 
+                  placeholder="example@email.com" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 bg-[#f8fafc] border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-700 focus:bg-white outline-none transition-all font-medium text-slate-800 text-xs" 
                   required 
                 />
               </div>
             </div>
 
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1.5 ml-0.5 uppercase tracking-wider">รหัสผ่าน <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </span>
+                  <input 
+                    type={passwordVisible ? "text" : "password"} 
+                    placeholder="••••••••" 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-10 pr-10 py-3 bg-[#f8fafc] border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-700 focus:bg-white outline-none transition-all font-medium text-slate-800 text-xs" 
+                    required 
+                  />
+                  <button 
+                    type="button" 
+                    onClick={togglePassword} 
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-blue-700 transition cursor-pointer bg-transparent border-none"
+                  >
+                    {passwordVisible ? (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1.5 ml-0.5 uppercase tracking-wider">ยืนยันรหัสผ่าน <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </span>
+                  <input 
+                    type={passwordVisible ? "text" : "password"} 
+                    placeholder="••••••••" 
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full pl-10 pr-10 py-3 bg-[#f8fafc] border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-700 focus:bg-white outline-none transition-all font-medium text-slate-800 text-xs" 
+                    required 
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
               <div className="flex items-start gap-2.5">
-                <input type="checkbox" id="terms-consent" className="mt-0.5 w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer" required />
-                <label htmlFor="terms-consent" className="text-[11px] text-slate-600 font-medium leading-relaxed select-none">
-                  ฉันยอมรับ <a href="#" className="text-blue-600 font-bold hover:underline">ข้อกำหนดการใช้งาน</a> และ <a href="#" className="text-blue-600 font-bold hover:underline">นโยบายความเป็นส่วนตัว</a> <span className="text-red-500">*</span>
+                <input type="checkbox" id="terms-consent" className="mt-0.5 w-4 h-4 text-blue-700 border-slate-300 rounded focus:ring-blue-500 cursor-pointer accent-blue-700" required />
+                <label htmlFor="terms-consent" className="text-[11px] text-slate-600 font-semibold leading-relaxed select-none cursor-pointer">
+                  ฉันยอมรับ <a href="#" className="text-blue-700 font-bold hover:underline">ข้อกำหนดการใช้งาน</a> และ <a href="#" className="text-blue-700 font-bold hover:underline">นโยบายความเป็นส่วนตัว</a> <span className="text-red-500">*</span>
                 </label>
               </div>
 
-              <div className="w-full h-px bg-slate-200 my-1"></div>
+              <div className="w-full h-px bg-slate-200 my-1" />
 
               <div className="flex items-start gap-2.5">
-                <input type="checkbox" id="marketing-consent" className="mt-0.5 w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer" />
-                <label htmlFor="marketing-consent" className="text-[11px] text-slate-600 font-medium leading-relaxed select-none">
+                <input type="checkbox" id="marketing-consent" className="mt-0.5 w-4 h-4 text-blue-700 border-slate-300 rounded focus:ring-blue-500 cursor-pointer accent-blue-700" />
+                <label htmlFor="marketing-consent" className="text-[11px] text-slate-600 font-medium leading-relaxed select-none cursor-pointer">
                   ยินยอมรับข้อมูลข่าวสาร โปรโมชั่น และโครงการบ้านใหม่
                 </label>
               </div>
             </div>
 
-            <button type="submit" className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 rounded-2xl transition-all shadow-lg shadow-blue-700/30 transform hover:-translate-y-0.5 cursor-pointer text-xs mt-2">
+            <button type="submit" className="w-full bg-blue-700 hover:bg-blue-800 text-white font-extrabold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-700/20 active:scale-[0.98] cursor-pointer text-xs mt-2">
               รับรหัส OTP เพื่อยืนยันตัวตน
             </button>
           </form>
+
 
           <p className="mt-6 text-center text-slate-600 font-medium text-xs pb-6 lg:pb-0">
             มีบัญชีผู้ใช้แล้วใช่หรือไม่? 
