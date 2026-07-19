@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Property } from '../../../context/AppContext';
+import Image from 'next/image';
+import { Property } from '@/context/AppContext';
 
 interface BookingSidebarProps {
   property: Property;
@@ -13,7 +14,7 @@ export default function BookingSidebar({ property }: BookingSidebarProps) {
       {/* การ์ดรายละเอียดทรัพย์ */}
       <div className="bg-white rounded-3xl overflow-hidden border border-slate-200/70 shadow-sm">
         <div className="h-44 relative bg-slate-100">
-          <img src={property.image} className="w-full h-full object-cover" alt={property.title} />
+          <Image src={property.image} width={300} height={176} className="w-full h-full object-cover" alt={property.title} />
           <span className="absolute top-3 left-3 bg-orange-500 text-white px-2.5 py-0.5 rounded-full text-[9px] font-black tracking-wide shadow-sm">
             {property.tag || 'ขายด่วน'}
           </span>
@@ -39,8 +40,10 @@ export default function BookingSidebar({ property }: BookingSidebarProps) {
       {/* การ์ดผู้ดูแลนายหน้า */}
       <div className="bg-white rounded-3xl p-5 border border-slate-200/70 shadow-sm space-y-4">
         <div className="flex items-center gap-3">
-          <img 
+          <Image 
             src={property.agentImage} 
+            width={44}
+            height={44}
             className="w-11 h-11 rounded-full object-cover shadow-sm border border-slate-100" 
             alt={property.agentName} 
           />

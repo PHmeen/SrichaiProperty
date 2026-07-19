@@ -5,7 +5,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useApp } from '@/app/context/AppContext';
+import Image from 'next/image';
+import { useApp } from '@/context/AppContext';
 
 export default function FavoritesPage() {
   // ดึงข้อมูลรายการบ้านและเมธอดหัวใจจากระบบ Context ส่วนกลาง
@@ -65,9 +66,11 @@ export default function FavoritesPage() {
                 {/* ลิงก์รายละเอียดตัวการ์ด */}
                 <Link href={`/property/${prop.id}`} className="block">
                   <div className="relative h-44 overflow-hidden">
-                    <img 
+                    <Image 
                       src={prop.image} 
                       alt={prop.title}
+                      width={320}
+                      height={176}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   </div>
@@ -88,9 +91,11 @@ export default function FavoritesPage() {
 
                     {/* ข้อมูลนายหน้าผู้ดูแล */}
                     <div className="flex items-center gap-2">
-                      <img 
+                      <Image 
                         src={prop.agentImage} 
                         alt={prop.agentName}
+                        width={32}
+                        height={32}
                         className="w-8 h-8 rounded-full border border-white shadow-sm object-cover"
                       />
                       <div>

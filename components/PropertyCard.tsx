@@ -2,7 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Property } from '@/app/context/AppContext';
+import Image from 'next/image';
+import { Property } from '@/context/AppContext';
 
 interface PropertyCardProps {
   prop: Property;
@@ -48,11 +49,12 @@ export default function PropertyCard({ prop, isFav, toggleFavorite }: PropertyCa
       {/* ลิงก์รายละเอียดตัวการ์ด */}
       <Link href={`/property/${prop.id}`} className="block flex-grow">
         <div className="relative h-44 overflow-hidden bg-slate-100">
-          <img 
+          <Image 
             src={prop.image} 
             alt={prop.title}
+            width={320}
+            height={176}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-            referrerPolicy="no-referrer"
           />
         </div>
 
@@ -88,11 +90,11 @@ export default function PropertyCard({ prop, isFav, toggleFavorite }: PropertyCa
       {/* ลายเซ็นนายหน้าด้านล่าง */}
       <div className="px-5 pb-5 pt-3 border-t border-slate-100 flex items-center justify-between bg-slate-50/30">
         <div className="flex items-center gap-2">
-          <img 
+          <Image 
             src={prop.agentImage || getInitialsAvatar(prop.agentName)} 
             alt={prop.agentName}
-            referrerPolicy="no-referrer"
-            onError={(e) => { e.currentTarget.src = getInitialsAvatar(prop.agentName); }}
+            width={28}
+            height={28}
             className="w-7 h-7 rounded-full border border-white shadow-sm object-cover"
           />
           <div>

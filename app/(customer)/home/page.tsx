@@ -8,7 +8,8 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useApp } from '@/app/context/AppContext';
+import Image from 'next/image';
+import { useApp } from '@/context/AppContext';
 import PropertyCard from '../../../components/PropertyCard';
 
 export default function CustomerHomePage() {
@@ -214,9 +215,11 @@ export default function CustomerHomePage() {
                 href={`/search?q=${encodeURIComponent(loc.name)}`}
                 className="relative h-44 rounded-2xl overflow-hidden group cursor-pointer shadow-sm border border-slate-100 block"
               >
-                <img 
+                <Image 
                   src={loc.image} 
                   alt={loc.name}
+                  width={240}
+                  height={176}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent" />
@@ -249,7 +252,7 @@ export default function CustomerHomePage() {
                   className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 border border-slate-200 flex flex-col sm:flex-row"
                 >
                   <div className="sm:w-1/2 h-48 sm:h-auto relative">
-                    <img src={prop.image} className="w-full h-full object-cover" alt={prop.title} />
+                    <Image src={prop.image} alt={prop.title} width={240} height={192} className="w-full h-full object-cover" />
                   </div>
                   <div className="p-4 sm:w-1/2 flex flex-col justify-between">
                     <div>

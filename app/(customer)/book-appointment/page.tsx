@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '@/context/AppContext';
 import BookingSidebar from './components/BookingSidebar';
 import BookingCalendar from './components/BookingCalendar';
 

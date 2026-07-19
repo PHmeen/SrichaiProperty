@@ -4,7 +4,8 @@
 // เหมาะสำหรับมือใหม่: แสดงวิธีการจัดหมวดหมู่ข้อมูลด้วยแท็บ (Tabs Filter) และเชื่อมระบบยกเลิกนัดผ่าน Context
 
 import React, { useState } from 'react';
-import { useApp } from '@/app/context/AppContext';
+import Image from 'next/image';
+import { useApp } from '@/context/AppContext';
 
 export default function AppointmentsPage() {
   // === 1. ตัวแปรสำหรับเปลี่ยนแท็บเมนู ===
@@ -106,7 +107,7 @@ export default function AppointmentsPage() {
                       <span className="text-[9px] font-bold text-slate-500 bg-white px-1.5 py-0.5 rounded shadow-sm mt-1">{apt.timeSlot}</span>
                     </div>
                     <div className="w-full h-20 rounded-lg overflow-hidden relative">
-                      <img src={apt.propertyImage} className="w-full h-full object-cover" alt={apt.propertyName} />
+                      <Image src={apt.propertyImage} width={120} height={80} className="w-full h-full object-cover" alt={apt.propertyName} />
                       <div className="absolute top-1.5 left-1.5 bg-blue-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow">{apt.propertyType}</div>
                     </div>
                   </div>
@@ -119,7 +120,7 @@ export default function AppointmentsPage() {
                     <h3 className="font-bold text-slate-900 text-sm line-clamp-1">{apt.propertyName}</h3>
                     <div className="text-blue-700 font-extrabold text-xs">{apt.propertyPrice}</div>
                     <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                      <img src={apt.agentImage} className="w-5 h-5 rounded-full" alt={apt.agentName} />
+                      <Image src={apt.agentImage} width={20} height={20} className="w-5 h-5 rounded-full" alt={apt.agentName} />
                       <span>นายหน้า: {apt.agentName}</span>
                     </div>
                   </div>

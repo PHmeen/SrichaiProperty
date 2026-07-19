@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '@/context/AppContext';
 import SearchSidebar from './components/SearchSidebar';
 import PropertyCard from '../../../components/PropertyCard';
 

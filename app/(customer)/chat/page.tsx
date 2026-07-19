@@ -4,7 +4,8 @@
 // เหมาะสำหรับมือใหม่: แสดงการรับส่งข้อความแบบ Dynamic และจัดหมวดหมู่ห้องแชทของนายหน้าแต่ละคนอย่างเข้าใจง่าย
 
 import React, { useState } from 'react';
-import { useApp } from '@/app/context/AppContext';
+import Image from 'next/image';
+import { useApp } from '@/context/AppContext';
 
 export default function ChatPage() {
   // 1. เก็บ ID ห้องสนทนาที่ผู้ใช้กำลังคลิกเลือกดูขณะนั้น
@@ -52,7 +53,7 @@ export default function ChatPage() {
                 className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer border ${session.id === selectedSessionId ? 'bg-blue-50 border-blue-100' : 'hover:bg-slate-50 border-transparent'}`}
               >
                 <div className="relative">
-                  <img src={session.avatar} className="w-10 h-10 rounded-full object-cover shadow-sm border" alt={session.name} />
+                  <Image src={session.avatar} width={40} height={40} className="w-10 h-10 rounded-full object-cover shadow-sm border" alt={session.name} />
                   {session.isActive && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></span>}
                 </div>
                 <div className="flex-1 overflow-hidden text-xs">
@@ -81,7 +82,7 @@ export default function ChatPage() {
                 ← ย้อนกลับ
               </button>
               <div className="relative">
-                <img src={activeSession.avatar} className="w-10 h-10 rounded-full object-cover shadow-sm border" alt={activeSession.name} />
+                <Image src={activeSession.avatar} width={40} height={40} className="w-10 h-10 rounded-full object-cover shadow-sm border" alt={activeSession.name} />
                 {activeSession.isActive && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></span>}
               </div>
               <div>

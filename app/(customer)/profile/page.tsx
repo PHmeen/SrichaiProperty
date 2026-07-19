@@ -8,7 +8,8 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useApp } from '@/app/context/AppContext';
+import Image from 'next/image';
+import { useApp } from '@/context/AppContext';
 import { useSession } from 'next-auth/react';
 
 export default function ProfilePage() {
@@ -72,7 +73,7 @@ export default function ProfilePage() {
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 lg:sticky lg:top-24 space-y-5">
             <div className="text-center pb-4 border-b border-slate-100 space-y-2">
               <div className="relative inline-block group cursor-pointer">
-                <img src={avatarUrl} alt="Profile" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = getInitialsAvatar(userDisplayName); }} className="w-20 h-20 rounded-full object-cover border-2 border-slate-200 shadow-md" />
+                <Image src={avatarUrl} alt="Profile" width={80} height={80} className="w-20 h-20 rounded-full object-cover border-2 border-slate-200 shadow-md" />
               </div>
               <h3 className="font-extrabold text-slate-900 text-sm">{session?.user?.name || fullName}</h3>
               <p className="text-slate-500 text-[11px]">{session?.user?.email || profile.email}</p>

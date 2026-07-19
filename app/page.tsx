@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useApp } from '@/app/context/AppContext';
+import Image from 'next/image';
+import { useApp } from '@/context/AppContext';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
@@ -139,9 +140,11 @@ export default function Home() {
                 href="/search"
                 className="relative h-44 rounded-2xl overflow-hidden group cursor-pointer shadow-sm border border-slate-100 block"
               >
-                <img 
+                <Image 
                   src={loc.image} 
                   alt={loc.name}
+                  width={240}
+                  height={176}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent" />
@@ -215,9 +218,11 @@ export default function Home() {
                   
                   {/* Image */}
                   <div className="relative h-44 overflow-hidden">
-                    <img 
+                    <Image 
                       src={prop.image} 
                       alt={prop.title}
+                      width={320}
+                      height={176}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                     />
                   </div>
@@ -239,9 +244,11 @@ export default function Home() {
 
                     {/* Agent Section */}
                     <div className="flex items-center gap-2">
-                      <img 
+                      <Image 
                         src={prop.agentImage} 
                         alt={prop.agentName}
+                        width={32}
+                        height={32}
                         className="w-8 h-8 rounded-full border border-white shadow-sm"
                       />
                       <div>

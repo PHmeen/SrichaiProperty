@@ -9,7 +9,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { useApp } from '@/app/context/AppContext';
+import Image from 'next/image';
+import { useApp } from '@/context/AppContext';
 
 export default function PropertyDetailPage() {
   const params = useParams();
@@ -118,19 +119,19 @@ export default function PropertyDetailPage() {
         {/* Photo Gallery Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 rounded-3xl overflow-hidden shadow-sm relative border border-slate-200/40 bg-white">
           <div className="md:col-span-2 md:row-span-2 relative aspect-[4/3] md:aspect-auto">
-            <img src={images[0]} alt="รูปหลัก" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            <Image src={images[0]} alt="รูปหลัก" width={600} height={450} className="w-full h-full object-cover" />
           </div>
           <div className="hidden md:block relative aspect-[4/3] overflow-hidden">
-            <img src={images[1]} alt="รูปประกอบ 1" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+            <Image src={images[1]} alt="รูปประกอบ 1" width={300} height={225} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
           </div>
           <div className="hidden md:block relative aspect-[4/3] overflow-hidden">
-            <img src={images[2]} alt="รูปประกอบ 2" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+            <Image src={images[2]} alt="รูปประกอบ 2" width={300} height={225} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
           </div>
           <div className="hidden md:block relative aspect-[4/3] overflow-hidden">
-            <img src={images[3]} alt="รูปประกอบ 3" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+            <Image src={images[3]} alt="รูปประกอบ 3" width={300} height={225} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
           </div>
           <div className="hidden md:block relative aspect-[4/3] overflow-hidden">
-            <img src={images[4]} alt="รูปประกอบ 4" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500 opacity-80" />
+            <Image src={images[4]} alt="รูปประกอบ 4" width={300} height={225} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500 opacity-80" />
             <div className="absolute inset-0 bg-slate-950/40 flex items-center justify-center text-white font-extrabold text-xs">
               + ดูทั้งหมด 10 รูป
             </div>
@@ -352,12 +353,12 @@ export default function PropertyDetailPage() {
               {/* รายละเอียดตัวแทนนายหน้า */}
               <div className="text-center pb-4 border-b border-slate-100 space-y-3">
                 <div className="relative inline-block">
-                  <img 
+                  <Image 
                     src={property.agentImage || getInitialsAvatar(property.agentName)} 
+                    width={64}
+                    height={64}
                     className="w-16 h-16 rounded-full border-2 border-white shadow-md object-cover mx-auto" 
-                    referrerPolicy="no-referrer"
                     alt={property.agentName}
-                    onError={(e) => { e.currentTarget.src = getInitialsAvatar(property.agentName); }}
                   />
                   <span className="absolute bottom-0 right-1 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white shadow"></span>
                 </div>

@@ -179,8 +179,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     role: customProfile.role || ((session?.user as { role?: string | null })?.role as 'buyer' | 'agent' | 'admin') || "buyer"
   };
 
-
-
   // ฟังก์ชัน: ตัวแทนนายหน้าลงประกาศอสังหาฯ เพิ่มเติม
   const addProperty = (newProp: Omit<Property, 'id'>) => {
     const updated = [...properties, { ...newProp, id: Date.now() }];
