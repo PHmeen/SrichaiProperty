@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 
 export async function POST(request: Request) {
   try {
-    const { email, password, fullName, phone, role } = await request.json();
+    const { email, password, fullName, phone, role, lineId, experience, zone, propertyType, profileImage, kycDoc } = await request.json();
 
     if (!email || !password || !fullName) {
       return NextResponse.json(
@@ -38,9 +38,17 @@ export async function POST(request: Request) {
         first_name: firstName,
         last_name: lastName,
         phone,
-        role_id: role || "buyer"
+        role_id: role || "buyer",
+        line_id: lineId || null,
+        experience: experience || null,
+        specialty_zone: zone || null,
+        specialty_type: propertyType || null,
+        profile_image: profileImage || null,
+        kyc_doc: kycDoc || null
       }
     });
+
+
 
     return NextResponse.json({
       success: true,

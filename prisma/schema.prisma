@@ -360,8 +360,14 @@ model users {
   sale_transactions_sale_transactions_agent_idTousers sale_transactions[]     @relation("sale_transactions_agent_idTousers")
   sale_transactions_sale_transactions_buyer_idTousers sale_transactions[]     @relation("sale_transactions_buyer_idTousers")
   saved_properties                                    saved_properties[]
+  line_id                                             String?                 @db.VarChar(50)
+  experience                                          String?                 @db.VarChar(50)
+  specialty_zone                                      String?                 @db.VarChar(150)
+  specialty_type                                      String?                 @db.VarChar(50)
+  kyc_doc                                             String?                 @db.VarChar(255)
   roles                                               roles?                  @relation(fields: [role_id], references: [id], onUpdate: NoAction)
 }
+
 
 model provinces {
   id         Int          @id

@@ -59,16 +59,63 @@ export default function AgentRegisterPage() {
   };
 
 
+  const [profileImage, setProfileImage] = useState('');
+  const [kycDoc, setKycDoc] = useState('');
+  const [isUploadingProfile, setIsUploadingProfile] = useState(false);
+  const [isUploadingKyc, setIsUploadingKyc] = useState(false);
+
+  // ฟังก์ชันอัปโหลดไฟล์จริงไปหลังบ้าน
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'profile' | 'kyc') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (type === 'profile') {
+      setIsUploadingProfile(true);
+    } else {
+      setIsUploadingKyc(true);
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (type === 'profile') {
+          setProfileImage(data.url);
+        } else {
+          setKycDoc(data.url);
+        }
+      } else {
+        alert(data.error || 'อัปโหลดไฟล์ล้มเหลว');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('เกิดข้อผิดพลาดในการอัปโหลด');
+    } finally {
+      if (type === 'profile') {
+        setIsUploadingProfile(false);
+      } else {
+        setIsUploadingKyc(false);
+      }
+    }
+  };
+
   const verifyOtp = async () => {
     const fullName = `${firstName} ${lastName}`.trim();
     try {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, fullName, phone, role: 'agent' }),
+        body: JSON.stringify({ email, password, fullName, phone, role: 'agent', lineId, experience, zone, propertyType, profileImage, kycDoc }),
       });
 
       const data = await response.json();
+
 
       if (!response.ok) {
         alert(data.error || "การสมัครสมาชิกไม่สำเร็จ");
@@ -387,20 +434,63 @@ export default function AgentRegisterPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                 <div>
                   <label className="block text-[9px] font-bold text-slate-500 mb-2 uppercase tracking-wider">รูปโปรไฟล์ (Profile Picture)</label>
-                  <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:bg-slate-50 transition cursor-pointer flex flex-col items-center justify-center gap-2">
-                    <span className="text-2xl text-slate-400">🖼️</span>
-                    <span className="text-[10px] font-bold text-slate-500">คลิกเพื่ออัปโหลดรูปภาพ</span>
+                  <input 
+                    type="file" 
+                    id="profile-upload" 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={(e) => handleFileUpload(e, 'profile')}
+                  />
+                  <div 
+                    onClick={() => document.getElementById('profile-upload')?.click()}
+                    className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:bg-slate-50 transition cursor-pointer flex flex-col items-center justify-center gap-2 min-h-[110px]"
+                  >
+                    {isUploadingProfile ? (
+                      <div className="text-xs text-slate-500 animate-pulse">กำลังอัปโหลด...</div>
+                    ) : profileImage ? (
+                      <div className="flex flex-col items-center gap-1.5">
+                        <img src={profileImage} alt="Profile Preview" className="w-12 h-12 rounded-full object-cover border border-slate-200" />
+                        <span className="text-[9px] font-semibold text-emerald-600">✓ อัปโหลดสำเร็จ</span>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="text-2xl text-slate-400">🖼️</span>
+                        <span className="text-[10px] font-bold text-slate-500">คลิกเพื่ออัปโหลดรูปภาพ</span>
+                      </>
+                    )}
                   </div>
                 </div>
                 <div>
                   <label className="block text-[9px] font-bold text-slate-500 mb-2 uppercase tracking-wider">สำเนาบัตรประชาชน / นามบัตร</label>
-                  <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:bg-slate-50 transition cursor-pointer flex flex-col items-center justify-center gap-2">
-                    <span className="text-2xl text-slate-400">📄</span>
-                    <span className="text-[10px] font-bold text-slate-500">คลิกเพื่ออัปโหลดไฟล์ KYC</span>
+                  <input 
+                    type="file" 
+                    id="kyc-upload" 
+                    accept="image/*,application/pdf" 
+                    className="hidden" 
+                    onChange={(e) => handleFileUpload(e, 'kyc')}
+                  />
+                  <div 
+                    onClick={() => document.getElementById('kyc-upload')?.click()}
+                    className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:bg-slate-50 transition cursor-pointer flex flex-col items-center justify-center gap-2 min-h-[110px]"
+                  >
+                    {isUploadingKyc ? (
+                      <div className="text-xs text-slate-500 animate-pulse">กำลังอัปโหลด...</div>
+                    ) : kycDoc ? (
+                      <div className="flex flex-col items-center gap-1.5">
+                        <span className="text-2xl text-emerald-500">📄</span>
+                        <span className="text-[9px] font-semibold text-emerald-600 truncate max-w-[150px]">✓ อัปโหลดไฟล์เรียบร้อย</span>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="text-2xl text-slate-400">📄</span>
+                        <span className="text-[10px] font-bold text-slate-500">คลิกเพื่ออัปโหลดไฟล์ KYC</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
+
 
             {/* Consent Box */}
             <div className="bg-amber-50/70 border border-amber-200/50 p-4 rounded-xl flex items-start gap-3">
