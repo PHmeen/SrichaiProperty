@@ -40,161 +40,185 @@ export default function AgentLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row relative font-sans bg-slate-50 text-slate-800">
-      {/* Left Banner Section */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-slate-950 items-center justify-center overflow-hidden h-screen sticky top-0">
-        <div 
-          className="absolute inset-0 bg-cover bg-center opacity-40 transition-transform duration-[10000ms] hover:scale-105" 
-          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')" }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-tr from-slate-950 via-slate-900/60 to-emerald-950/40" />
+    <div className="min-h-screen flex flex-col lg:flex-row font-sans bg-white text-slate-800 antialiased">
+      {/* Left Dark Section */}
+      <div className="hidden lg:flex lg:w-1/2 relative bg-[#090d16] items-center justify-center p-12 overflow-hidden min-h-screen">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,#1e293b,transparent)] opacity-40" />
         
-        <div className="relative z-10 p-12 text-white max-w-xl">
-          <Link href="/" className="flex items-center gap-2 mb-8 cursor-pointer hover:opacity-90 transition">
-            <div className="w-12 h-12 bg-emerald-600 rounded-xl flex items-center justify-center font-bold text-2xl shadow-lg shadow-emerald-600/30">S</div>
-            <span className="text-3xl font-extrabold tracking-tight">Srichai<span className="text-emerald-400">Property</span></span>
-          </Link>
-          <div className="inline-block bg-emerald-500/20 border border-emerald-500/30 backdrop-blur-md rounded-full px-4 py-1.5 text-xs font-bold text-emerald-300 mb-6 uppercase tracking-widest shadow-sm">
-            💼 Agent Partner Portal
+        {/* Background Grid Pattern */}
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[linear-gradient(to_right,#808080_1px,transparent_1px),linear-gradient(to_bottom,#808080_1px,transparent_1px)] bg-[size:24px_24px]" />
+
+        <div className="relative z-10 w-full max-w-md flex flex-col justify-between h-full py-8">
+          {/* Logo */}
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-slate-950 font-black text-xl shadow-lg shadow-amber-500/20">
+              S
+            </div>
+            <span className="text-2xl font-black text-white tracking-tight">
+              Srichai<span className="text-amber-500">Agent</span>
+            </span>
           </div>
-          <h1 className="text-5xl font-extrabold mb-6 leading-[1.2] tracking-tight">ขยายธุรกิจอสังหาฯ<br />ด้วยระบบอัจฉริยะ</h1>
-          <p className="text-slate-300 text-lg font-light leading-relaxed">เข้าสู่ระบบการบริหารจัดการประกาศนัดหมาย จัดการทรัพย์ และวิเคราะห์การเข้าชมของลูกค้าอย่างมืออาชีพ</p>
+
+          {/* Main Copy */}
+          <div className="my-auto py-12">
+            <div className="inline-flex items-center gap-1.5 bg-white/5 border border-white/10 backdrop-blur-md rounded-full px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+              PARTNER PORTAL
+            </div>
+            <h1 className="text-4xl font-extrabold text-white mb-5 leading-[1.3] tracking-tight">
+              ระบบบริหารจัดการ<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-300">สำหรับนายหน้ามืออาชีพ</span>
+            </h1>
+            <p className="text-slate-400 text-sm font-light leading-relaxed mb-8">
+              จัดการรายการประกาศ, ติดตามสถานะการนัดหมาย, ดูแลลูกค้า และเพิ่มโอกาสปิดการขายด้วยเครื่องมือระดับพรีเมียมของเรา
+            </p>
+            
+            <div className="w-full h-px bg-slate-800/60 mb-8" />
+
+            {/* Stats */}
+            <div className="flex gap-12">
+              <div>
+                <div className="text-3xl font-black text-amber-500 mb-1">24/7</div>
+                <div className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">ระบบออนไลน์</div>
+              </div>
+              <div>
+                <div className="text-3xl font-black text-white mb-1">5K+</div>
+                <div className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">ฐานลูกค้าในระบบ</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Banner Footer */}
+          <div className="text-[10px] text-slate-600 font-medium">
+            Srichai Property Agents Platform &copy; {new Date().getFullYear()}
+          </div>
         </div>
       </div>
 
-      {/* Right Login Form Section */}
-      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-6 sm:p-8 bg-white min-h-screen overflow-y-auto">
-        <div className="w-full max-w-sm my-auto py-8">
-          
-          <Link href="/" className="flex lg:hidden items-center gap-2 mb-8 justify-center cursor-pointer">
-            <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg">S</div>
-            <span className="text-xl font-extrabold text-slate-900 tracking-tight">Srichai<span className="text-emerald-600">Property</span></span>
+      {/* Right Form Section */}
+      <div className="w-full lg:w-1/2 flex flex-col justify-between p-6 sm:p-12 md:p-16 min-h-screen bg-white">
+        {/* Top bar with back button */}
+        <div className="flex justify-end w-full mb-8">
+          <Link 
+            href="/home" 
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-slate-200 hover:bg-slate-50 transition text-slate-600 font-medium text-xs shadow-sm"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            กลับหน้าหลัก (ลูกค้า)
           </Link>
+        </div>
 
-          <div className="mb-8 text-center lg:text-left">
-            <div className="inline-block lg:hidden bg-emerald-50 border border-emerald-100 rounded-full px-3 py-1 text-[10px] font-bold text-emerald-700 mb-3">
-              💼 สำหรับตัวแทนนายหน้า
-            </div>
-            <h2 className="text-3xl font-extrabold text-slate-950 mb-2 tracking-tight">ลงชื่อเข้าใช้นายหน้า</h2>
-            <p className="text-slate-500 font-medium text-sm leading-relaxed">เข้าสู่ระบบการทำงาน Srichai Agent</p>
+        {/* Form Container */}
+        <div className="w-full max-w-[420px] mx-auto my-auto py-8">
+          <div className="mb-8">
+            <h2 className="text-3xl font-extrabold text-slate-900 mb-2 tracking-tight">เข้าสู่ระบบนายหน้า</h2>
+            <p className="text-slate-500 text-xs font-medium">กรอกอีเมลบริษัทและรหัสผ่านเพื่อเข้าสู่ Agent Dashboard</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <button 
-              type="button"
-              onClick={() => signIn('google', { callbackUrl: '/agent/dashboard?role=agent' })}
-              className="flex items-center justify-center gap-2.5 w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 hover:border-slate-300 hover:shadow transition-all duration-300 font-bold text-slate-700 active:scale-[0.98] cursor-pointer text-xs"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-              </svg>
-              Google
-            </button>
-            <button 
-              type="button"
-              onClick={() => signIn('facebook', { callbackUrl: '/agent/dashboard?role=agent' })}
-              className="flex items-center justify-center gap-2.5 w-full px-3 py-2.5 bg-[#1877F2] hover:bg-[#166FE5] text-white rounded-xl shadow-sm hover:shadow hover:shadow-blue-500/10 transition-all duration-300 font-bold active:scale-[0.98] cursor-pointer text-xs"
-            >
-              <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
-                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-              </svg>
-              Facebook
-            </button>
-          </div>
-
-          <div className="relative mb-6">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div>
-            <div className="relative flex justify-center text-xs">
-              <span className="px-3 bg-white text-slate-400 font-bold uppercase tracking-widest text-[9px]">หรือใช้บัญชีนายหน้าของคุณ</span>
-            </div>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-5">
             {errorMsg && (
-              <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-medium">
-                ⚠️ {errorMsg}
+              <div className="p-3.5 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-semibold flex items-center gap-2">
+                <span>⚠️</span> {errorMsg}
               </div>
             )}
+
+            {/* Email Field */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-1 uppercase tracking-wider">อีเมลบัญชีนายหน้า</label>
+              <label className="block text-[11px] font-bold text-slate-700 mb-2 ml-0.5 uppercase tracking-wider">อีเมลตัวแทน (Agent Email)</label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path></svg>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                  </svg>
                 </span>
                 <input 
                   type="email" 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="agent@srichai.com" 
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:bg-white outline-none transition-all font-medium text-slate-800 text-xs" 
+                  placeholder="agent@srichaiproperty.com" 
+                  className="w-full pl-10 pr-4 py-3.5 bg-[#f8fafc] border border-slate-200 rounded-xl focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 focus:bg-white outline-none transition-all font-medium text-slate-800 text-xs" 
                   required 
                 />
               </div>
             </div>
 
+            {/* Password Field */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-1 uppercase tracking-wider">รหัสผ่าน</label>
+              <label className="block text-[11px] font-bold text-slate-700 mb-2 ml-0.5 uppercase tracking-wider">รหัสผ่าน (Password)</label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
                 </span>
                 <input 
                   type={passwordVisible ? "text" : "password"} 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••" 
-                  className="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:bg-white outline-none transition-all font-medium text-slate-800 text-xs" 
+                  className="w-full pl-10 pr-10 py-3.5 bg-[#f8fafc] border border-slate-200 rounded-xl focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 focus:bg-white outline-none transition-all font-medium text-slate-800 text-xs" 
                   required 
                 />
                 <button 
                   type="button" 
                   onClick={togglePassword} 
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-emerald-600 transition cursor-pointer bg-transparent border-none"
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-amber-600 transition cursor-pointer bg-transparent border-none"
                 >
                   {passwordVisible ? (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    </svg>
                   ) : (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
                   )}
                 </button>
               </div>
             </div>
 
+            {/* Remember & Forgot Password */}
             <div className="flex items-center justify-between">
-              <label className="flex items-center gap-1.5 cursor-pointer group">
-                <input type="checkbox" className="w-3.5 h-3.5 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500" />
-                <span className="text-xs text-slate-600 font-medium select-none">จำฉันไว้</span>
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <input type="checkbox" className="w-4 h-4 text-amber-500 border-slate-300 rounded focus:ring-amber-500 accent-amber-500 cursor-pointer" />
+                <span className="text-xs text-slate-500 font-medium select-none">จำฉันไว้ในเครื่องนี้</span>
               </label>
-              <a href="#" className="text-xs font-bold text-emerald-600 hover:underline">ลืมรหัสผ่าน?</a>
+              <a href="#" className="text-xs font-bold text-amber-600 hover:text-amber-700 transition">ลืมรหัสผ่านพนักงาน?</a>
             </div>
 
+            {/* Submit Button */}
             <button 
               type="submit" 
               disabled={isLoading}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 rounded-xl transition-all shadow-md shadow-emerald-600/10 active:scale-[0.98] mt-3 text-sm cursor-pointer"
+              className="w-full bg-[#0d1527] hover:bg-[#16223d] text-white font-extrabold py-3.5 rounded-xl transition-all shadow-lg shadow-slate-900/10 active:scale-[0.98] mt-4 text-xs cursor-pointer"
             >
-              {isLoading ? (
-                <span className="flex items-center justify-center gap-2 animate-pulse">กำลังเข้าสู่ระบบ...</span>
-              ) : (
-                "เข้าสู่ระบบตัวแทน"
-              )}
+              {isLoading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ Agent Dashboard"}
             </button>
           </form>
 
-          <div className="mt-8 flex flex-col gap-4 text-center">
-            <p className="text-xs text-slate-600 font-medium">
-              คุณต้องการลงทะเบียนนายหน้าใหม่ใช่หรือไม่? <Link href="/register/agent" className="text-emerald-600 font-bold hover:underline ml-1">สมัครสมาชิกที่นี่</Link>
-            </p>
-            <div className="w-full h-px bg-slate-100 my-1"></div>
-            <p className="text-xs text-slate-500 font-medium">
-              ไม่ใช่ตัวแทนนายหน้าใช่หรือไม่? <Link href="/login" className="text-slate-600 font-extrabold hover:underline">เข้าสู่ระบบสำหรับผู้ซื้อทั่วไป &rarr;</Link>
-            </p>
+          {/* Register box */}
+          <div className="mt-8 bg-slate-50 border border-slate-100 rounded-2xl p-6 text-center">
+            <p className="text-xs text-slate-500 font-semibold mb-3">ต้องการเป็นนายหน้ากับ Srichai Property?</p>
+            <Link 
+              href="/register/agent" 
+              className="inline-block bg-white hover:bg-slate-50 text-amber-600 border border-amber-500 font-extrabold px-6 py-2.5 rounded-xl text-xs transition"
+            >
+              สมัครร่วมเป็นพาร์ทเนอร์
+            </Link>
           </div>
+        </div>
+
+        {/* Footer Links */}
+        <div className="flex justify-center gap-6 text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-8">
+          <a href="#" className="hover:text-slate-600 transition">Privacy Policy</a>
+          <span>&middot;</span>
+          <a href="#" className="hover:text-slate-600 transition">Terms of Use</a>
         </div>
       </div>
     </div>
   );
 }
+

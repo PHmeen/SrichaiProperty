@@ -107,7 +107,8 @@ export default function RegisterPage() {
 
       {/* Right Side Form Section */}
       <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-6 sm:p-8 bg-white min-h-screen overflow-y-auto">
-        <div className="w-full max-w-sm my-auto py-8">
+        <div className="w-full max-w-[540px] mx-auto my-auto py-8">
+
           
           <Link href="/" className="flex items-center gap-2 mb-6 cursor-pointer group">
             <div className="w-9 h-9 bg-blue-700 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-105 transition-transform">S</div>
