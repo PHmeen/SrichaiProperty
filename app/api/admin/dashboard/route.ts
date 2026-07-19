@@ -11,7 +11,8 @@ export async function GET() {
       proAgentsCount,
       pendingProperties,
       newAgents,
-      totalReportsCount
+      totalReportsCount,
+      pendingKycCount
     ] = await Promise.all([
       // ประกาศรอตรวจสอบ
       db.properties.count({ where: { status: "pending" } }),
@@ -48,7 +49,9 @@ export async function GET() {
         take: 5
       }),
       // รายงานปัญหาปัญหา
-      db.reports.count({ where: { status: "pending" } })
+      db.reports.count({ where: { status: "pending" } }),
+      // นายหน้ารอยืนยันตัวตน KYC
+      db.users.count({ where: { role_id: "agent", status: "pending" } })
     ]);
 
     // จัดระเบียบข้อมูลส่งคืนฝั่งหน้าบ้าน
@@ -86,7 +89,8 @@ export async function GET() {
       proAgentsCount: proAgentsCount,
       moderationItems: formattedModerationItems,
       newAgents: formattedNewAgents,
-      reportsCount: totalReportsCount
+      reportsCount: totalReportsCount,
+      kycCount: pendingKycCount
     });
 
   } catch (error) {

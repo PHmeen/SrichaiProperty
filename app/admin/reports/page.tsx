@@ -31,7 +31,6 @@ export default function AdminReportsPage() {
   const [activeTab, setActiveTab] = useState<'pending' | 'resolved' | 'dismissed'>('pending');
 
   const fetchReports = (status: string) => {
-    setLoading(true);
     fetch(`/api/admin/reports?status=${status}`)
       .then(res => res.json())
       .then(data => {
@@ -76,57 +75,7 @@ export default function AdminReportsPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 font-sans text-xs antialiased">
-      {/* 🔮 NAVIGATION SIDEBAR */}
-      <aside className="w-56 bg-[#0f172a] text-slate-300 flex flex-col justify-between shrink-0 shadow-xl relative z-10">
-        <div className="p-5 space-y-6">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-black text-white text-base shadow-lg shadow-blue-500/20">S</div>
-            <div>
-              <h1 className="text-white font-extrabold text-sm tracking-tight flex items-center gap-1.5">SrichaiAdmin</h1>
-              <span className="text-[8px] text-emerald-400 font-bold flex items-center gap-1 uppercase tracking-wider">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>System Online
-              </span>
-            </div>
-          </div>
-          <Link href="/home" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-blue-500/30">🌐 เปิดดูหน้าเว็บไซต์จริง ↗</Link>
-
-          <nav className="space-y-6 pt-3">
-            <div className="space-y-1.5">
-              <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-2.5">Overview</span>
-              <Link href="/admin/dashboard" className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-800 text-slate-300 font-bold transition-all text-left">📊 แดชบอร์ดหลัก</Link>
-            </div>
-            <div className="space-y-1.5">
-              <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-2.5">Moderation (ตรวจสอบ)</span>
-              <Link href="/admin/moderation" className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-800 text-slate-300 font-semibold transition-all text-left">📝 ประกาศอสังหาฯ</Link>
-              <Link href="/admin/kyc" className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-800 text-slate-300 font-semibold transition-all text-left">🛡️ เอกสารยืนยันตัวตน (KYC)</Link>
-              <Link href="/admin/reports" className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg bg-slate-800 text-white font-bold transition-all text-left shadow-inner">
-                <span className="flex items-center gap-2">⚠️ รายงานปัญหา (Reports)</span>
-                {activeTab === 'pending' && reports.length > 0 && (
-                  <span className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-5 text-center">{reports.length}</span>
-                )}
-              </Link>
-            </div>
-            <div className="space-y-1.5">
-              <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-2.5">Management</span>
-              <Link href="/admin/users" className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-800 text-slate-300 font-semibold transition-all text-left font-bold">👥 ฐานข้อมูลผู้ใช้</Link>
-            </div>
-          </nav>
-        </div>
-        <div className="p-4 border-t border-slate-800 bg-slate-900/60 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-blue-500 text-white font-black flex items-center justify-center shadow-inner">A</div>
-            <div>
-              <p className="text-white font-black text-xs">Admin Root</p>
-              <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Super Administrator</p>
-            </div>
-          </div>
-          <button className="text-slate-500 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/10">🚪</button>
-        </div>
-      </aside>
-
-      {/* 💼 WORKSPACE */}
-      <main className="flex-1 flex flex-col min-w-0">
+    <>
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 relative z-0">
           <h2 className="text-lg font-extrabold text-slate-800">ตรวจสอบรายงานปัญหา (Reports & Complaints)</h2>
           <div className="relative w-72">
@@ -139,19 +88,19 @@ export default function AdminReportsPage() {
           {/* Tabs */}
           <div className="flex items-center gap-2 mb-6 bg-slate-100 p-1 rounded-xl w-fit border border-slate-200">
             <button 
-              onClick={() => setActiveTab('pending')}
+              onClick={() => { setActiveTab('pending'); setLoading(true); }}
               className={`px-5 py-2 rounded-lg font-bold transition-all text-xs flex items-center gap-2 ${activeTab === 'pending' ? 'bg-white text-slate-800 shadow-sm border border-slate-200/60' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
             >
               รอตรวจสอบ {activeTab === 'pending' && reports.length > 0 && <span className="bg-red-500 text-white px-1.5 py-0.5 rounded text-[8px]">{reports.length}</span>}
             </button>
             <button 
-              onClick={() => setActiveTab('resolved')}
+              onClick={() => { setActiveTab('resolved'); setLoading(true); }}
               className={`px-5 py-2 rounded-lg font-bold transition-all text-xs ${activeTab === 'resolved' ? 'bg-white text-slate-800 shadow-sm border border-slate-200/60' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
             >
               กำลังดำเนินการ / ดำเนินการเสร็จสิ้น
             </button>
             <button 
-              onClick={() => setActiveTab('dismissed')}
+              onClick={() => { setActiveTab('dismissed'); setLoading(true); }}
               className={`px-5 py-2 rounded-lg font-bold transition-all text-xs ${activeTab === 'dismissed' ? 'bg-white text-slate-800 shadow-sm border border-slate-200/60' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
             >
               ปัดตก (Dismissed)
@@ -223,7 +172,7 @@ export default function AdminReportsPage() {
                           <h4 className="text-slate-800 font-extrabold text-sm mb-2">รายละเอียดปัญหาที่แจ้ง:</h4>
                           <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 relative mb-4">
                              <p className="text-slate-600 text-xs font-semibold leading-relaxed">
-                               "{report.details}"
+                               &quot;{report.details}&quot;
                              </p>
                           </div>
 
@@ -279,7 +228,6 @@ export default function AdminReportsPage() {
             </div>
           )}
         </div>
-      </main>
-    </div>
+    </>
   );
 }

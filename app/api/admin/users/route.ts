@@ -3,17 +3,25 @@ import { db } from '@/lib/db';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
+interface AdminSession {
+  user?: {
+    id?: string;
+    email?: string;
+    role?: string;
+  };
+}
+
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !(session as any)?.user || (session as any).user.role !== 'admin') {
+    const session = await getServerSession(authOptions) as AdminSession | null;
+    if (!session || !session.user || session.user.role !== 'admin') {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(req.url);
     const roleFilter = searchParams.get('role'); // e.g. 'all', 'agent', 'customer'
 
-    let whereClause: any = {};
+    const whereClause: { role_id?: string } = {};
     if (roleFilter && roleFilter !== 'all') {
       whereClause.role_id = roleFilter;
     }

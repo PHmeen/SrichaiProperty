@@ -31,7 +31,6 @@ export default function AdminUsersPage() {
   const [roleFilter, setRoleFilter] = useState('all');
 
   useEffect(() => {
-    setLoading(true);
     fetch(`/api/admin/users?role=${roleFilter}`)
       .then(res => res.json())
       .then(data => {
@@ -48,50 +47,7 @@ export default function AdminUsersPage() {
   }, [roleFilter]);
 
   return (
-    <div className="flex min-h-screen bg-slate-50 font-sans text-xs antialiased">
-      {/* 🔮 NAVIGATION SIDEBAR */}
-      <aside className="w-56 bg-[#0f172a] text-slate-300 flex flex-col justify-between shrink-0 shadow-xl relative z-10">
-        <div className="p-5 space-y-6">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-black text-white text-base shadow-lg shadow-blue-500/20">S</div>
-            <div>
-              <h1 className="text-white font-extrabold text-sm tracking-tight flex items-center gap-1.5">SrichaiAdmin</h1>
-              <span className="text-[8px] text-emerald-400 font-bold flex items-center gap-1 uppercase tracking-wider"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>System Online</span>
-            </div>
-          </div>
-          <Link href="/home" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-blue-500/30">🌐 เปิดดูหน้าเว็บไซต์จริง ↗</Link>
-
-          <nav className="space-y-6 pt-3">
-            <div className="space-y-1.5">
-              <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-2.5">Overview</span>
-              <Link href="/admin/dashboard" className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-800 text-slate-300 font-bold transition-all text-left">📊 แดชบอร์ดหลัก</Link>
-            </div>
-            <div className="space-y-1.5">
-              <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-2.5">Moderation (ตรวจสอบ)</span>
-              <Link href="/admin/moderation" className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-800 text-slate-300 font-semibold transition-all text-left">📝 ประกาศอสังหาฯ</Link>
-              <Link href="/admin/kyc" className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-800 text-slate-300 font-semibold transition-all text-left">🛡️ เอกสารยืนยันตัวตน (KYC)</Link>
-              <Link href="/admin/reports" className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-800 text-slate-300 font-semibold transition-all text-left">⚠️ รายงานปัญหา (Reports)</Link>
-            </div>
-            <div className="space-y-1.5">
-              <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-2.5">Management</span>
-              <Link href="/admin/users" className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg bg-slate-800 text-white font-bold transition-all text-left shadow-inner">👥 ฐานข้อมูลผู้ใช้</Link>
-            </div>
-          </nav>
-        </div>
-        <div className="p-4 border-t border-slate-800 bg-slate-900/60 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-blue-500 text-white font-black flex items-center justify-center shadow-inner">A</div>
-            <div>
-              <p className="text-white font-black text-xs">Admin Root</p>
-              <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Super Administrator</p>
-            </div>
-          </div>
-          <button className="text-slate-500 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/10">🚪</button>
-        </div>
-      </aside>
-
-      {/* 💼 WORKSPACE */}
-      <main className="flex-1 flex flex-col min-w-0">
+    <>
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 relative z-0">
           <h2 className="text-lg font-extrabold text-slate-800">จัดการผู้ใช้งาน (Users & Agents)</h2>
           <div className="flex items-center gap-4 text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-md border border-slate-200">
@@ -132,7 +88,7 @@ export default function AdminUsersPage() {
               <div className="flex items-center gap-3">
                 <select 
                   value={roleFilter} 
-                  onChange={(e) => setRoleFilter(e.target.value)}
+                  onChange={(e) => { setRoleFilter(e.target.value); setLoading(true); }}
                   className="bg-white border border-slate-200 text-slate-600 text-xs font-bold py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 >
                   <option value="all">บทบาททั้งหมด (All Roles)</option>
@@ -233,7 +189,6 @@ export default function AdminUsersPage() {
             </div>
           </div>
         </div>
-      </main>
-    </div>
+    </>
   );
 }

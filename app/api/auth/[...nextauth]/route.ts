@@ -1,12 +1,13 @@
 // === ระบบล็อกอิน (NextAuth Configuration) ===
 // ไฟล์นี้ทำหน้าที่ตั้งค่าการยืนยันตัวตนสำหรับผู้ใช้ เช่น ล็อกอินด้วย Google, Facebook หรือกรอกอีเมล/รหัสผ่านปกติ
 
-import NextAuth, { NextAuthOptions } from "next-auth";
+import NextAuth, { NextAuthOptions, User, Account, Session } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { JWT } from "next-auth/jwt";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -82,7 +83,7 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   callbacks: {
-    async signIn({ user, account }: { user: any, account: any }) {
+    async signIn({ user, account }: { user: User; account: Account | null }) {
       // ตรวจสอบเมื่อมีการล็อกอินด้วย Google หรือ Facebook
       if (account?.provider === "google" || account?.provider === "facebook") {
         // หากเป็นการล็อกอินผ่าน Facebook ที่ไม่มีสิทธิ์ email ให้สร้าง synthetic email ปลอดภัยระดับ ID
@@ -116,7 +117,7 @@ export const authOptions: NextAuthOptions = {
       }
       return true;
     },
-    async jwt({ token, user, account }: { token: any, user: any, account: any }) {
+    async jwt({ token, user, account }: { token: JWT; user?: User; account?: Account | null }) {
       if (user) {
         const u = user as { id: string; role: string; phone?: string | null; image?: string | null; status?: string | null };
         token.id = u.id;
@@ -140,7 +141,7 @@ export const authOptions: NextAuthOptions = {
       }
       return token;
     },
-    async session({ session, token }: { session: any, token: any }) {
+    async session({ session, token }: { session: Session; token: JWT }) {
       if (session.user) {
         const s = session.user as { id: string; role: string; phone?: string | null; image?: string | null; status?: string | null };
         s.id = token.id as string;
