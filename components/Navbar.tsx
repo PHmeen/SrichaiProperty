@@ -24,16 +24,19 @@ export default function Navbar() {
   };
 
   const userFullName = session?.user?.name || "ผู้ใช้งาน";
+  const userRole = (session?.user as { role?: string })?.role;
   const rawImage = session?.user?.image;
   const hasValidImage = rawImage && typeof rawImage === 'string' && rawImage.trim() !== '' && rawImage !== 'null' && rawImage !== 'undefined' && (rawImage.startsWith('http') || rawImage.startsWith('/'));
   const avatarUrl = hasValidImage ? rawImage : getInitialsAvatar(userFullName);
 
   return (
     <nav className="fixed w-full z-50 top-0 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm transition-all duration-300">
-      <div className="max-w-5xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <Link href="/" className="flex-shrink-0 flex items-center gap-2 cursor-pointer group">
-            <div className="w-8 h-8 bg-blue-700 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+          
+          {/* Logo */}
+          <Link href="/" className="flex-shrink-0 flex items-center gap-2.5 cursor-pointer group">
+            <div className="w-9 h-9 bg-blue-700 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-md shadow-blue-700/20 group-hover:scale-105 transition-transform">
               S
             </div>
             <span className="text-xl font-extrabold text-slate-900 tracking-tight">
@@ -41,169 +44,238 @@ export default function Navbar() {
             </span>
           </Link>
 
-          <div className="hidden md:flex space-x-2 items-center">
+          {/* Desktop Main Navigation Links */}
+          <div className="hidden lg:flex items-center space-x-1 xl:space-x-2">
             <Link
               href="/"
-              className={`px-3 py-2 text-sm font-medium transition-colors duration-200 ${
-                isActive("/") ? "text-blue-700 font-bold" : "text-slate-600 hover:text-blue-600"
+              className={`px-3 py-2 rounded-xl text-xs xl:text-sm font-bold transition-all ${
+                isActive("/") ? "text-blue-700 bg-blue-50/80" : "text-slate-600 hover:text-blue-600 hover:bg-slate-50"
               }`}
             >
               หน้าแรก
             </Link>
             <Link
               href="/search"
-              className={`px-3 py-2 text-sm font-medium transition-colors duration-200 ${
-                isActive("/search") ? "text-blue-700 font-bold" : "text-slate-600 hover:text-blue-600"
+              className={`px-3 py-2 rounded-xl text-xs xl:text-sm font-bold transition-all ${
+                isActive("/search") ? "text-blue-700 bg-blue-50/80" : "text-slate-600 hover:text-blue-600 hover:bg-slate-50"
               }`}
             >
               ค้นหาอสังหาฯ
             </Link>
             <Link
               href="/agents"
-              className={`px-3 py-2 text-sm font-medium transition-colors duration-200 ${
-                isActive("/agents") ? "text-blue-700 font-bold" : "text-slate-600 hover:text-blue-600"
+              className={`px-3 py-2 rounded-xl text-xs xl:text-sm font-bold transition-all ${
+                isActive("/agents") ? "text-blue-700 bg-blue-50/80" : "text-slate-600 hover:text-blue-600 hover:bg-slate-50"
               }`}
             >
               นายหน้าของเรา
             </Link>
             <Link
               href="/appointments"
-              className={`px-3 py-2 text-sm font-medium transition-colors duration-200 ${
-                isActive("/appointments") ? "text-blue-700 font-bold" : "text-slate-600 hover:text-blue-600"
+              className={`px-3 py-2 rounded-xl text-xs xl:text-sm font-bold transition-all ${
+                isActive("/appointments") ? "text-blue-700 bg-blue-50/80" : "text-slate-600 hover:text-blue-600 hover:bg-slate-50"
               }`}
             >
               ประวัติการนัดหมาย
             </Link>
           </div>
 
-          <div className="flex items-center space-x-4">
-            <div className="hidden md:flex items-center space-x-4">
-              {session ? (
-                <div className="flex items-center gap-3">
-                  <Link href="/profile" className="flex items-center space-x-2 py-1 hover:opacity-85 transition cursor-pointer">
-                    <img src={avatarUrl} alt="Profile" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = getInitialsAvatar(userFullName); }} className="w-8 h-8 rounded-full object-cover" />
-                    <div className="flex flex-col text-left">
-                      <span className="text-xs font-bold text-slate-800 leading-none">{userFullName}</span>
-                      <span className="text-[9px] text-blue-600 font-semibold uppercase tracking-wider mt-0.5">โปรไฟล์</span>
-                    </div>
-                  </Link>
-                  <button
-                    onClick={() => signOut({ callbackUrl: '/login' })}
-                    className="text-slate-500 hover:text-red-600 text-xs font-semibold transition cursor-pointer"
-                  >
-                    ออกจากระบบ
-                  </button>
-                </div>
-              ) : (
-                <>
+          {/* Desktop Right User Controls */}
+          <div className="hidden lg:flex items-center space-x-3">
+            {session ? (
+              <div className="flex items-center gap-2.5">
+                {userRole === 'admin' && (
                   <Link
-                    href="/login"
-                    className="text-slate-600 text-sm font-medium hover:text-blue-700 transition flex items-center gap-2"
+                    href="/admin/dashboard"
+                    className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-3 py-2 rounded-xl text-xs shadow-sm hover:shadow transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap active:scale-95"
                   >
-                    เข้าสู่ระบบ
+                    <span>⚡</span> แดชบอร์ดแอดมิน
                   </Link>
-                  <Link
-                    href="/register"
-                    className="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
-                  >
-                    สมัครสมาชิก
-                  </Link>
-                </>
-              )}
-            </div>
+                )}
 
+                <div className="h-6 w-px bg-slate-200 mx-1" />
+
+                <Link href="/profile" className="flex items-center gap-2 py-1 px-2 hover:bg-slate-50 rounded-xl transition cursor-pointer">
+                  <img 
+                    src={avatarUrl} 
+                    alt="Profile" 
+                    referrerPolicy="no-referrer" 
+                    onError={(e) => { e.currentTarget.src = getInitialsAvatar(userFullName); }} 
+                    className="w-8 h-8 rounded-full object-cover border border-slate-200 shadow-sm" 
+                  />
+                  <div className="flex flex-col text-left">
+                    <span className="text-xs font-bold text-slate-800 leading-none truncate max-w-[110px]">{userFullName}</span>
+                    <span className="text-[9px] text-blue-600 font-extrabold uppercase tracking-wider mt-0.5">
+                      {userRole === 'admin' ? 'ผู้ดูแลระบบ' : userRole === 'agent' ? 'นายหน้า' : 'สมาชิก'}
+                    </span>
+                  </div>
+                </Link>
+
+                <button
+                  onClick={() => signOut({ callbackUrl: '/login' })}
+                  className="px-2.5 py-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap"
+                  title="ออกจากระบบ"
+                >
+                  ออกจากระบบ
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/login"
+                  className="text-slate-700 hover:text-blue-700 text-xs font-bold px-3 py-2 rounded-xl hover:bg-slate-50 transition"
+                >
+                  เข้าสู่ระบบ
+                </Link>
+                <Link
+                  href="/register"
+                  className="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-xl text-xs font-extrabold transition shadow-md shadow-blue-700/10 active:scale-95 whitespace-nowrap"
+                >
+                  สมัครสมาชิก
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile Hamburger Toggle Button */}
+          <div className="flex items-center lg:hidden">
+            {session && userRole === 'admin' && (
+              <Link
+                href="/admin/dashboard"
+                className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black px-2.5 py-1.5 rounded-lg text-[10px] shadow-sm mr-2 flex items-center gap-1 cursor-pointer whitespace-nowrap"
+              >
+                ⚡ แอดมิน
+              </Link>
+            )}
+            
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="md:hidden text-slate-600 hover:text-blue-600 focus:outline-none"
+              className="p-2 text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded-xl focus:outline-none transition cursor-pointer"
             >
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {isOpen ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
                 ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16" />
                 )}
               </svg>
             </button>
           </div>
+
         </div>
       </div>
 
+      {/* Mobile Drawer Menu */}
       {isOpen && (
-        <div className="md:hidden bg-white border-t border-slate-100 absolute w-full shadow-lg">
-          <div className="px-4 pt-2 pb-6 space-y-2">
-            <Link
-              href="/"
-              onClick={() => setIsOpen(false)}
-              className={`block px-3 py-3 rounded-xl ${
-                isActive("/") ? "text-blue-700 font-bold bg-blue-50" : "text-slate-600 font-medium hover:bg-slate-50"
-              }`}
-            >
-              หน้าแรก
-            </Link>
-            <Link
-              href="/search"
-              onClick={() => setIsOpen(false)}
-              className={`block px-3 py-3 rounded-xl ${
-                isActive("/search") ? "text-blue-700 font-bold bg-blue-50" : "text-slate-600 font-medium hover:bg-slate-50"
-              }`}
-            >
-              ค้นหาอสังหาฯ
-            </Link>
-            <Link
-              href="/agents"
-              onClick={() => setIsOpen(false)}
-              className={`block px-3 py-3 rounded-xl ${
-                isActive("/agents") ? "text-blue-700 font-bold bg-blue-50" : "text-slate-600 font-medium hover:bg-slate-50"
-              }`}
-            >
-              นายหน้าของเรา
-            </Link>
-            <Link
-              href="/appointments"
-              onClick={() => setIsOpen(false)}
-              className={`block px-3 py-3 rounded-xl ${
-                isActive("/appointments") ? "text-blue-700 font-bold bg-blue-50" : "text-slate-600 font-medium hover:bg-slate-50"
-              }`}
-            >
-              ประวัติการนัดหมาย
-            </Link>
-            <div className="border-t border-slate-100 my-2 pt-2"></div>
-            {session ? (
-              <>
+        <div className="lg:hidden bg-white border-t border-slate-200/80 absolute w-full shadow-2xl animate-in slide-in-from-top-2 duration-200">
+          <div className="px-4 pt-3 pb-6 space-y-2">
+            
+            {session && (
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/60 mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <img 
+                    src={avatarUrl} 
+                    alt="Profile" 
+                    referrerPolicy="no-referrer" 
+                    onError={(e) => { e.currentTarget.src = getInitialsAvatar(userFullName); }} 
+                    className="w-10 h-10 rounded-full object-cover border border-slate-200" 
+                  />
+                  <div>
+                    <div className="font-extrabold text-xs text-slate-900">{userFullName}</div>
+                    <div className="text-[10px] text-blue-600 font-extrabold uppercase">
+                      {userRole === 'admin' ? 'ผู้ดูแลระบบ (Admin)' : userRole === 'agent' ? 'นายหน้าการขาย' : 'สมาชิกทั่วไป'}
+                    </div>
+                  </div>
+                </div>
                 <Link
                   href="/profile"
                   onClick={() => setIsOpen(false)}
-                  className="block px-3 py-2 text-slate-700 font-medium hover:bg-slate-50 rounded-xl"
+                  className="text-[10px] bg-white border border-slate-200 text-slate-700 font-bold px-2.5 py-1 rounded-lg hover:bg-slate-100 transition"
                 >
-                  👤 ตั้งค่าโปรไฟล์
+                  โปรไฟล์
                 </Link>
-                <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    signOut({ callbackUrl: '/login' });
-                  }}
-                  className="block w-full text-left px-3 py-2 text-red-600 font-bold hover:bg-red-50 rounded-xl cursor-pointer"
-                >
-                  🚪 ออกจากระบบ
-                </button>
-              </>
+              </div>
+            )}
+
+            {userRole === 'admin' && (
+              <Link
+                href="/admin/dashboard"
+                onClick={() => setIsOpen(false)}
+                className="block px-4 py-3 text-amber-950 bg-amber-400 font-black rounded-xl text-xs shadow-sm flex items-center gap-2 mb-2"
+              >
+                ⚡ หน้าควบคุมแอดมิน (Admin Dashboard)
+              </Link>
+            )}
+
+            <Link
+              href="/"
+              onClick={() => setIsOpen(false)}
+              className={`block px-4 py-3 rounded-xl text-xs font-extrabold transition ${
+                isActive("/") ? "text-blue-700 bg-blue-50" : "text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              🏠 หน้าแรก
+            </Link>
+
+            <Link
+              href="/search"
+              onClick={() => setIsOpen(false)}
+              className={`block px-4 py-3 rounded-xl text-xs font-extrabold transition ${
+                isActive("/search") ? "text-blue-700 bg-blue-50" : "text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              🔍 ค้นหาอสังหาริมทรัพย์
+            </Link>
+
+            <Link
+              href="/agents"
+              onClick={() => setIsOpen(false)}
+              className={`block px-4 py-3 rounded-xl text-xs font-extrabold transition ${
+                isActive("/agents") ? "text-blue-700 bg-blue-50" : "text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              👔 นายหน้าของเรา
+            </Link>
+
+            <Link
+              href="/appointments"
+              onClick={() => setIsOpen(false)}
+              className={`block px-4 py-3 rounded-xl text-xs font-extrabold transition ${
+                isActive("/appointments") ? "text-blue-700 bg-blue-50" : "text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              📅 ประวัติการนัดหมาย
+            </Link>
+
+            <div className="border-t border-slate-100 my-2 pt-2"></div>
+
+            {session ? (
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  signOut({ callbackUrl: '/login' });
+                }}
+                className="block w-full text-left px-4 py-3 text-red-600 bg-red-50/50 hover:bg-red-50 font-extrabold text-xs rounded-xl transition cursor-pointer"
+              >
+                🚪 ออกจากระบบ
+              </button>
             ) : (
-              <>
+              <div className="grid grid-cols-2 gap-2 pt-1">
                 <Link
                   href="/login"
                   onClick={() => setIsOpen(false)}
-                  className="block px-3 py-3 text-slate-600 font-medium text-center border border-slate-200 rounded-xl mb-2"
+                  className="block px-4 py-3 text-slate-700 font-bold text-center border border-slate-200 rounded-xl text-xs"
                 >
                   เข้าสู่ระบบ
                 </Link>
                 <Link
                   href="/register"
                   onClick={() => setIsOpen(false)}
-                  className="block px-3 py-3 bg-blue-700 text-white font-bold text-center rounded-xl shadow-md"
+                  className="block px-4 py-3 bg-blue-700 text-white font-extrabold text-center rounded-xl text-xs shadow-md"
                 >
                   สมัครสมาชิก
                 </Link>
-              </>
+              </div>
             )}
           </div>
         </div>
@@ -211,4 +283,5 @@ export default function Navbar() {
     </nav>
   );
 }
+
 

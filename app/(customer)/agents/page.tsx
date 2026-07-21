@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 
 interface Agent {
-  id: number;
+  id: string;
   name: string;
   avatar: string;
   role: string;
@@ -19,49 +19,27 @@ interface Agent {
 export default function AgentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const agents: Agent[] = [
-    {
-      id: 1,
-      name: "สมชาย นายหน้าดี",
-      avatar: "https://ui-avatars.com/api/?name=Somchai+Agent&background=1e40af&color=fff",
-      role: "ตัวแทนจำหน่ายบ้านเดี่ยวและพูลวิลล่า",
-      propertiesCount: 15,
-      rating: "4.9 (120 รีวิว)",
-      location: "หาดใหญ่",
-      phone: "089-123-4567",
-      email: "somchai@srichai.com",
-      isVerified: true
-    },
-    {
-      id: 2,
-      name: "วิภาดา จิตดี",
-      avatar: "https://ui-avatars.com/api/?name=Wipada+Agent&background=0d9488&color=fff",
-      role: "ตัวแทนจำหน่ายคอนโดมิเนียมและทาวน์โฮม",
-      propertiesCount: 8,
-      rating: "4.8 (85 รีวิว)",
-      location: "เมืองสงขลา",
-      phone: "081-987-6543",
-      email: "wipada@srichai.com",
-      isVerified: true
-    },
-    {
-      id: 3,
-      name: "เอกชัย มั่นคง",
-      avatar: "https://ui-avatars.com/api/?name=Ekkachai+Agent&background=d97706&color=fff",
-      role: "ตัวแทนจำหน่ายที่ดินและอสังหาฯ เชิงพาณิชย์",
-      propertiesCount: 22,
-      rating: "5.0 (150 รีวิว)",
-      location: "สะเดา",
-      phone: "086-555-4433",
-      email: "ekkachai@srichai.com",
-      isVerified: true
-    }
-  ];
+  React.useEffect(() => {
+    fetch('/api/agents')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && Array.isArray(data.agents)) {
+          setAgents(data.agents);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
+  }, []);
 
   const filteredAgents = agents.filter(agent => {
     const matchesSearch = agent.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesLocation = selectedLocation === '' || agent.location === selectedLocation;
+    const matchesLocation = selectedLocation === '' || agent.location.includes(selectedLocation);
     return matchesSearch && matchesLocation;
   });
 

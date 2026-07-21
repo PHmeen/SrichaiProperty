@@ -22,14 +22,22 @@ export default function PropertyDetailPage() {
   // ค้นหารอยการอสังหาฯ ที่มีรหัสไอดีตรงกัน
   const property = properties.find(p => String(p.id) === String(id)) || properties[0];
 
-  // อาเรย์รูปภาพสำหรับแสดงแผงแกลเลอรี
-  const images = property ? [
+  // อาเรย์รูปภาพทั้งหมด 10 รูปสำหรับแกลเลอรี
+  const galleryImages = property ? [
     property.image,
-    "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
+    "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1200&q=80"
   ] : [];
+
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   // === 2. โครงสร้างสถานะและการคำนวณของเครื่องคำนวณสินเชื่อ (Mortgage Calculator) ===
   const numericPrice = property ? (parseInt(property.price.replace(/[^\d]/g, '')) || 0) : 0;
@@ -116,24 +124,42 @@ export default function PropertyDetailPage() {
       {/* 📦 เนื้อหาหลักแสดงรูปและส่วนจอง */}
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-8">
         
-        {/* Photo Gallery Grid */}
+        {/* Photo Gallery Grid (Clickable) */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 rounded-3xl overflow-hidden shadow-sm relative border border-slate-200/40 bg-white">
-          <div className="md:col-span-2 md:row-span-2 relative aspect-[4/3] md:aspect-auto">
-            <Image src={images[0]} alt="รูปหลัก" width={600} height={450} className="w-full h-full object-cover" />
+          <div 
+            onClick={() => { setSelectedImageIndex(0); setIsGalleryOpen(true); }}
+            className="md:col-span-2 md:row-span-2 relative aspect-[4/3] md:aspect-auto cursor-pointer group"
+          >
+            <Image src={galleryImages[0]} alt="รูปหลัก" width={600} height={450} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            <div className="absolute bottom-3 left-3 bg-slate-900/70 text-white text-[10px] px-3 py-1 rounded-full font-bold backdrop-blur-md md:hidden">
+              📷 1 / {galleryImages.length} รูป
+            </div>
           </div>
-          <div className="hidden md:block relative aspect-[4/3] overflow-hidden">
-            <Image src={images[1]} alt="รูปประกอบ 1" width={300} height={225} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+          <div 
+            onClick={() => { setSelectedImageIndex(1); setIsGalleryOpen(true); }}
+            className="hidden md:block relative aspect-[4/3] overflow-hidden cursor-pointer group"
+          >
+            <Image src={galleryImages[1]} alt="รูปประกอบ 1" width={300} height={225} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
           </div>
-          <div className="hidden md:block relative aspect-[4/3] overflow-hidden">
-            <Image src={images[2]} alt="รูปประกอบ 2" width={300} height={225} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+          <div 
+            onClick={() => { setSelectedImageIndex(2); setIsGalleryOpen(true); }}
+            className="hidden md:block relative aspect-[4/3] overflow-hidden cursor-pointer group"
+          >
+            <Image src={galleryImages[2]} alt="รูปประกอบ 2" width={300} height={225} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
           </div>
-          <div className="hidden md:block relative aspect-[4/3] overflow-hidden">
-            <Image src={images[3]} alt="รูปประกอบ 3" width={300} height={225} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+          <div 
+            onClick={() => { setSelectedImageIndex(3); setIsGalleryOpen(true); }}
+            className="hidden md:block relative aspect-[4/3] overflow-hidden cursor-pointer group"
+          >
+            <Image src={galleryImages[3]} alt="รูปประกอบ 3" width={300} height={225} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
           </div>
-          <div className="hidden md:block relative aspect-[4/3] overflow-hidden">
-            <Image src={images[4]} alt="รูปประกอบ 4" width={300} height={225} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500 opacity-80" />
-            <div className="absolute inset-0 bg-slate-950/40 flex items-center justify-center text-white font-extrabold text-xs">
-              + ดูทั้งหมด 10 รูป
+          <div 
+            onClick={() => { setSelectedImageIndex(4); setIsGalleryOpen(true); }}
+            className="hidden md:block relative aspect-[4/3] overflow-hidden cursor-pointer group"
+          >
+            <Image src={galleryImages[4]} alt="รูปประกอบ 4" width={300} height={225} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80" />
+            <div className="absolute inset-0 bg-slate-950/50 hover:bg-slate-950/60 transition-colors flex items-center justify-center text-white font-extrabold text-xs tracking-wide">
+              🖼️ + ดูทั้งหมด {galleryImages.length} รูป
             </div>
           </div>
         </div>
@@ -408,6 +434,72 @@ export default function PropertyDetailPage() {
 
         </div>
       </main>
+
+      {/* 🖼️ Fullscreen Interactive Image Gallery Lightbox Modal */}
+      {isGalleryOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-xl flex flex-col justify-between p-4 sm:p-6 transition-all duration-300"
+          onClick={() => setIsGalleryOpen(false)}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between text-white z-10 max-w-6xl mx-auto w-full pt-2" onClick={(e) => e.stopPropagation()}>
+            <div>
+              <h3 className="font-extrabold text-sm sm:text-base text-white truncate max-w-xs sm:max-w-md">{property.title}</h3>
+              <p className="text-[11px] text-slate-400 font-medium">รูปภาพที่ {selectedImageIndex + 1} จากทั้งหมด {galleryImages.length} รูป</p>
+            </div>
+            <button 
+              onClick={() => setIsGalleryOpen(false)}
+              className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center font-bold text-lg transition-colors cursor-pointer border border-white/10"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Main Display Image */}
+          <div className="relative flex-1 flex items-center justify-center my-4 max-w-5xl mx-auto w-full" onClick={(e) => e.stopPropagation()}>
+            <button 
+              onClick={() => setSelectedImageIndex((prev) => (prev > 0 ? prev - 1 : galleryImages.length - 1))}
+              className="absolute left-2 sm:-left-12 z-20 w-12 h-12 rounded-full bg-slate-900/80 hover:bg-blue-600 text-white flex items-center justify-center font-bold text-xl transition-all border border-slate-700 shadow-xl cursor-pointer"
+            >
+              ‹
+            </button>
+
+            <div className="relative w-full h-full max-h-[70vh] flex items-center justify-center rounded-2xl overflow-hidden shadow-2xl">
+              <Image 
+                src={galleryImages[selectedImageIndex]} 
+                alt={`รูปภาพที่ ${selectedImageIndex + 1}`}
+                width={1200}
+                height={800}
+                className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
+              />
+            </div>
+
+            <button 
+              onClick={() => setSelectedImageIndex((prev) => (prev < galleryImages.length - 1 ? prev + 1 : 0))}
+              className="absolute right-2 sm:-right-12 z-20 w-12 h-12 rounded-full bg-slate-900/80 hover:bg-blue-600 text-white flex items-center justify-center font-bold text-xl transition-all border border-slate-700 shadow-xl cursor-pointer"
+            >
+              ›
+            </button>
+          </div>
+
+          {/* Bottom Thumbnails Strip */}
+          <div className="max-w-4xl mx-auto w-full overflow-x-auto pb-2 z-10 scrollbar-thin" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-center gap-2 px-2">
+              {galleryImages.map((imgUrl, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setSelectedImageIndex(idx)}
+                  className={`relative w-16 h-12 sm:w-20 sm:h-14 rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 cursor-pointer ${
+                    selectedImageIndex === idx ? 'border-blue-500 scale-105 shadow-md shadow-blue-500/30 ring-2 ring-blue-400/50' : 'border-transparent opacity-50 hover:opacity-100'
+                  }`}
+                >
+                  <Image src={imgUrl} alt={`Thumbnail ${idx + 1}`} width={80} height={60} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

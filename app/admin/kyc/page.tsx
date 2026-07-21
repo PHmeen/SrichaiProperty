@@ -187,9 +187,32 @@ export default function AdminKycPage() {
                        {/* KYC Doc Image */}
                        <div className="relative min-w-[320px] max-w-[400px] h-[240px] rounded-xl border border-slate-200 bg-slate-50 overflow-hidden group">
                          <div className="absolute top-3 left-3 bg-slate-900/70 backdrop-blur-sm text-white text-[9px] font-bold px-2 py-1 rounded-md z-10">ภาพถ่ายบัตรประชาชน</div>
-                         {agent.kyc_doc ? (
-                           <Image src={agent.kyc_doc} alt="KYC Document" width={400} height={240} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                         ) : (
+                          {agent.kyc_doc ? (
+                            agent.kyc_doc.toLowerCase().endsWith('.pdf') ? (
+                              <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-slate-100 text-center space-y-2">
+                                <span className="text-4xl">📄</span>
+                                <span className="text-xs font-bold text-slate-700">ไฟล์เอกสาร PDF</span>
+                                <a 
+                                  href={agent.kyc_doc} 
+                                  target="_blank" 
+                                  rel="noreferrer"
+                                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-bold transition shadow-sm"
+                                >
+                                  เปิดดูไฟล์ PDF ↗
+                                </a>
+                              </div>
+                            ) : (
+                              <img 
+                                src={agent.kyc_doc} 
+                                alt="KYC Document" 
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src = "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80";
+                                }}
+                              />
+                            )
+                          ) : (
                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
                              <span className="text-4xl mb-2">📸</span>
                              <span className="text-xs font-bold">ไม่มีไฟล์เอกสาร</span>
@@ -201,7 +224,15 @@ export default function AdminKycPage() {
                        <div className="relative min-w-[200px] max-w-[280px] h-[240px] rounded-xl border border-slate-200 bg-slate-50 overflow-hidden group">
                          <div className="absolute top-3 left-3 bg-slate-900/70 backdrop-blur-sm text-white text-[9px] font-bold px-2 py-1 rounded-md z-10">ภาพถ่ายหน้าตัวเอง</div>
                          {agent.profile_image ? (
-                           <Image src={agent.profile_image} alt="Selfie" width={280} height={240} className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500" />
+                           <img 
+                             src={agent.profile_image} 
+                             alt="Selfie" 
+                             className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500" 
+                             onError={(e) => {
+                               e.currentTarget.onerror = null;
+                               e.currentTarget.src = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80";
+                             }}
+                           />
                          ) : (
                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
                              <span className="text-4xl mb-2">👤</span>

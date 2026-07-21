@@ -12,7 +12,7 @@ async function main() {
   console.log("🌱 Creating default admin account...");
   
   const email = "admin@srichaiproperty.com";
-  const password = "adminpassword123";
+  const password = "1234";
   const passwordHash = await bcrypt.hash(password, 10);
 
   const adminUser = await prisma.users.upsert({
@@ -21,6 +21,7 @@ async function main() {
       role_id: "admin",
       status: "approved",
       is_verified: true,
+      password_hash: passwordHash,
     },
     create: {
       email,

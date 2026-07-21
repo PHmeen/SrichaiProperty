@@ -31,7 +31,15 @@ export default function AgentLoginPage() {
         setErrorMsg(res.error);
         setIsLoading(false);
       } else {
-        window.location.href = '/agent/home';
+        const sessionRes = await fetch('/api/auth/session');
+        const sessionData = await sessionRes.json();
+        const role = sessionData?.user?.role;
+
+        if (role === 'admin') {
+          window.location.href = '/admin/dashboard';
+        } else {
+          window.location.href = '/agent/home';
+        }
       }
     } catch {
       setErrorMsg("ไม่สามารถเชื่อมต่อระบบความปลอดภัยหลังบ้านได้");

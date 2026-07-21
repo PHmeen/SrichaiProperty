@@ -45,13 +45,13 @@ async function main() {
   for (const p of packagesData) await prisma.listing_packages.upsert({ where: { id: p.id }, update: { name: p.name, price: p.price }, create: p });
 
   // 2. Users (Admin, Agents, Customers)
-  const passAdmin = await bcrypt.hash("adminpassword123", 10);
+  const passAdmin = await bcrypt.hash("1234", 10);
   const passAgent = await bcrypt.hash("agentpassword123", 10);
   const passCust = await bcrypt.hash("customerpassword123", 10);
 
   const admin = await prisma.users.upsert({
     where: { email: "admin@srichaiproperty.com" },
-    update: { role_id: "admin", status: "approved" },
+    update: { role_id: "admin", status: "approved", password_hash: passAdmin },
     create: { email: "admin@srichaiproperty.com", password_hash: passAdmin, first_name: "ผู้ดูแลระบบ", last_name: "ศรีชัย", phone: "0899999999", role_id: "admin", status: "approved", is_verified: true }
   });
 
@@ -70,7 +70,7 @@ async function main() {
   const agent3 = await prisma.users.upsert({
     where: { email: "theeradech.agent@srichaiproperty.com" },
     update: { role_id: "agent" },
-    create: { email: "theeradech.agent@srichaiproperty.com", password_hash: passAgent, first_name: "ธีรเดช", last_name: "มั่งคั่ง", phone: "0834567890", role_id: "agent", status: "pending", is_verified: false, kyc_doc: "https://example.com/kyc.pdf" }
+    create: { email: "theeradech.agent@srichaiproperty.com", password_hash: passAgent, first_name: "ธีรเดช", last_name: "มั่งคั่ง", phone: "0834567890", role_id: "agent", status: "pending", is_verified: false, kyc_doc: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80" }
   });
 
   const cust1 = await prisma.users.upsert({

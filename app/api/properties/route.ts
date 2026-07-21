@@ -87,33 +87,65 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { title, price, type, location, description, bedrooms, bathrooms, areaSqm, agentId } = body;
+    const {
+      title, price, type_id, type, location, description,
+      bedrooms, bathrooms, area_sqm, areaSqm, agentId,
+      province_id, amphure_id, district_id, latitude, longitude, images
+    } = body;
 
-    if (!title || !price || !type || !location || !agentId) {
+    if (!title || !price || (!type_id && !type) || !location) {
       return NextResponse.json(
-        { error: "กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน" },
+        { error: "กรุณากรอกข้อมูลที่จำเป็น (*) ให้ครบถ้วน" },
         { status: 400 }
       );
     }
 
+    // หา agent_id จาก body หรือดึงนายหน้าคนแรกใน DB มาผูกมัด
+    let validAgentId = agentId;
+    if (!validAgentId) {
+      const firstAgent = await db.users.findFirst({ where: { role_id: "agent" } });
+      validAgentId = firstAgent?.id || "admin";
+    }
+
+    const resolvedTypeId = type_id ? parseInt(type_id) : (type === "house" ? 1 : type === "townhome" ? 2 : 3);
+    const resolvedArea = parseFloat(area_sqm || areaSqm || 100);
+
+    // 1. สร้างรายการในตาราง properties
     const newProperty = await db.properties.create({
       data: {
         title,
         price: parseFloat(price),
-        type_id: type === "house" ? 1 : type === "townhome" ? 2 : 3,
+        type_id: resolvedTypeId,
         location,
-        description,
+        description: description || "",
         bedrooms: parseInt(bedrooms) || 1,
         bathrooms: parseInt(bathrooms) || 1,
-        area_sqm: parseFloat(areaSqm) || null,
-        status: "pending", // รอการตรวจอนุมัติเพื่อความปลอดภัยของระบบจริง
-        agent_id: agentId
+        area_sqm: resolvedArea,
+        status: "pending", // รอแอดมินอนุมัติใน Admin Moderation Queue
+        agent_id: validAgentId,
+        province_id: province_id ? parseInt(province_id) : 70,
+        amphure_id: amphure_id ? parseInt(amphure_id) : 9011,
+        district_id: district_id ? parseInt(district_id) : 901101,
+        latitude: latitude ? parseFloat(latitude) : 7.0089,
+        longitude: longitude ? parseFloat(longitude) : 100.4812
       }
     });
+
+    // 2. บันทึกรูปภาพเข้าตาราง property_images ถ้ามีการส่งรูปภาพมา
+    if (Array.isArray(images) && images.length > 0) {
+      await db.property_images.createMany({
+        data: images.map((imgUrl: string, index: number) => ({
+          property_id: newProperty.id,
+          image_url: imgUrl,
+          order_index: index
+        }))
+      });
+    }
 
     return NextResponse.json({ success: true, data: newProperty });
   } catch (error) {
     const err = error as Error;
+    console.error("Error creating property:", err);
     return NextResponse.json(
       { error: "เกิดข้อผิดพลาดในการลงประกาศขายบ้าน: " + err.message },
       { status: 500 }
