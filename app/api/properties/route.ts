@@ -12,7 +12,14 @@ export async function GET() {
           select: {
             first_name: true,
             last_name: true,
-            email: true
+            email: true,
+            plan_type: true,
+            plan_expired_at: true
+          }
+        },
+        listing_package_orders: {
+          where: {
+            status: "active"
           }
         },
         property_types: true,
@@ -34,14 +41,18 @@ export async function GET() {
     const formattedProperties = properties.map((p) => {
       const fullName = p.users ? `${p.users.first_name} ${p.users.last_name}` : "ไม่ระบุตัวแทน";
       const mainImage = p.property_images[0]?.image_url || "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80";
-      const isPremium = Number(p.price) > 7000000;
       
+      // อสังหาริมทรัพย์พรีเมียมเฉพาะนายหน้าที่ซื้อแพ็กเกจดันประกาศ (active) หรือเป็นสมาชิกแผน Premium/Pro
+      const hasActivePackage = p.listing_package_orders && p.listing_package_orders.length > 0;
+      const hasActivePlan = p.users?.plan_type && p.users.plan_type !== "basic";
+      const isPremium = Boolean(hasActivePackage || hasActivePlan);
+
       return {
         id: p.id,
         title: p.title,
         price: "฿" + Number(p.price).toLocaleString(),
         type: p.property_types?.name || "อสังหาริมทรัพย์",
-        tag: isPremium ? "ทรัพย์แนะนำ" : "ทรัพย์ทั่วไป",
+        tag: isPremium ? "ทรัพย์แนะนำ (พรีเมียม)" : "ทรัพย์ทั่วไป",
         tagBg: isPremium ? "bg-amber-600" : "bg-blue-600",
         location: "📍 " + p.location,
         bedrooms: p.bedrooms || 0,

@@ -55,11 +55,8 @@ async function main() {
     name_en: p.name_en
   }));
 
-  console.log("ล้างข้อมูลจังหวัดเดิม...");
-  await db.provinces.deleteMany({});
-  
   console.log(`บันทึก ${provincesData.length} จังหวัดลงฐานข้อมูล...`);
-  await db.provinces.createMany({ data: provincesData });
+  await db.provinces.createMany({ data: provincesData, skipDuplicates: true });
   console.log("จังหวัดนำเข้าสำเร็จ");
 
   // 2. นำเข้าอำเภอ (Amphures)
@@ -73,11 +70,8 @@ async function main() {
     province_id: a.province_id
   }));
 
-  console.log("ล้างข้อมูลอำเภอเดิม...");
-  await db.amphures.deleteMany({});
-
   console.log(`บันทึก ${amphuresData.length} อำเภอลงฐานข้อมูล...`);
-  await db.amphures.createMany({ data: amphuresData });
+  await db.amphures.createMany({ data: amphuresData, skipDuplicates: true });
   console.log("อำเภอนำเข้าสำเร็จ");
 
   // 3. นำเข้าตำบล (Districts / Sub-districts)
@@ -92,15 +86,12 @@ async function main() {
     amphure_id: d.district_id // แมปฟิลด์รหัสอำเภอจาก JSON เข้าคอลัมน์ใน DB
   }));
 
-  console.log("ล้างข้อมูลตำบลเดิม...");
-  await db.districts.deleteMany({});
-
   // ทำการแยกบันทึกข้อมูลตำบลเป็นชุดย่อย (Chunks) ชุดละ 1000 รายการ เพื่อไม่ให้เกินข้อจำกัดของ Query Parameters ใน Postgres
   const chunkSize = 1000;
   console.log(`บันทึก ${districtsData.length} ตำบลลงฐานข้อมูล (แบ่งทำงานชุดละ ${chunkSize} แถว)...`);
   for (let i = 0; i < districtsData.length; i += chunkSize) {
     const chunk = districtsData.slice(i, i + chunkSize);
-    await db.districts.createMany({ data: chunk });
+    await db.districts.createMany({ data: chunk, skipDuplicates: true });
     console.log(`บันทึกข้อมูลกลุ่มย่อยที่ ${i / chunkSize + 1} (${i + chunk.length}/${districtsData.length})`);
   }
 

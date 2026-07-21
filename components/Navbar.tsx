@@ -32,7 +32,7 @@ export default function Navbar() {
     <nav className="fixed w-full z-50 top-0 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm transition-all duration-300">
       <div className="max-w-5xl mx-auto px-4">
         <div className="flex justify-between items-center h-16">
-          <Link href="/home" className="flex-shrink-0 flex items-center gap-2 cursor-pointer group">
+          <Link href="/" className="flex-shrink-0 flex items-center gap-2 cursor-pointer group">
             <div className="w-8 h-8 bg-blue-700 rounded-lg flex items-center justify-center text-white font-bold text-lg">
               S
             </div>
@@ -43,7 +43,7 @@ export default function Navbar() {
 
           <div className="hidden md:flex space-x-2 items-center">
             <Link
-              href="/home"
+              href="/"
               className={`px-3 py-2 text-sm font-medium transition-colors duration-200 ${
                 isActive("/") ? "text-blue-700 font-bold" : "text-slate-600 hover:text-blue-600"
               }`}
@@ -132,7 +132,7 @@ export default function Navbar() {
         <div className="md:hidden bg-white border-t border-slate-100 absolute w-full shadow-lg">
           <div className="px-4 pt-2 pb-6 space-y-2">
             <Link
-              href="/home"
+              href="/"
               onClick={() => setIsOpen(false)}
               className={`block px-3 py-3 rounded-xl ${
                 isActive("/") ? "text-blue-700 font-bold bg-blue-50" : "text-slate-600 font-medium hover:bg-slate-50"
