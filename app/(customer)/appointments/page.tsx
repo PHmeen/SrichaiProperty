@@ -1,25 +1,17 @@
 'use client';
 
-// === หน้ารายการประวัติการนัดหมาย (Appointments Page) ===
-// เหมาะสำหรับมือใหม่: แสดงวิธีการจัดหมวดหมู่ข้อมูลด้วยแท็บ (Tabs Filter) และเชื่อมระบบยกเลิกนัดผ่าน Context
-
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { useApp } from '@/context/AppContext';
 
 export default function AppointmentsPage() {
-  // === 1. ตัวแปรสำหรับเปลี่ยนแท็บเมนู ===
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'cancelled'>('upcoming');
-
-  // === 2. ดึงรายการนัดหมายจากระบบ Context ===
   const { appointments, cancelAppointment } = useApp();
 
-  // คำนวณจำนวนนัดหมายที่ยังไม่เกิดขึ้นจริง (สำหรับแสดงเลขสีแดงที่ป้ายสัญลักษณ์)
   const upcomingCount = appointments.filter(
     apt => apt.status === 'upcoming' || apt.status === 'pending'
   ).length;
 
-  // ฟังก์ชันย่อย: แสดงสีและข้อความของสถานะให้เหมาะสม
   const getStatusDetails = (status: string) => {
     switch (status) {
       case 'upcoming':
@@ -33,7 +25,6 @@ export default function AppointmentsPage() {
     }
   };
 
-  // กรองนัดหมายตามแท็บที่เลือกขณะนั้น
   const filteredAppointments = appointments.filter(apt => {
     if (activeTab === 'upcoming') {
       return apt.status === 'upcoming' || apt.status === 'pending';
@@ -43,7 +34,6 @@ export default function AppointmentsPage() {
 
   return (
     <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm flex flex-col">
-      {/* หัวข้อย่อยของหน้าการนัดหมาย */}
       <div className="pt-8 pb-6 bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-3">
           <span className="text-2xl bg-amber-100 text-amber-500 w-12 h-12 flex items-center justify-center rounded-xl shadow-sm">📅</span>
@@ -55,8 +45,6 @@ export default function AppointmentsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-grow">
-        
-        {/* เมนูแถบแท็บการสลับมุมมอง */}
         <div className="flex space-x-3 mb-6 border-b border-slate-200 pb-1">
           <button 
             onClick={() => setActiveTab('upcoming')} 
@@ -81,7 +69,6 @@ export default function AppointmentsPage() {
           </button>
         </div>
 
-        {/* ส่วนแสดงรายการนัดหมายแต่ละชิ้น */}
         <div className="space-y-4">
           {filteredAppointments.length === 0 ? (
             <div className="text-center py-10 bg-white border border-slate-100 rounded-2xl text-slate-400">
@@ -99,7 +86,6 @@ export default function AppointmentsPage() {
                   key={apt.id} 
                   className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 hover:shadow-md transition relative overflow-hidden"
                 >
-                  {/* แสดงกล่องปฏิทิน และรูปภาพอสังหาฯ ทางซ้าย */}
                   <div className="flex gap-4 items-center w-full md:w-1/3">
                     <div className="w-16 h-20 bg-slate-50 rounded-xl border border-slate-100 flex flex-col items-center justify-center flex-shrink-0 shadow-inner">
                       <span className="text-[10px] font-bold text-red-500 uppercase">{monthStr}</span>
@@ -112,7 +98,6 @@ export default function AppointmentsPage() {
                     </div>
                   </div>
 
-                  {/* แสดงข้อมูลอสังหาฯ และนายหน้าที่ดูแล */}
                   <div className="flex-1 space-y-1">
                     <span className={`inline-block px-2 py-0.5 rounded border text-[9px] font-bold ${statusDetails.bg} ${statusDetails.color}`}>
                       {statusDetails.text}
@@ -125,7 +110,6 @@ export default function AppointmentsPage() {
                     </div>
                   </div>
 
-                  {/* ปุ่มคำสั่งจัดการการนัดหมายทางขวา */}
                   <div className="flex items-center justify-end gap-2 border-t md:border-t-0 pt-3 md:pt-0">
                     <button className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-xs transition cursor-pointer">
                       ดูรายละเอียด

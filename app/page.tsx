@@ -16,7 +16,6 @@ export default function Home() {
   const [propertyType, setPropertyType] = useState('');
   const { properties, favorites, toggleFavorite } = useApp();
 
-  // หากตรวจพบว่าผู้ใช้งานเข้าระบบอยู่แล้ว ให้พาไปยังหน้าแรกฝั่งลูกค้าที่ล็อกอินทันที
   useEffect(() => {
     if (status === 'authenticated') {
       router.replace('/home');
@@ -34,7 +33,6 @@ export default function Home() {
     <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm">
       <Navbar />
 
-      {/* Hero Header */}
       <header className="relative pt-24 pb-16 lg:pt-32 lg:pb-20 overflow-hidden flex items-center justify-center min-h-[55vh]">
         <div 
           className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-[10000ms] hover:scale-105" 
@@ -50,72 +48,78 @@ export default function Home() {
             Srichai Property Agents ศูนย์รวมอสังหาริมทรัพย์คุณภาพ พร้อมระบบจองนัดหมายเข้าชมและแชทกับนายหน้าโดยตรง
           </p>
 
-          {/* Search Box Panel */}
-          <div className="w-full max-w-3xl glass-panel rounded-2xl p-2.5 shadow-xl">
-            <div className="flex space-x-1.5 mb-2.5 px-1 pt-1">
+          <div className="w-full max-w-3xl bg-white border border-slate-200 shadow-sm rounded-2xl p-4">
+            <div className="flex space-x-1 mb-4 bg-slate-100 p-1 rounded-lg w-fit border border-slate-200">
               <button 
                 onClick={() => setActiveTab("buy")} 
-                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-                  activeTab === "buy" ? "bg-blue-700 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"
+                className={`px-5 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 ${
+                  activeTab === "buy" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
                 }`}
               >
                 ซื้อ
               </button>
               <button 
                 onClick={() => setActiveTab("rent")} 
-                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-                  activeTab === "rent" ? "bg-blue-700 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"
+                className={`px-5 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 ${
+                  activeTab === "rent" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
                 }`}
               >
                 เช่า
               </button>
               <button 
                 onClick={() => setActiveTab("sell")} 
-                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-                  activeTab === "sell" ? "bg-blue-700 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"
+                className={`px-5 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 ${
+                  activeTab === "sell" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
                 }`}
               >
                 ขาย
               </button>
             </div>
 
-            <div className="flex flex-col md:flex-row gap-2">
-              <div className="flex-1 bg-white rounded-xl flex items-center px-3 border border-slate-200 focus-within:ring-2 focus-within:ring-blue-500 shadow-sm transition-all">
-                <span className="text-xl mr-1.5">📍</span>
-                <input 
-                  type="text" 
-                  value={locationInput}
-                  onChange={(e) => setLocationInput(e.target.value)}
-                  placeholder="ค้นหาทำเล เช่น หาดใหญ่, สงขลา..." 
-                  className="w-full py-2.5 bg-transparent focus:outline-none text-slate-800 font-medium text-xs outline-none"
-                />
+            <div className="flex flex-col md:flex-row items-stretch bg-slate-50 rounded-xl border border-slate-200 p-1 gap-1.5 transition-all duration-200">
+              
+              <div className="flex-1 flex items-center px-4 py-2 rounded-lg transition-all duration-200 group">
+                <div className="flex flex-col text-left w-full">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">ทำเลที่ตั้ง</span>
+                  <input 
+                    type="text" 
+                    value={locationInput}
+                    onChange={(e) => setLocationInput(e.target.value)}
+                    placeholder="หาดใหญ่, สงขลา, สะเดา..." 
+                    className="w-full bg-transparent focus:outline-none text-slate-800 font-semibold text-sm outline-none placeholder:text-slate-400"
+                  />
+                </div>
               </div>
               
-              <div className="md:w-40 bg-white rounded-xl flex items-center px-3 border border-slate-200 focus-within:ring-2 focus-within:ring-blue-500 shadow-sm transition-all">
-                <span className="text-lg mr-1.5">🏠</span>
-                <select 
-                  value={propertyType}
-                  onChange={(e) => setPropertyType(e.target.value)}
-                  className="w-full py-2.5 bg-transparent focus:outline-none text-slate-800 font-medium text-xs cursor-pointer outline-none"
-                >
-                  <option value="">ทุกประเภท</option>
-                  <option value="house">บ้านเดี่ยว</option>
-                  <option value="townhome">ทาวน์โฮม</option>
-                  <option value="condo">คอนโดมิเนียม</option>
-                </select>
+              <div className="hidden md:block w-px h-10 bg-slate-200 self-center" />
+              
+              <div className="md:w-48 flex items-center px-4 py-2 rounded-lg transition-all duration-200 group select-none">
+                <div className="flex flex-col text-left w-full">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">ประเภทอสังหาฯ</span>
+                  <select 
+                    value={propertyType}
+                    onChange={(e) => setPropertyType(e.target.value)}
+                    className="w-full bg-transparent focus:outline-none text-slate-800 font-semibold text-sm cursor-pointer outline-none"
+                  >
+                    <option value="">ทุกประเภท</option>
+                    <option value="house">บ้านเดี่ยว</option>
+                    <option value="townhome">ทาวน์โฮม</option>
+                    <option value="condo">คอนโดมิเนียม</option>
+                  </select>
+                </div>
               </div>
 
               {activeTab === "sell" ? (
                 <Link
                   href="/register"
-                  className="bg-blue-700 hover:bg-blue-800 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow w-full md:w-auto flex items-center justify-center text-xs"
+                  className="bg-blue-700 hover:bg-blue-800 text-white rounded-lg px-8 font-semibold transition-colors duration-200 flex items-center justify-center text-sm w-full md:w-auto h-full min-h-[48px] self-stretch"
                 >
                   ลงประกาศฟรี
                 </Link>
               ) : (
                 <Link
                   href={`/search?tab=${activeTab}&q=${encodeURIComponent(locationInput)}&type=${propertyType}`}
-                  className="bg-blue-700 hover:bg-blue-800 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow w-full md:w-auto flex items-center justify-center text-xs"
+                  className="bg-blue-700 hover:bg-blue-800 text-white rounded-lg px-8 font-semibold transition-colors duration-200 flex items-center justify-center text-sm w-full md:w-auto h-full min-h-[48px] self-stretch"
                 >
                   ค้นหาเลย
                 </Link>
@@ -125,7 +129,6 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Popular Locations Section */}
       <section className="py-10 bg-white">
         <div className="max-w-5xl mx-auto px-4">
           <div className="mb-6">
@@ -158,7 +161,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured Properties Section */}
       <section className="py-10 bg-slate-50 border-t border-slate-200">
         <div className="max-w-5xl mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-end mb-6 gap-2">
@@ -174,7 +176,6 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* Properties Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {properties.map((prop) => {
               const isFav = favorites.includes(prop.id);
@@ -183,7 +184,6 @@ export default function Home() {
                   key={prop.id}
                   className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 border border-slate-100 relative group cursor-pointer"
                 >
-                  {/* Heart Button */}
                   <button 
                     onClick={(e) => {
                       e.preventDefault();
@@ -206,7 +206,6 @@ export default function Home() {
                     </svg>
                   </button>
                   
-                  {/* Tags */}
                   <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5">
                     <span className={`${prop.tagBg} text-white px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-sm`}>
                       {prop.tag}
@@ -216,7 +215,6 @@ export default function Home() {
                     </span>
                   </div>
                   
-                  {/* Image */}
                   <div className="relative h-44 overflow-hidden">
                     <Image 
                       src={prop.image} 
@@ -227,13 +225,11 @@ export default function Home() {
                     />
                   </div>
 
-                  {/* Info Details */}
                   <div className="p-4">
                     <div className="text-xl font-extrabold text-blue-700 mb-1">{prop.price}</div>
                     <h3 className="text-sm font-bold text-slate-900 mb-1 line-clamp-1">{prop.title}</h3>
                     <p className="text-slate-500 text-xs mb-4 flex items-center">{prop.location}</p>
                     
-                    {/* Icons Grid */}
                     <div className="flex items-center justify-between text-slate-600 border-t border-b border-slate-100 py-2.5 mb-3 bg-slate-50 px-3 rounded-lg text-xs">
                       <span>🛏️ {prop.bedrooms}</span>
                       <div className="w-px h-5 bg-slate-200" />
@@ -242,7 +238,6 @@ export default function Home() {
                       <span>📏 {prop.area} ตร.ม.</span>
                     </div>
 
-                    {/* Agent Section */}
                     <div className="flex items-center gap-2">
                       <Image 
                         src={prop.agentImage} 
@@ -264,7 +259,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="bg-slate-900 text-slate-400 py-8 border-t border-slate-800">
         <div className="max-w-5xl mx-auto px-4 text-center">
           <p className="text-xs">&copy; 2026 Srichai Property Agents. All rights reserved.</p>

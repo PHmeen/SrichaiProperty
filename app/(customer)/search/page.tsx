@@ -1,10 +1,5 @@
 'use client';
 
-/**
- * SearchPage.tsx - หน้าค้นหาและกรองรายการอสังหาริมทรัพย์ทั้งหมด
- * แยกชิ้นส่วนแยกย่อยออกเป็น Sub-components เพื่อให้โค้ดสั้น สะอาดตา และเข้าใจง่ายที่สุด
- */
-
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
@@ -15,7 +10,6 @@ function SearchPageContent() {
   const searchParams = useSearchParams();
   const resultsRef = React.useRef<HTMLDivElement>(null);
 
-  // เลื่อนหน้าจอไปยังส่วนผลลัพธ์การค้นหา
   const triggerSearch = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (resultsRef.current) {
@@ -23,13 +17,11 @@ function SearchPageContent() {
     }
   };
 
-  // === 1. ตัวแปรสถานะสำหรับการกรองข้อมูล (Filter States) ===
   const [activeTab, setActiveTab] = useState<'buy' | 'rent'>('buy');
   const [propertyType, setPropertyType] = useState('all');
   const [priceRange, setPriceRange] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // ตัวกรองขั้นสูง (Advanced Filters)
   const [priceMin, setPriceMin] = useState('');
   const [priceMax, setPriceMax] = useState('');
   const [bedrooms, setBedrooms] = useState<string>('any');
@@ -42,7 +34,6 @@ function SearchPageContent() {
 
   const [sortBy, setSortBy] = useState<'latest' | 'price_asc' | 'price_desc'>('latest');
 
-  // ตัวเลือกภูมิศาสตร์จากฐานข้อมูล
   const [selectedProvince, setSelectedProvince] = useState<string>('');
   const [selectedAmphure, setSelectedAmphure] = useState<string>('');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('');
@@ -51,10 +42,8 @@ function SearchPageContent() {
   const [amphuresList, setAmphuresList] = useState<{ id: number; name_th: string; name_en: string }[]>([]);
   const [districtsList, setDistrictsList] = useState<{ id: number; name_th: string; name_en: string; zip_code: number }[]>([]);
 
-  // === 2. ดึงข้อมูลรายการอสังหาฯ และระบบพิกัดพื้นที่ ===
   const { properties, favorites, toggleFavorite } = useApp();
 
-  // โหลดจังหวัดเมื่อเปิดหน้าจอ
   useEffect(() => {
     fetch('/api/locations?type=provinces')
       .then(res => res.json())
@@ -64,7 +53,6 @@ function SearchPageContent() {
       .catch(console.error);
   }, []);
 
-  // โหลดรายชื่ออำเภอเมื่อเลือกจังหวัด
   useEffect(() => {
     if (!selectedProvince) return;
     fetch(`/api/locations?type=amphures&provinceId=${selectedProvince}`)
@@ -75,7 +63,6 @@ function SearchPageContent() {
       .catch(console.error);
   }, [selectedProvince]);
 
-  // โหลดรายชื่อตำบลเมื่อเลือกอำเภอ
   useEffect(() => {
     if (!selectedAmphure) return;
     fetch(`/api/locations?type=districts&amphureId=${selectedAmphure}`)
@@ -86,7 +73,6 @@ function SearchPageContent() {
       .catch(console.error);
   }, [selectedAmphure]);
 
-  // ซิงค์ข้อมูลเริ่มต้นจากหน้าแรก (Query Parameters)
   useEffect(() => {
     const q = searchParams.get('q');
     const tab = searchParams.get('tab');
@@ -104,7 +90,6 @@ function SearchPageContent() {
     return () => clearTimeout(timer);
   }, [searchParams]);
 
-  // ฟังก์ชันล้างค่าตัวกรองทั้งหมด
   const handleClearFilters = () => {
     setSearchTerm('');
     setPropertyType('all');
@@ -125,47 +110,38 @@ function SearchPageContent() {
     setDistrictsList([]);
   };
 
-  // === 3. ฟังก์ชันคัดกรองข้อมูล (Filtering Logic) ===
   const filteredProperties = properties.filter((prop) => {
-    // 3.1 คัดกรองประเภทประกาศ (ซื้อ/เช่า)
     const isRentProp = prop.title.includes('เช่า') || prop.description?.includes('เช่า') || prop.price.includes('เดือน');
     if (activeTab === 'rent' && !isRentProp) return false;
     if (activeTab === 'buy' && isRentProp) return false;
 
-    // 3.2 ค้นหาพิมพ์ด้วยข้อความเสรี
     const matchesSearch = prop.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           prop.location.toLowerCase().includes(searchTerm.toLowerCase());
     if (!matchesSearch) return false;
 
-    // 3.3 คัดกรองระดับเขตภูมิศาสตร์จากฐานข้อมูล
     if (selectedProvince && prop.province_id !== parseInt(selectedProvince)) return false;
     if (selectedAmphure && prop.amphure_id !== parseInt(selectedAmphure)) return false;
     if (selectedDistrict && prop.district_id !== parseInt(selectedDistrict)) return false;
 
-    // 3.4 คัดกรองประเภทอสังหาฯ
     const matchesType = propertyType === 'all' || 
                         (propertyType === 'house' && prop.type.includes('บ้าน')) ||
                         (propertyType === 'condo' && prop.type.includes('คอนโด')) ||
                         (propertyType === 'townhome' && prop.type.includes('ทาวน์โฮม'));
     if (!matchesType) return false;
 
-    // 3.5 คัดกรองตามราคา (ตัวกรองใหญ่ด้านบน)
     const rawPrice = parseInt(prop.price.replace(/[^\d]/g, ''));
     if (priceRange === 'low' && rawPrice >= 3000000) return false;
     if (priceRange === 'mid' && (rawPrice < 3000000 || rawPrice > 7000000)) return false;
     if (priceRange === 'high' && rawPrice <= 7000000) return false;
 
-    // 3.6 คัดกรองตามราคาระบุกำหนดเอง (จาก Sidebar)
     if (priceMin && rawPrice < parseInt(priceMin)) return false;
     if (priceMax && rawPrice > parseInt(priceMax)) return false;
 
-    // 3.7 คัดกรองจำนวนห้องนอน
     if (bedrooms !== 'any') {
       if (bedrooms === '4+' && prop.bedrooms < 4) return false;
       if (bedrooms !== '4+' && prop.bedrooms !== parseInt(bedrooms)) return false;
     }
 
-    // 3.8 คัดกรองสิ่งอำนวยความสะดวก
     const desc = (prop.description || "").toLowerCase();
     if (facilities.pool && !desc.includes('สระ') && !desc.includes('pool')) return false;
     if (facilities.gym && !desc.includes('ฟิตเนส') && !desc.includes('ยิม') && !desc.includes('gym')) return false;
@@ -175,20 +151,18 @@ function SearchPageContent() {
     return true;
   });
 
-  // === 4. ฟังก์ชันจัดเรียงลำดับราคา (Sorting) ===
   const sortedProperties = [...filteredProperties].sort((a, b) => {
     const priceA = parseInt(a.price.replace(/[^\d]/g, ''));
     const priceB = parseInt(b.price.replace(/[^\d]/g, ''));
     if (sortBy === 'price_asc') return priceA - priceB;
     if (sortBy === 'price_desc') return priceB - priceA;
-    return 0; // Default
+    return 0;
   });
 
   return (
     <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm pb-16">
       <div className="pt-16"></div>
 
-      {/* 🔍 ส่วนหัวฮีโร่แถบค้นหาหลัก */}
       <header className="bg-slate-950 py-10 relative overflow-hidden flex items-center justify-center border-b border-slate-900">
         <div className="absolute inset-0 bg-cover bg-center opacity-10" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1500&q=80')" }}></div>
         <div className="absolute inset-0 bg-gradient-to-b from-slate-900/60 to-slate-950"></div>
@@ -199,7 +173,6 @@ function SearchPageContent() {
           </h1>
 
           <div className="bg-white p-3 rounded-2xl md:rounded-full shadow-2xl border border-slate-200/20 max-w-4xl mx-auto flex flex-col md:flex-row items-stretch md:items-center gap-2">
-            {/* กล่องพิมพ์ป้อนการค้นหา */}
             <div className="flex-1 flex bg-slate-50 rounded-xl md:rounded-full px-4 py-1.5 border border-slate-100 focus-within:border-blue-500 transition-colors items-center">
               <span className="text-base text-slate-400 mr-2">📍</span>
               <input 
@@ -213,7 +186,6 @@ function SearchPageContent() {
 
             <div className="w-px bg-slate-200 hidden md:block h-6"></div>
 
-            {/* เลือกซื้อ / เช่า */}
             <div className="w-full md:w-36">
               <select 
                 value={activeTab} 
@@ -227,7 +199,6 @@ function SearchPageContent() {
 
             <div className="w-px bg-slate-200 hidden md:block h-6"></div>
 
-            {/* เลือกประเภทอสังหาฯ */}
             <div className="w-full md:w-44">
               <select 
                 value={propertyType} 
@@ -251,11 +222,9 @@ function SearchPageContent() {
         </div>
       </header>
 
-      {/* 📦 แผงหลักแบ่ง 2 คอลัมน์ */}
       <main className="max-w-5xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
           
-          {/* คอลัมน์ซ้าย: ตัวกรองขั้นสูง */}
           <SearchSidebar 
             selectedProvince={selectedProvince}
             setSelectedProvince={setSelectedProvince}
@@ -279,9 +248,7 @@ function SearchPageContent() {
             handleClearFilters={handleClearFilters}
           />
 
-          {/* คอลัมน์ขวา: ผลลัพธ์อสังหาฯ */}
           <div ref={resultsRef} className="lg:col-span-3 space-y-5">
-            {/* หัวเรื่องผลลัพธ์และตัวเรียงลำดับ */}
             <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h2 className="font-extrabold text-slate-900 text-base">อสังหาริมทรัพย์แนะนำทั้งหมด</h2>
@@ -308,7 +275,6 @@ function SearchPageContent() {
               </div>
             </div>
 
-            {/* รายการผลลัพธ์การ์ดอสังหาฯ */}
             {sortedProperties.length === 0 ? (
               <div className="bg-white border border-slate-200/80 rounded-2xl p-12 text-center shadow-sm space-y-4">
                 <div className="text-4xl">🔍</div>
@@ -337,7 +303,6 @@ function SearchPageContent() {
               </div>
             )}
 
-            {/* แถบหมายเลขหน้า (Pagination) */}
             {sortedProperties.length > 0 && (
               <div className="flex items-center justify-center gap-1.5 pt-6 text-xs font-bold">
                 <button className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 text-slate-500 cursor-pointer">&lt;</button>

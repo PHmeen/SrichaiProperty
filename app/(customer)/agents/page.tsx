@@ -1,8 +1,5 @@
 'use client';
 
-// === หน้ารายการรายชื่อตัวแทนนายหน้า (Agents Page) ===
-// เหมาะสำหรับมือใหม่: แสดงวิธีการเขียนตัวกรองค้นหารายชื่อนายหน้า (Filter) แบบง่าย ๆ ไม่ซับซ้อน
-
 import React, { useState } from 'react';
 import Link from 'next/link';
 
@@ -23,7 +20,6 @@ export default function AgentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
 
-  // รายการข้อมูลนายหน้าจำลอง
   const agents: Agent[] = [
     {
       id: 1,
@@ -63,7 +59,6 @@ export default function AgentsPage() {
     }
   ];
 
-  // ฟังก์ชันช่วยคัดกรองข้อมูลนายหน้าจากช่องพิมพ์ค้นหาและทำเลที่เลือก
   const filteredAgents = agents.filter(agent => {
     const matchesSearch = agent.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesLocation = selectedLocation === '' || agent.location === selectedLocation;
@@ -72,7 +67,6 @@ export default function AgentsPage() {
 
   return (
     <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm flex flex-col">
-      {/* แบนเนอร์ด้านบน */}
       <div className="bg-slate-900 py-12 relative overflow-hidden flex-shrink-0">
         <div className="max-w-5xl mx-auto px-4 text-center text-white space-y-3 relative z-10">
           <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shadow">Srichai Property Network</span>
@@ -81,7 +75,6 @@ export default function AgentsPage() {
         </div>
       </div>
 
-      {/* แผงปุ่มค้นหาและตัวกรอง */}
       <div className="max-w-4xl mx-auto px-4 relative z-20 -mt-6 mb-8 w-full">
         <div className="bg-white p-2.5 rounded-2xl shadow-md flex flex-col md:flex-row gap-2 border border-slate-200">
           <div className="flex-1 flex bg-slate-50 rounded-xl p-2 border border-slate-100 focus-within:border-blue-500 transition-colors">
@@ -107,7 +100,6 @@ export default function AgentsPage() {
         </div>
       </div>
 
-      {/* รายชื่อการ์ดนายหน้า */}
       <main className="max-w-5xl mx-auto px-4 py-4 mb-16 flex-grow w-full">
         <h2 className="text-base font-extrabold text-slate-900 mb-6 pb-2 border-b border-slate-100">ตัวแทนนายหน้าทั้งหมด ({filteredAgents.length})</h2>
 

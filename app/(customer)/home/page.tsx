@@ -1,11 +1,5 @@
 'use client';
 
-/**
- * page.tsx (Customer Home) - หน้าหลักสำหรับลูกค้าผู้สนใจซื้อ/เช่าบ้าน
- * เหมาะสำหรับมือใหม่: หน้าเว็บนี้ดึงข้อมูลจาก `useApp` (ฐานข้อมูลจำลองจาก AppContext) 
- * มาวนลูปแสดงการ์ดรายการแนะนำ ยอดนิยม และแสดงการตอบสนองเมื่อผู้ใช้คลิกถูกใจ (หัวใจ)
- */
-
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -13,27 +7,20 @@ import { useApp } from '@/context/AppContext';
 import PropertyCard from '../../../components/PropertyCard';
 
 export default function CustomerHomePage() {
-  // === 1. ประกาศตัวแปรสถานะภายในหน้าเพจ (Local State) ===
-  const [activeTab, setActiveTab] = useState<'buy' | 'rent' | 'sell'>('buy'); // เก็บข้อมูลการสลับแท็บเมนู ค้นหา ซื้อ/เช่า/ขาย
+  const [activeTab, setActiveTab] = useState<'buy' | 'rent' | 'sell'>('buy');
   const [locationInput, setLocationInput] = useState('');
   const [propertyType, setPropertyType] = useState('');
   const [isTypeOpen, setIsTypeOpen] = useState(false);
 
-
-  // === 2. เรียกใช้ข้อมูลและฟังก์ชันจากส่วนกลาง (Global State จาก useApp) ===
   const { properties, favorites, toggleFavorite, profile, appointments } = useApp();
 
-  // กรองรายการอสังหาริมทรัพย์เฉพาะรายการที่เป็น Premium (แนะนำพิเศษ)
   const exclusiveProperties = properties.filter(p => p.isPremium);
-  // รายการแนะนำทั่วไป (แสดงรายการทั้งหมด)
   const featuredProperties = properties;
 
-  // ฟังก์ชันคำนวณจำนวนประกาศสำหรับแต่ละทำเลจากฐานข้อมูลจริง
   const getPropertyCountForLocation = (locName: string) => {
     return properties.filter(p => p.location.includes(locName)).length;
   };
 
-  // รายชื่อพิกัดหรือเขตพื้นที่ยอดนิยม (นับจำนวนประกาศจริงเชื่อมตรงจากฐานข้อมูล)
   const locations = [
     { name: "หาดใหญ่", count: getPropertyCountForLocation("หาดใหญ่"), image: "https://images.unsplash.com/photo-1563492065599-3520f775eeed?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" },
     { name: "เมืองสงขลา", count: getPropertyCountForLocation("สงขลา"), image: "https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" },
@@ -44,9 +31,6 @@ export default function CustomerHomePage() {
   return (
     <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm">
       
-      {/* ==================================================== */}
-      {/* 🏡 ส่วนหัวต้อนรับ และกล่องตัวกรอง (Hero & Filter)       */}
-      {/* ==================================================== */}
       <header className="relative pt-8 pb-16 lg:pt-16 lg:pb-20 flex items-center justify-center min-h-[55vh]">
         <div className="absolute inset-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80')" }}></div>
         <div className="absolute inset-0 bg-slate-900/60 mix-blend-multiply"></div>
@@ -56,7 +40,6 @@ export default function CustomerHomePage() {
             <span className="text-sm">👋</span> <span>สวัสดีคุณ {profile.fullName}, ยินดีต้อนรับกลับมา</span>
           </div>
 
-          {/* กล่องสถานะแจ้งเตือนนัดหมายที่จะมาถึง (Conditional Rendering: แสดงเฉพาะเมื่อมีนัดหมาย) */}
           {appointments.length > 0 && (
             <div className="mb-5 bg-white/10 backdrop-blur-md border border-white/20 text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-3 shadow cursor-pointer hover:bg-white/20 transition max-w-xl w-full">
               <span className="text-xl"></span>
@@ -74,59 +57,53 @@ export default function CustomerHomePage() {
             Srichai Property Agents ศูนย์รวมอสังหาริมทรัพย์คุณภาพ พร้อมระบบจองนัดหมายเข้าชมและแชทกับนายหน้าโดยตรง
           </p>
 
-          {/* Search Box Panel */}
-          <div className="w-full max-w-3xl bg-white/85 backdrop-blur-lg border border-white/40 shadow-2xl rounded-3xl p-4 transition-all duration-300">
-            {/* Tab Selectors (Removed "ขาย") */}
-            <div className="flex space-x-1 mb-4 bg-slate-200/50 p-1 rounded-full w-fit border border-slate-300/40 backdrop-blur-sm">
+          <div className="w-full max-w-3xl bg-white border border-slate-200 shadow-sm rounded-2xl p-4">
+            <div className="flex space-x-1 mb-4 bg-slate-100 p-1 rounded-lg w-fit border border-slate-200">
               <button 
                 onClick={() => setActiveTab("buy")} 
-                className={`px-6 py-1.5 rounded-full text-xs font-extrabold transition-all duration-200 ${
+                className={`px-5 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 ${
                   activeTab === "buy" 
-                    ? "bg-white text-blue-700 shadow-md scale-[1.02]" 
-                    : "text-slate-600 hover:text-slate-900 hover:bg-white/30"
+                    ? "bg-white text-blue-700 shadow-sm" 
+                    : "text-slate-500 hover:text-slate-800"
                 }`}
               >
                 ซื้อ
               </button>
               <button 
                 onClick={() => setActiveTab("rent")} 
-                className={`px-6 py-1.5 rounded-full text-xs font-extrabold transition-all duration-200 ${
+                className={`px-5 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 ${
                   activeTab === "rent" 
-                    ? "bg-white text-blue-700 shadow-md scale-[1.02]" 
-                    : "text-slate-600 hover:text-slate-900 hover:bg-white/30"
+                    ? "bg-white text-blue-700 shadow-sm" 
+                    : "text-slate-500 hover:text-slate-800"
                 }`}
               >
                 เช่า
               </button>
             </div>
 
-            {/* Unified Input Bar */}
-            <div className="flex flex-col md:flex-row items-stretch bg-white rounded-2xl border border-slate-200 shadow-inner p-1.5 gap-1.5 focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all duration-300">
+            <div className="flex flex-col md:flex-row items-stretch bg-slate-50 rounded-xl border border-slate-200 p-1 gap-1.5 transition-all duration-200">
               
-              {/* Location Input Group */}
-              <div className="flex-1 flex items-center px-4 py-2 hover:bg-slate-50/50 rounded-xl transition-all duration-200 group">
-                <span className="text-xl mr-3 text-slate-400 group-focus-within:text-blue-600 transition-colors"></span>
+              <div className="flex-1 flex items-center px-4 py-2 rounded-lg transition-all duration-200 group">
+                <span className="text-xl mr-3 text-slate-400"></span>
                 <div className="flex flex-col text-left w-full">
-                  <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">ทำเลที่ตั้ง</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">ทำเลที่ตั้ง</span>
                   <input 
                     type="text" 
                     value={locationInput}
                     onChange={(e) => setLocationInput(e.target.value)}
                     placeholder="หาดใหญ่, สงขลา, สะเดา..." 
-                    className="w-full bg-transparent focus:outline-none text-slate-800 font-bold text-sm outline-none placeholder:text-slate-400"
+                    className="w-full bg-transparent focus:outline-none text-slate-800 font-semibold text-sm outline-none placeholder:text-slate-400"
                   />
                 </div>
               </div>
               
-              {/* Vertical Divider */}
               <div className="hidden md:block w-px h-10 bg-slate-200 self-center" />
               
-              {/* Property Type Group (Beautiful Custom Dropdown) */}
-              <div id="property-type-dropdown" className="relative md:w-48 flex items-center px-4 py-2 hover:bg-slate-50/50 rounded-xl transition-all duration-200 group cursor-pointer select-none" onClick={() => setIsTypeOpen(!isTypeOpen)}>
-                <span className="text-lg mr-3 text-slate-400 group-hover:text-blue-600 transition-colors"></span>
+              <div id="property-type-dropdown" className="relative md:w-48 flex items-center px-4 py-2 rounded-lg transition-all duration-200 group cursor-pointer select-none" onClick={() => setIsTypeOpen(!isTypeOpen)}>
+                <span className="text-lg mr-3 text-slate-400"></span>
                 <div className="flex flex-col text-left w-full">
-                  <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">ประเภทอสังหาฯ</span>
-                  <div className="text-slate-800 font-bold text-sm flex items-center justify-between">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">ประเภทอสังหาฯ</span>
+                  <div className="text-slate-800 font-semibold text-sm flex items-center justify-between">
                     <span>
                       {propertyType === "house" && "บ้านเดี่ยว"}
                       {propertyType === "townhome" && "ทาวน์โฮม"}
@@ -149,32 +126,32 @@ export default function CustomerHomePage() {
                 {isTypeOpen && (
                   <>
                     <div className="fixed inset-0 z-40 cursor-default" onClick={(e) => { e.stopPropagation(); setIsTypeOpen(false); }} />
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-2xl shadow-xl py-2.5 z-50 transition-all duration-200 animate-in fade-in slide-in-from-top-2" onClick={(e) => e.stopPropagation()}>
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-lg py-2.5 z-50 transition-all duration-200" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
                         onClick={() => { setPropertyType(""); setIsTypeOpen(false); }}
-                        className={`w-full text-left px-4 py-2.5 text-xs font-extrabold transition flex items-center gap-2.5 ${propertyType === "" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"}`}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-bold transition flex items-center gap-2.5 ${propertyType === "" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"}`}
                       >
                         <span className="text-sm"></span> ทุกประเภท
                       </button>
                       <button
                         type="button"
                         onClick={() => { setPropertyType("house"); setIsTypeOpen(false); }}
-                        className={`w-full text-left px-4 py-2.5 text-xs font-extrabold transition flex items-center gap-2.5 ${propertyType === "house" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"}`}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-bold transition flex items-center gap-2.5 ${propertyType === "house" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"}`}
                       >
                         <span className="text-sm"></span> บ้านเดี่ยว
                       </button>
                       <button
                         type="button"
                         onClick={() => { setPropertyType("townhome"); setIsTypeOpen(false); }}
-                        className={`w-full text-left px-4 py-2.5 text-xs font-extrabold transition flex items-center gap-2.5 ${propertyType === "townhome" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"}`}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-bold transition flex items-center gap-2.5 ${propertyType === "townhome" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"}`}
                       >
                         <span className="text-sm"></span> ทาวน์โฮม
                       </button>
                       <button
                         type="button"
                         onClick={() => { setPropertyType("condo"); setIsTypeOpen(false); }}
-                        className={`w-full text-left px-4 py-2.5 text-xs font-extrabold transition flex items-center gap-2.5 ${propertyType === "condo" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"}`}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-bold transition flex items-center gap-2.5 ${propertyType === "condo" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"}`}
                       >
                         <span className="text-sm"></span> คอนโดมิเนียม
                       </button>
@@ -183,10 +160,9 @@ export default function CustomerHomePage() {
                 )}
               </div>
 
-              {/* Action Button */}
               <Link
                 href={`/search?tab=${activeTab}&q=${encodeURIComponent(locationInput)}&type=${propertyType}`}
-                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-8 font-bold transition-all duration-200 shadow-md shadow-blue-600/20 hover:shadow-blue-600/30 flex items-center justify-center gap-2 text-sm w-full md:w-auto h-full min-h-[48px] self-stretch"
+                className="bg-blue-700 hover:bg-blue-800 text-white rounded-lg px-8 font-semibold transition-colors duration-200 flex items-center justify-center gap-2 text-sm w-full md:w-auto h-full min-h-[48px] self-stretch"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -198,9 +174,6 @@ export default function CustomerHomePage() {
         </div>
       </header>
 
-      {/* ==================================================== */}
-      {/* 📍 ส่วนที่ 1: เขตพื้นที่ยอดนิยม (Locations)             */}
-      {/* ==================================================== */}
       <section className="py-10 bg-white">
         <div className="max-w-5xl mx-auto px-4">
           <div className="mb-6">
@@ -233,9 +206,6 @@ export default function CustomerHomePage() {
         </div>
       </section>
 
-      {/* ==================================================== */}
-      {/* ⭐ ส่วนที่ 2: รายการแนะนำพิเศษ (Premium Properties)     */}
-      {/* ==================================================== */}
       {exclusiveProperties.length > 0 && (
         <section className="py-10 bg-slate-50 border-t border-slate-200">
           <div className="max-w-5xl mx-auto px-4">
@@ -272,9 +242,6 @@ export default function CustomerHomePage() {
         </section>
       )}
 
-      {/* ==================================================== */}
-      {/* 🏠 ส่วนที่ 3: รายการทั่วไปทั้งหมด (Featured Properties)   */}
-      {/* ==================================================== */}
       <section className="py-10 bg-slate-50 border-t border-slate-200">
         <div className="max-w-5xl mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-end mb-6 gap-2">

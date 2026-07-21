@@ -1,11 +1,5 @@
 'use client';
 
-/**
- * page.tsx (User Profile Settings) - หน้าแก้ไขและจัดการโปรไฟล์ส่วนตัว
- * เหมาะสำหรับมือใหม่: แสดงวิธีการเชื่อมต่อฟิลด์ข้อมูล Input ให้ผูกกับ state
- * และอัปเดตข้อมูลกลับไปยังระบบฐานข้อมูลจำลอง (Context) เพื่อไปแสดงข้ามหน้าเพจ
- */
-
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -14,19 +8,14 @@ import { useSession } from 'next-auth/react';
 
 export default function ProfilePage() {
   const { data: session } = useSession();
-  // === 1. ดึงข้อมูลส่วนตัวและฟังก์ชันบันทึกโปรไฟล์จาก Context ===
   const { profile, updateProfile } = useApp();
 
-  // === 2. กำหนดสถานะอินพุตเริ่มต้นจากประวัติโปรไฟล์ที่มีอยู่ ===
   const [fullName, setFullName] = useState(profile.fullName);
   const [phone, setPhone] = useState(profile.phone);
   const [kycDoc, setKycDoc] = useState<File | null>(null);
 
-  // เมธอดส่งข้อมูลฟอร์มบันทึก
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // อัปเดตลง Context และเซฟเข้า LocalStorage
     updateProfile({
       fullName,
       phone
@@ -34,7 +23,6 @@ export default function ProfilePage() {
     alert('บันทึกการเปลี่ยนแปลงข้อมูลเรียบร้อยแล้ว!');
   };
 
-  // เมธอดอัปโหลดเอกสาร KYC ยืนยันตัวนายหน้า (รองรับโหมดนายหน้า)
   const handleKycUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setKycDoc(e.target.files[0]);
@@ -42,14 +30,12 @@ export default function ProfilePage() {
     }
   };
 
-  // ฟังก์ชันวาดรูปภาพอักษรย่อจากชื่อผู้ใช้แบบ SVG (เข้ารหัส URI เพื่อความง่ายและเสถียร 100% ทั้งฝั่ง Server และ Client)
   const getInitialsAvatar = (name: string) => {
     const initials = name.trim().split(/\s+/).map(n => n[0]).slice(0, 2).join("").toUpperCase() || "?";
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#1d4ed8"/><text x="50" y="55" font-family="sans-serif" font-weight="bold" font-size="35" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${initials}</text></svg>`;
     return `data:image/svg+xml,${encodeURIComponent(svg)}`;
   };
 
-  // ตรวจสอบความถูกต้องของลิงก์ภาพโปรไฟล์เพื่อหลีกเลี่ยงภาพแตก
   const rawImage = session?.user?.image;
   const hasValidImage = rawImage && typeof rawImage === 'string' && rawImage.trim() !== '' && rawImage !== 'null' && rawImage !== 'undefined' && (rawImage.startsWith('http') || rawImage.startsWith('/'));
   const userDisplayName = session?.user?.name || fullName || 'User';
@@ -57,7 +43,6 @@ export default function ProfilePage() {
 
   return (
     <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm flex flex-col">
-      {/* ส่วนหัวแสดงชื่อหน้าเพจ */}
       <div className="bg-slate-950 py-12 relative overflow-hidden flex-shrink-0">
         <div className="max-w-5xl mx-auto px-4 relative z-10 text-white">
           <h1 className="text-2xl font-extrabold">จัดการบัญชีผู้ใช้</h1>
@@ -65,10 +50,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* 📦 แผงเนื้อหาหลัก */}
       <div className="max-w-5xl mx-auto px-4 pb-16 -mt-6 flex flex-col lg:flex-row gap-6 relative z-20 w-full flex-grow">
-        
-        {/* เมนูแท็บด้านข้าง (Sidebar) */}
         <aside className="w-full lg:w-1/4">
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 lg:sticky lg:top-24 space-y-5">
             <div className="text-center pb-4 border-b border-slate-100 space-y-2">
@@ -79,7 +61,6 @@ export default function ProfilePage() {
               <p className="text-slate-500 text-[11px]">{session?.user?.email || profile.email}</p>
             </div>
 
-            {/* ปุ่มสลับบทบาทการใช้งาน (ผู้ซื้อ / นายหน้า / แอดมิน) */}
             <div className="bg-slate-100 p-1 rounded-xl flex gap-1 relative">
               <button 
                 onClick={() => updateProfile({ role: 'buyer' })}
@@ -125,7 +106,6 @@ export default function ProfilePage() {
           </div>
         </aside>
 
-        {/* คอลัมน์กรอกข้อมูลทางขวา */}
         <main className="w-full lg:w-3/4">
           <div className="bg-white rounded-2xl p-5 sm:p-8 shadow-sm border border-slate-200 space-y-6">
             <div className="flex justify-between items-center pb-4 border-b border-slate-100">
@@ -168,7 +148,6 @@ export default function ProfilePage() {
                 />
               </div>
 
-              {/* ส่วนแนบเอกสารยืนยันตัวตน (KYC) จะทำงานเฉพาะโหมดนายหน้า */}
               {profile.role === 'agent' && (
                 <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 space-y-3">
                   <h3 className="text-xs font-bold text-amber-800">🔒 ยืนยันตัวตนตัวแทนนายหน้า (KYC Documents)</h3>
@@ -193,7 +172,6 @@ export default function ProfilePage() {
             </form>
           </div>
 
-          {/* ส่วนของการลบบัญชีอย่างถาวร (Danger Zone) */}
           <div className="mt-6 bg-white rounded-2xl p-5 sm:p-8 shadow-sm border border-red-100 space-y-4">
             <div className="border-b border-red-50 pb-3">
               <h3 className="text-sm font-extrabold text-red-600 flex items-center gap-2">

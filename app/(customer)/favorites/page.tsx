@@ -1,23 +1,17 @@
 'use client';
 
-// === หน้ารายการโปรด (Favorites Page) ===
-// เหมาะสำหรับมือใหม่: แสดงวิธีการเขียนฟังก์ชันคัดกรองรายการบ้านที่ถูกใจด้วยคำสั่ง .filter จาก Context
-
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useApp } from '@/context/AppContext';
 
 export default function FavoritesPage() {
-  // ดึงข้อมูลรายการบ้านและเมธอดหัวใจจากระบบ Context ส่วนกลาง
   const { properties, favorites, toggleFavorite } = useApp();
 
-  // กรองบ้านพักที่รหัสไอดีถูกบันทึกไว้ในหัวใจ
   const favoriteProperties = properties.filter(prop => favorites.includes(prop.id));
 
   return (
     <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm flex flex-col">
-      {/* 📦 กล่องข้อความหลักแสดงจำนวนที่เซฟไว้ */}
       <main className="max-w-5xl mx-auto px-4 py-6 flex-grow w-full">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 border-b border-slate-200 pb-6">
           <div>
@@ -28,7 +22,6 @@ export default function FavoritesPage() {
           </div>
         </div>
 
-        {/* แสดงการ์ดรายการโปรด */}
         {favoriteProperties.length === 0 ? (
           <div className="text-center py-20 bg-white border border-slate-200 rounded-2xl text-slate-400">
             คุณยังไม่มีรายการอสังหาริมทรัพย์ที่ถูกใจ
@@ -40,7 +33,6 @@ export default function FavoritesPage() {
                 key={prop.id}
                 className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-slate-100 relative group cursor-pointer"
               >
-                {/* ปุ่มหัวใจเพื่อยกเลิกการบันทึก */}
                 <button 
                   onClick={(e) => {
                     e.preventDefault();
@@ -53,7 +45,6 @@ export default function FavoritesPage() {
                   </svg>
                 </button>
                 
-                {/* แท็กบอกประเภท */}
                 <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5">
                   <span className={`${prop.tagBg} text-white px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-sm`}>
                     {prop.tag}
@@ -63,7 +54,6 @@ export default function FavoritesPage() {
                   </span>
                 </div>
                 
-                {/* ลิงก์รายละเอียดตัวการ์ด */}
                 <Link href={`/property/${prop.id}`} className="block">
                   <div className="relative h-44 overflow-hidden">
                     <Image 
@@ -80,7 +70,6 @@ export default function FavoritesPage() {
                     <h3 className="text-sm font-bold text-slate-900 mb-1 line-clamp-1">{prop.title}</h3>
                     <p className="text-slate-500 text-xs mb-4 flex items-center">{prop.location}</p>
                     
-                    {/* ขนาดห้อง */}
                     <div className="flex items-center justify-between text-slate-600 border-t border-b border-slate-100 py-2.5 mb-3 bg-slate-50 px-3 rounded-lg text-xs">
                       <span>🛏️ {prop.bedrooms} นอน</span>
                       <div className="w-px h-5 bg-slate-200" />
@@ -89,7 +78,6 @@ export default function FavoritesPage() {
                       <span>📏 {prop.area} ตร.ม.</span>
                     </div>
 
-                    {/* ข้อมูลนายหน้าผู้ดูแล */}
                     <div className="flex items-center gap-2">
                       <Image 
                         src={prop.agentImage} 
