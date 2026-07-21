@@ -67,26 +67,7 @@ export default function AgentDashboardPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-800 font-sans antialiased text-xs md:text-sm flex flex-col">
-      
-      {/* 1. Header Navigation Bar */}
-      <nav className="sticky top-0 z-50 bg-white border-b border-slate-100 shadow-sm px-4 md:px-8 py-3 flex items-center justify-between">
-        <Link href="/agent/home" className="flex items-center gap-2 font-black text-slate-900 text-sm">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white text-lg">S</div>
-          SrichaiProperty Agent Portal
-        </Link>
-        <div className="flex items-center bg-slate-100/80 p-1 rounded-full border border-slate-200/50">
-          <Link href="/agent/home" className="px-4 py-1.5 rounded-full text-xs font-semibold text-slate-600 hover:text-slate-900">หน้าแรก</Link>
-          <Link href="/agent/dashboard" className="px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-900 shadow-sm">แผงควบคุม</Link>
-          <Link href="/agent/chat" className="px-4 py-1.5 rounded-full text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1">
-            แชทลูกค้า <span className="w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-[9px] font-black">2</span>
-          </Link>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="font-extrabold text-slate-900">{userName}</span>
-          <span className="text-[9px] bg-amber-500/10 text-amber-700 font-extrabold px-1.5 py-0.5 rounded border border-amber-500/20">👑 PRO</span>
-        </div>
-      </nav>
+    <div className="pt-16 min-h-screen text-slate-800 font-sans antialiased text-xs md:text-sm flex flex-col">
 
       {/* 2. Main Content Container */}
       <main className="max-w-6xl w-full mx-auto p-4 md:p-8 space-y-6 flex-1">
@@ -106,7 +87,7 @@ export default function AgentDashboardPage() {
         {/* Page Title & Add Button */}
         <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="text-left">
-            <h2 className="text-xl md:text-2xl font-black text-slate-900">ภาพรวมการทำงาน 👋</h2>
+            <h2 className="text-xl md:text-2xl font-black text-slate-900">ภาพรวมการทำงาน ({userName}) 👋</h2>
             <p className="text-slate-500 text-xs mt-1">แผงควบคุมสำหรับจัดการรายการประกาศอสังหาริมทรัพย์ของคุณในระบบ</p>
           </div>
           <Link href="/agent/add-property" className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-5 py-3 rounded-2xl text-xs flex items-center justify-center gap-2 transition">
