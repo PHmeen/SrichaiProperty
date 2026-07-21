@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 export default function AgentAddPropertyPage() {
@@ -266,7 +267,7 @@ export default function AgentAddPropertyPage() {
                 <div className="grid grid-cols-4 gap-2 pt-3">
                   {uploadedImages.map((url, idx) => (
                     <div key={`${url}-${idx}`} className="relative aspect-[4/3] rounded-lg overflow-hidden border shadow-sm group">
-                      <img src={url} alt={`Upload ${idx+1}`} className="w-full h-full object-cover" />
+                      <Image src={url} alt={`Upload ${idx+1}`} fill className="object-cover" unoptimized />
                       <button 
                         type="button" 
                         onClick={() => setUploadedImages(uploadedImages.filter((_, i) => i !== idx))}

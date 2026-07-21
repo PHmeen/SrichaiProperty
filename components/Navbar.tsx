@@ -175,12 +175,13 @@ export default function Navbar() {
             {session && (
               <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/60 mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <img 
+                  <Image 
                     src={avatarUrl} 
                     alt="Profile" 
-                    referrerPolicy="no-referrer" 
-                    onError={(e) => { e.currentTarget.src = getInitialsAvatar(userFullName); }} 
+                    width={40}
+                    height={40}
                     className="w-10 h-10 rounded-full object-cover border border-slate-200" 
+                    unoptimized
                   />
                   <div>
                     <div className="font-extrabold text-xs text-slate-900">{userFullName}</div>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface PropertyData {
   id: string;
@@ -156,7 +157,7 @@ export default function AgentDashboardPage() {
                       filteredProperties.map(p => (
                         <tr key={p.id} className="hover:bg-slate-50/30 transition">
                           <td className="py-4 px-1 flex gap-3 items-center text-left">
-                            <img src={p.image} alt="property" className="w-16 h-12 rounded-lg object-cover border shrink-0" />
+                            <Image src={p.image} alt="property" width={64} height={48} className="w-16 h-12 rounded-lg object-cover border shrink-0" unoptimized />
                             <div>
                               <h4 className="font-extrabold text-slate-900 text-xs md:text-sm">{p.title}</h4>
                               <span className="text-blue-600 font-extrabold text-[11px] block mt-0.5">{p.price}</span>

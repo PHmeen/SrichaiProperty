@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { signIn } from 'next-auth/react';
 
 export default function AgentRegisterPage() {
@@ -449,7 +450,7 @@ export default function AgentRegisterPage() {
                       <div className="text-xs text-slate-500 animate-pulse">กำลังอัปโหลด...</div>
                     ) : profileImage ? (
                       <div className="flex flex-col items-center gap-1.5">
-                        <img src={profileImage} alt="Profile Preview" className="w-12 h-12 rounded-full object-cover border border-slate-200" />
+                        <Image src={profileImage} alt="Profile Preview" width={48} height={48} className="w-12 h-12 rounded-full object-cover border border-slate-200" unoptimized />
                         <span className="text-[9px] font-semibold text-emerald-600">✓ อัปโหลดสำเร็จ</span>
                       </div>
                     ) : (
