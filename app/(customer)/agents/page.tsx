@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface Agent {
   id: string;
@@ -53,6 +54,7 @@ export default function AgentsPage() {
         </div>
       </div>
 
+      {/* Search Bar */}
       <div className="max-w-4xl mx-auto px-4 relative z-20 -mt-6 mb-8 w-full">
         <div className="bg-white p-2.5 rounded-2xl shadow-md flex flex-col md:flex-row gap-2 border border-slate-200">
           <div className="flex-1 flex bg-slate-50 rounded-xl p-2 border border-slate-100 focus-within:border-blue-500 transition-colors">
@@ -78,6 +80,12 @@ export default function AgentsPage() {
         </div>
       </div>
 
+      {loading && (
+        <div className="flex justify-center py-10">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      )}
+
       <main className="max-w-5xl mx-auto px-4 py-4 mb-16 flex-grow w-full">
         <h2 className="text-base font-extrabold text-slate-900 mb-6 pb-2 border-b border-slate-100">ตัวแทนนายหน้าทั้งหมด ({filteredAgents.length})</h2>
 
@@ -85,7 +93,14 @@ export default function AgentsPage() {
           {filteredAgents.map((agent) => (
             <div key={agent.id} className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col items-center text-center space-y-4 hover:shadow-md transition">
               <div className="relative">
-                <img src={agent.avatar} className="w-16 h-16 rounded-full border shadow-sm object-cover" alt={agent.name} />
+                <Image 
+                  src={agent.avatar} 
+                  width={64} 
+                  height={64} 
+                  className="w-16 h-16 rounded-full border shadow-sm object-cover" 
+                  alt={agent.name} 
+                  unoptimized
+                />
                 {agent.isVerified && <span className="absolute bottom-0 right-0 bg-blue-500 text-white text-[9px] font-bold p-0.5 rounded-full border border-white">✓</span>}
               </div>
 

@@ -67,6 +67,7 @@ export async function GET() {
         price: "฿" + Number(p.price).toLocaleString(),
         seller: sellerName,
         plan: p.users?.plan_type === "pro" ? "PRO Member" : "Basic Plan",
+        isPremium: isPremium,
         isVerified: p.users?.is_verified || false,
         sla: "เหลือเวลา 4 ชม.", // จำลอง SLA ตามระยะเวลา
         slaUrgent: true,

@@ -265,7 +265,7 @@ export default function AgentAddPropertyPage() {
               {uploadedImages.length > 0 && (
                 <div className="grid grid-cols-4 gap-2 pt-3">
                   {uploadedImages.map((url, idx) => (
-                    <div key={idx} className="relative aspect-[4/3] rounded-lg overflow-hidden border shadow-sm group">
+                    <div key={`${url}-${idx}`} className="relative aspect-[4/3] rounded-lg overflow-hidden border shadow-sm group">
                       <img src={url} alt={`Upload ${idx+1}`} className="w-full h-full object-cover" />
                       <button 
                         type="button" 

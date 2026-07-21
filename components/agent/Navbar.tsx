@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useSession, signOut } from 'next-auth/react';
 
 export default function AgentNavbar() {
@@ -43,7 +44,14 @@ export default function AgentNavbar() {
           {/* Profile & Logout */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <img src={userImage} alt="Profile" className="w-8 h-8 rounded-full border border-amber-500/40 object-cover" />
+              <Image 
+                src={userImage} 
+                alt="Profile" 
+                width={32} 
+                height={32} 
+                className="w-8 h-8 rounded-full border border-amber-500/40 object-cover" 
+                unoptimized
+              />
               <div className="text-left hidden md:block">
                 <p className="text-xs font-bold text-white leading-none">{userFullName}</p>
                 <p className="text-[9px] text-amber-400 font-bold uppercase mt-0.5">นายหน้าพรีเมียม</p>

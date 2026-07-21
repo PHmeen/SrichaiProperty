@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
-import Link from 'next/link';
 
 interface AppointmentData {
   id: string;

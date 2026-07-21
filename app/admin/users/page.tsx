@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import Badge from '@/components/ui/Badge';
 
@@ -26,7 +25,6 @@ interface StatsData {
 }
 
 export default function AdminUsersPage() {
-  const pathname = usePathname();
   const [users, setUsers] = useState<UserData[]>([]);
   const [stats, setStats] = useState<StatsData>({ total: 0, agents: 0, buyers: 0, pending: 0 });
   const [loading, setLoading] = useState(true);

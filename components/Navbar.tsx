@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 
@@ -96,12 +97,13 @@ export default function Navbar() {
                 <div className="h-6 w-px bg-slate-200 mx-1" />
 
                 <Link href="/profile" className="flex items-center gap-2 py-1 px-2 hover:bg-slate-50 rounded-xl transition cursor-pointer">
-                  <img 
+                  <Image 
                     src={avatarUrl} 
                     alt="Profile" 
-                    referrerPolicy="no-referrer" 
-                    onError={(e) => { e.currentTarget.src = getInitialsAvatar(userFullName); }} 
+                    width={32}
+                    height={32}
                     className="w-8 h-8 rounded-full object-cover border border-slate-200 shadow-sm" 
+                    unoptimized
                   />
                   <div className="flex flex-col text-left">
                     <span className="text-xs font-bold text-slate-800 leading-none truncate max-w-[110px]">{userFullName}</span>

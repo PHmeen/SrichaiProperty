@@ -537,7 +537,7 @@ export default function AgentRegisterPage() {
             <div className="flex justify-between gap-1.5 mb-5" id="otp-inputs">
               {otpValues.map((val, idx) => (
                 <input 
-                  key={idx}
+                  key={`otp-${idx}`}
                   id={`otp-input-${idx}`}
                   type="text" 
                   maxLength={1} 
