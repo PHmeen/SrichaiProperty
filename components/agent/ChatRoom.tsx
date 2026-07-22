@@ -1,8 +1,8 @@
 import React from 'react';
-import { Contact } from '../page'; // We'll export Contact from page.tsx
+import { AgentContact } from '@/types';
 
 interface Props {
-  activeContact: Contact | null;
+  activeContact: AgentContact | null;
   selectedContactId: string;
   isTypingState: { [key: string]: boolean };
   newMessageText: string;

@@ -14,3 +14,22 @@ export interface ChatSession {
   time: string;
   messages: ChatMessage[];
 }
+
+export interface AgentChatMessage {
+  id: string;
+  sender: 'client' | 'agent';
+  content: string;
+  time: string;
+}
+
+export interface AgentContact {
+  id: string;
+  name: string;
+  avatarLetter: string;
+  propertyCode: string;
+  propertyName: string;
+  propertyPrice: string;
+  lastMessageSnippet: string;
+  lastMessageTime: string;
+  messages: AgentChatMessage[];
+}

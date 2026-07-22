@@ -4,37 +4,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { io, Socket } from 'socket.io-client';
-import ChatList from './components/ChatList';
-import ChatRoom from './components/ChatRoom';
+import ChatList from '@/components/agent/ChatList';
+import ChatRoom from '@/components/agent/ChatRoom';
+import { AgentContact as Contact, AgentChatMessage as Message } from '@/types';
 
-export interface Message {
-  id: string;
-  sender: 'client' | 'agent';
-  content: string;
-  time: string;
-  isRead?: boolean;
-}
-
-export interface Contact {
-  id: string;
-  name: string;
-  avatarLetter: string;
-  avatarUrl?: string;
-  status: 'online' | 'offline';
-  lastMessageSnippet: string;
-  lastMessageTime: string;
-  propertyCode: string;
-  propertyName: string;
-  propertyPrice: string;
-  propertyImage: string;
-  unreadCount: number;
-  hasAppointment: boolean;
-  appointmentDetails?: {
-    date: string;
-    location: string;
-  };
-  messages: Message[];
-}
+export type { Contact, Message };
 
 export default function AgentChatPage() {
   const { data: session, status } = useSession();

@@ -55,7 +55,7 @@ export default function AgentRegisterBanner() {
               </div>
               <div>
                 <h4 className="text-white font-bold text-sm mb-1">ระบบ Agent Dashboard อัจฉริยะ</h4>
-                <p className="text-slate-400 text-xs font-light">จัดการการนัดหมายและพॉर्टโฟลิโอของคุณได้ง่ายๆ ผ่านมือถือ</p>
+                <p className="text-slate-400 text-xs font-light">จัดการการนัดหมายและพอร์ตโฟลิโอของคุณได้ง่ายๆ ผ่านมือถือ</p>
               </div>
             </div>
           </div>

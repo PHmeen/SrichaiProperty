@@ -1,10 +1,10 @@
 import React from 'react';
-import { Contact } from '../page'; // We'll export Contact from page.tsx
+import { AgentContact } from '@/types';
 
 interface Props {
   searchQuery: string;
   setSearchQuery: (val: string) => void;
-  filteredContacts: Contact[];
+  filteredContacts: AgentContact[];
   selectedContactId: string;
   setSelectedContactId: (id: string) => void;
 }

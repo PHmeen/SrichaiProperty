@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import StatCards from './components/StatCards';
-import ModerationList from './components/ModerationList';
+import StatCards from '@/components/admin/StatCards';
+import ModerationList from '@/components/admin/ModerationList';
 
 interface ModerationItem {
   id: string;

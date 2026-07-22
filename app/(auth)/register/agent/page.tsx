@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { signIn } from 'next-auth/react';
-import AgentRegisterBanner from './components/AgentRegisterBanner';
-import OtpVerificationModal from './components/OtpVerificationModal';
+import AgentRegisterBanner from '@/components/auth/AgentRegisterBanner';
+import OtpVerificationModal from '@/components/auth/OtpVerificationModal';
 
 export default function AgentRegisterPage() {
   const [showOtpModal, setShowOtpModal] = useState(false);
