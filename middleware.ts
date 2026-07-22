@@ -2,23 +2,23 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
-// โค้ดดักกรองความปลอดภัยและการจัดการสิทธิ์การเข้าถึงหน้าเว็บ (Proxy)
-export default async function proxy(request: NextRequest) {
+// Middleware ดักกรองความปลอดภัยและการจัดการสิทธิ์การเข้าถึงหน้าเว็บสำหรับ Next.js App Router
+export async function middleware(request: NextRequest) {
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
   const url = request.nextUrl.clone();
   
   const isLoggedIn = !!token;
-  const userRole = (token?.role as string) || 'buyer'; // 'buyer', 'agent', 'admin'
+  const userRole = (token?.role as string) || 'customer'; // 'customer', 'agent', 'admin'
 
   // 1. ป้องกันหน้าของนายหน้า (Agent Pages)
-  if (url.pathname.startsWith('/agent') || url.pathname.includes('/agent/')) {
+  if (url.pathname.startsWith('/agent')) {
     if (!isLoggedIn) {
       url.pathname = '/login';
       return NextResponse.redirect(url);
     }
     
-    if (userRole !== 'agent') {
-      url.pathname = '/home'; // หากไม่ใช่ Agent ดีดกลับไปหน้าหลัก
+    if (userRole !== 'agent' && userRole !== 'admin') {
+      url.pathname = '/';
       return NextResponse.redirect(url);
     }
   }
