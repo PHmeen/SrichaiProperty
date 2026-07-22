@@ -2,11 +2,16 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 
 export default function HeroSection() {
+  const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState<'buy' | 'rent' | 'sell'>('buy');
   const [locationInput, setLocationInput] = useState('');
   const [propertyType, setPropertyType] = useState('');
+
+  const userRole = (session?.user as { role?: string })?.role;
+  const canSell = userRole === 'agent' || userRole === 'admin';
 
   return (
     <header className="relative pt-24 pb-16 lg:pt-32 lg:pb-20 overflow-hidden flex items-center justify-center min-h-[55vh]">
@@ -42,14 +47,16 @@ export default function HeroSection() {
             >
               เช่า
             </button>
-            <button 
-              onClick={() => setActiveTab("sell")} 
-              className={`px-5 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 ${
-                activeTab === "sell" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
-              }`}
-            >
-              ขาย
-            </button>
+            {canSell && (
+              <button 
+                onClick={() => setActiveTab("sell")} 
+                className={`px-5 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 ${
+                  activeTab === "sell" ? "bg-white text-blue-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                ขาย
+              </button>
+            )}
           </div>
 
           <div className="flex flex-col md:flex-row items-stretch bg-slate-50 rounded-xl border border-slate-200 p-1 gap-1.5 transition-all duration-200">
@@ -84,12 +91,12 @@ export default function HeroSection() {
               </div>
             </div>
 
-            {activeTab === "sell" ? (
+            {canSell && activeTab === "sell" ? (
               <Link
-                href="/register"
+                href="/agent/add-property"
                 className="bg-blue-700 hover:bg-blue-800 text-white rounded-lg px-8 font-semibold transition-colors duration-200 flex items-center justify-center text-sm w-full md:w-auto h-full min-h-[48px] self-stretch"
               >
-                ลงประกาศฟรี
+                ลงประกาศขาย
               </Link>
             ) : (
               <Link
