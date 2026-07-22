@@ -3,70 +3,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 
-export interface Property {
-  id: string | number;
-  title: string;
-  price: string;
-  type: string;
-  tag: string;
-  tagBg: string;
-  location: string;
-  bedrooms: number;
-  bathrooms: number;
-  area: number;
-  image: string;
-  agentName: string;
-  agentImage: string;
-  isPremium?: boolean;
-  description?: string;
-  latitude?: number;
-  longitude?: number;
-  province_id?: number | null;
-  amphure_id?: number | null;
-  district_id?: number | null;
-  provinceName?: string;
-  amphureName?: string;
-  districtName?: string;
-}
+import { Property, Appointment, ChatMessage, ChatSession, Profile } from '@/types';
 
-export interface Appointment {
-  id: string | number;
-  propertyId: number | string;
-  date: string;
-  timeSlot: string;
-  note: string;
-  status: 'upcoming' | 'past' | 'cancelled' | 'pending';
-  propertyName: string;
-  propertyPrice: string;
-  propertyImage: string;
-  propertyType: string;
-  agentName: string;
-  agentImage: string;
-}
-
-export interface ChatMessage {
-  id: number;
-  sender: 'user' | 'agent';
-  text: string;
-  time: string;
-}
-
-export interface ChatSession {
-  id: number;
-  name: string;
-  avatar: string;
-  isActive: boolean;
-  lastMessage: string;
-  time: string;
-  messages: ChatMessage[];
-}
-
-export interface Profile {
-  fullName: string;
-  phone: string;
-  email: string;
-  role: 'buyer' | 'agent' | 'admin';
-}
+export type { Property, Appointment, ChatMessage, ChatSession, Profile };
 
 interface AppContextType {
   properties: Property[];
