@@ -11,7 +11,6 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
-    "@supabase/supabase-js": "^2.110.0",
     "bcryptjs": "^3.0.3",
     "next": "^16.3.0-canary.87",
     "next-auth": "^4.24.14",

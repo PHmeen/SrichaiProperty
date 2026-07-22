@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { signIn } from 'next-auth/react';
+import AgentRegisterBanner from './components/AgentRegisterBanner';
+import OtpVerificationModal from './components/OtpVerificationModal';
 
 export default function AgentRegisterPage() {
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -171,72 +173,7 @@ export default function AgentRegisterPage() {
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row font-sans bg-white text-slate-800 antialiased">
-      {/* Left Dark Section */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-[#090d16] items-center justify-center p-12 overflow-hidden min-h-screen">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,#1e293b,transparent)] opacity-40" />
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[linear-gradient(to_right,#808080_1px,transparent_1px),linear-gradient(to_bottom,#808080_1px,transparent_1px)] bg-[size:24px_24px]" />
-
-        <div className="relative z-10 w-full max-w-md flex flex-col justify-between h-full py-8">
-          {/* Logo */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-slate-950 font-black text-xl shadow-lg">
-              S
-            </div>
-            <span className="text-2xl font-black text-white tracking-tight">
-              Srichai<span className="text-amber-500">Agent</span>
-            </span>
-          </div>
-
-          {/* Main Copy */}
-          <div className="my-auto py-12">
-            <h1 className="text-4xl font-extrabold text-white mb-6 leading-[1.3] tracking-tight">
-              ยกระดับอาชีพ<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-300">นายหน้าอสังหาฯ ของคุณ</span>
-            </h1>
-            <p className="text-slate-400 text-sm font-light leading-relaxed mb-10">
-              ร่วมเป็นส่วนหนึ่งของเครือข่ายตัวแทนจำหน่ายที่เติบโตเร็วที่สุด พร้อมรับสิทธิประโยชน์และเครื่องมือช่วยเหลือการขายเต็มรูปแบบ
-            </p>
-
-            {/* Benefits List */}
-            <div className="space-y-6">
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 flex-shrink-0 font-bold text-sm">
-                  $
-                </div>
-                <div>
-                  <h4 className="text-white font-bold text-sm mb-1">รับค่าคอมมิชชันเต็มเม็ดเต็มหน่วย</h4>
-                  <p className="text-slate-400 text-xs font-light">โครงสร้างผลตอบแทนที่โปร่งใสและเป็นธรรมที่สุด</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 flex-shrink-0 text-sm">
-                  🏠
-                </div>
-                <div>
-                  <h4 className="text-white font-bold text-sm mb-1">เข้าถึงฐานลูกค้ากว่า 5,000+ ราย</h4>
-                  <p className="text-slate-400 text-xs font-light">ระบบคัดกรองผู้สนใจซื้อ (Lead) ส่งตรงถึงมือคุณทุกวัน</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 flex-shrink-0 text-sm">
-                  📱
-                </div>
-                <div>
-                  <h4 className="text-white font-bold text-sm mb-1">ระบบ Agent Dashboard อัจฉริยะ</h4>
-                  <p className="text-slate-400 text-xs font-light">จัดการการนัดหมายและพॉर्टโฟลิโอของคุณได้ง่ายๆ ผ่านมือถือ</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="text-[10px] text-slate-600 font-medium">
-            Srichai Property Agents Platform &copy; {new Date().getFullYear()}
-          </div>
-        </div>
-      </div>
+      <AgentRegisterBanner />
 
       {/* Right Form Section */}
       <div className="w-full lg:w-1/2 flex flex-col justify-between p-6 sm:p-12 md:p-16 min-h-screen bg-white">
@@ -522,36 +459,13 @@ export default function AgentRegisterPage() {
         </div>
       </div>
 
-      {/* OTP Modal */}
-      {showOtpModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowOtpModal(false)}></div>
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full relative z-10 shadow-2xl">
-            <button onClick={() => setShowOtpModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 cursor-pointer">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
-            <div className="text-center mb-5">
-              <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">💼</div>
-              <h3 className="text-xl font-extrabold text-slate-900 mb-1.5">ยืนยันตัวตนตัวแทน</h3>
-              <p className="text-slate-500 text-xs">เราได้ส่งรหัส OTP 6 หลักไปยังเบอร์มือถือของท่าน</p>
-            </div>
-            <div className="flex justify-between gap-1.5 mb-5" id="otp-inputs">
-              {otpValues.map((val, idx) => (
-                <input 
-                  key={`otp-${idx}`}
-                  id={`otp-input-${idx}`}
-                  type="text" 
-                  maxLength={1} 
-                  value={val}
-                  onChange={(e) => handleOtpChange(idx, e.target.value)}
-                  className="w-10 h-12 text-center text-xl font-bold border-2 border-slate-200 rounded-xl focus:border-amber-600 bg-slate-50 focus:bg-white transition-colors outline-none text-slate-800" 
-                />
-              ))}
-            </div>
-            <button onClick={verifyOtp} className="w-full bg-[#0d1527] hover:bg-[#16223d] text-white font-bold py-3.5 rounded-xl transition shadow-lg cursor-pointer text-xs">ยืนยันรหัสและเป็นตัวแทน</button>
-          </div>
-        </div>
-      )}
+      <OtpVerificationModal 
+        show={showOtpModal} 
+        onClose={() => setShowOtpModal(false)} 
+        otpValues={otpValues} 
+        onOtpChange={handleOtpChange} 
+        onVerify={verifyOtp} 
+      />
     </div>
   );
 }

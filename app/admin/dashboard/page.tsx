@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+import StatCards from './components/StatCards';
+import ModerationList from './components/ModerationList';
 
 interface ModerationItem {
   id: string;
@@ -169,62 +170,12 @@ export default function AdminDashboardPage() {
           {/* ==================================================== */}
           {/* 📊 4 KPI CARDS ROW                                   */}
           {/* ==================================================== */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {/* Card 1: รอตรวจสอบ */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-red-200 transition-colors">
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">ประกาศรอตรวจสอบ</p>
-                <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-2xl font-black text-slate-900">{pendingCount}</span>
-                  <span className="text-[9px] font-extrabold text-red-500">ต้องการอนุมัติ!</span>
-                </div>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center text-lg font-bold shadow-sm">
-                ⚠️
-              </div>
-            </div>
-
-            {/* Card 2: ประกาศออนไลน์ */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-blue-200 transition-colors">
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">ประกาศออนไลน์</p>
-                <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-2xl font-black text-slate-900">{onlineCount.toLocaleString()}</span>
-                </div>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg font-bold shadow-sm">
-                🏠
-              </div>
-            </div>
-
-            {/* Card 3: นายหน้าทั้งหมด */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-blue-200 transition-colors">
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">นายหน้าทั้งหมด (AGENTS)</p>
-                <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-2xl font-black text-slate-900">{agentsCount}</span>
-                  <span className="text-[9px] font-extrabold text-emerald-500">↑ +12 สัปดาห์นี้</span>
-                </div>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg font-bold shadow-sm">
-                👥
-              </div>
-            </div>
-
-            {/* Card 4: ผู้ใช้ระดับ PRO */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-amber-200 transition-colors">
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">ผู้ใช้ระดับ PRO</p>
-                <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-2xl font-black text-slate-900">{proAgentsCount}</span>
-                  <span className="text-[9px] font-extrabold text-slate-400">คิดเป็น {agentsCount ? ((proAgentsCount / agentsCount) * 100).toFixed(1) : 0}%</span>
-                </div>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg font-bold shadow-sm">
-                ⚡
-              </div>
-            </div>
-          </div>
+          <StatCards 
+            pendingCount={pendingCount}
+            onlineCount={onlineCount}
+            agentsCount={agentsCount}
+            proAgentsCount={proAgentsCount}
+          />
 
           {/* ==================================================== */}
           {/* 📝 LISTING MODERATION & TERMINAL LOGS GRID          */}
@@ -248,80 +199,11 @@ export default function AdminDashboardPage() {
                   </Link>
                 </div>
 
-                <div className="divide-y divide-slate-100">
-                  {moderationItems.length === 0 ? (
-                    <div className="p-8 text-center text-slate-400 font-bold">
-                      🎉 ไม่มีคำขอค้างในระบบ ตรวจสอบเรียบร้อยหมดแล้ว!
-                    </div>
-                  ) : (
-                    moderationItems.map((item) => (
-                      <div key={item.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="flex items-center gap-3.5">
-                          {item.image ? (
-                            <Image 
-                              src={item.image} 
-                              alt={item.title} 
-                              width={44} 
-                              height={44} 
-                              className="w-11 h-11 rounded-lg object-cover shadow-sm border border-slate-100" 
-                              unoptimized
-                            />
-                          ) : (
-                            <div className="w-11 h-11 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-base">
-                              🖼️
-                            </div>
-                          )}
-                          <div>
-                            <h4 className="font-extrabold text-slate-800 text-xs">{item.title}</h4>
-                            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
-                              ID: {item.code} - <span className="text-blue-700 font-bold">{item.price}</span>
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between sm:justify-end gap-6">
-                          <div className="text-left sm:text-right">
-                            <p className="font-bold text-slate-700 flex items-center gap-1">
-                              {item.seller}
-                              {item.isVerified && <span className="text-[9px]" title="ยืนยันตัวตนแล้ว">Verified ✔</span>}
-                            </p>
-                            <p className="text-[8px] text-amber-600 font-black uppercase mt-0.5">{item.plan}</p>
-                          </div>
-
-                          <div className="text-center">
-                            <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black ${
-                              item.slaUrgent 
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                                : 'bg-red-50 text-red-600 border border-red-200'
-                            }`}>
-                              {item.sla}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-1.5">
-                            <button className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-bold transition-all">
-                              🔍 พรีวิว
-                            </button>
-                            <button 
-                              onClick={() => handleApprove(item.id, item.title)}
-                              className="w-7 h-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded-md flex items-center justify-center font-bold transition-all shadow"
-                              title="อนุมัติการเผยแพร่"
-                            >
-                              ✓
-                            </button>
-                            <button 
-                              onClick={() => handleReject(item.id, item.title)}
-                              className="w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-md flex items-center justify-center font-bold transition-all shadow"
-                              title="ปฏิเสธคำขอ"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                <ModerationList 
+                  items={moderationItems} 
+                  onApprove={handleApprove} 
+                  onReject={handleReject} 
+                />
               </div>
 
               {/* สมาชิกสมัครใหม่ */}

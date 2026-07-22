@@ -4,8 +4,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { io, Socket } from 'socket.io-client';
+import ChatList from './components/ChatList';
+import ChatRoom from './components/ChatRoom';
 
-interface Message {
+export interface Message {
   id: string;
   sender: 'client' | 'agent';
   content: string;
@@ -13,7 +15,7 @@ interface Message {
   isRead?: boolean;
 }
 
-interface Contact {
+export interface Contact {
   id: string;
   name: string;
   avatarLetter: string;
@@ -207,121 +209,23 @@ export default function AgentChatPage() {
       {/* Main Workspace Layout */}
       <main className="max-w-6xl w-full mx-auto p-4 md:p-8 flex-1 flex flex-col md:flex-row gap-6 min-h-[calc(100vh-140px)]">
         
-        {/* Left Column: Contact List */}
-        <section className="w-full md:w-80 bg-white border border-slate-100 rounded-3xl p-4 shadow-sm flex flex-col space-y-4 shrink-0">
-          <h3 className="font-extrabold text-slate-900 text-sm md:text-base px-1">รายการติดต่อ</h3>
-          <input 
-            type="text" 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="ค้นหาชื่อ หรือ รหัสบ้าน..." 
-            className="w-full bg-[#f8fafc] border rounded-2xl px-4 py-2 text-xs font-semibold text-slate-800 outline-none"
-          />
+        <ChatList 
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          filteredContacts={filteredContacts}
+          selectedContactId={selectedContactId}
+          setSelectedContactId={setSelectedContactId}
+        />
 
-          <div className="flex-1 space-y-2 overflow-y-auto pr-1">
-            {filteredContacts.length === 0 ? (
-              <p className="text-slate-400 text-center font-bold py-6">ไม่มีรายชื่อผู้ติดต่อ</p>
-            ) : (
-              filteredContacts.map(c => {
-                const isActive = c.id === selectedContactId;
-                return (
-                  <div 
-                    key={c.id}
-                    onClick={() => setSelectedContactId(c.id)}
-                    className={`flex gap-3 p-3 rounded-2xl cursor-pointer border text-left ${isActive ? 'bg-blue-50/50 border-blue-100' : 'bg-white border-transparent hover:bg-slate-50'}`}
-                  >
-                    <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold shrink-0">{c.avatarLetter}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="font-extrabold text-slate-900 text-xs truncate">{c.name}</span>
-                        <span className="text-[9px] text-slate-400 font-bold">{c.lastMessageTime}</span>
-                      </div>
-                      <p className="text-[10px] truncate mt-0.5 text-slate-500">{c.lastMessageSnippet}</p>
-                      <span className="bg-slate-100 text-slate-500 text-[8px] font-extrabold px-1.5 py-0.2 rounded mt-1.5 inline-block">{c.propertyCode}</span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </section>
-
-        {/* Right Column: Active Chat Portal */}
-        <section className="flex-1 bg-white border border-slate-100 rounded-3xl shadow-sm flex flex-col overflow-hidden relative">
-          {activeContact ? (
-            <>
-              {/* Chat Header */}
-              <div className="p-4 border-b flex items-center justify-between bg-white shrink-0">
-                <div className="text-left">
-                  <h4 className="font-extrabold text-slate-900 text-xs md:text-sm">{activeContact.name}</h4>
-                  <span className="text-[9px] text-emerald-600 font-bold flex items-center gap-1 mt-0.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" /> กำลังออนไลน์
-                  </span>
-                </div>
-              </div>
-
-              {/* Property Card */}
-              <div className="px-4 py-3 bg-[#f8fafc]/80 border-b flex items-center justify-between gap-4 shrink-0 text-left">
-                <div>
-                  <span className="text-[9px] text-slate-400 font-bold block">ทรัพย์ที่สนใจ ({activeContact.propertyCode})</span>
-                  <h5 className="font-extrabold text-slate-800 text-[11px] truncate">{activeContact.propertyName}</h5>
-                </div>
-                <div className="text-right shrink-0">
-                  <strong className="text-blue-600 font-extrabold text-xs block">{activeContact.propertyPrice}</strong>
-                </div>
-              </div>
-
-              {/* Messages Area */}
-              <div className="flex-1 p-4 overflow-y-auto space-y-4 min-h-[250px] flex flex-col justify-end">
-                {activeContact.messages.map(m => {
-                  const isClient = m.sender === 'client';
-                  return (
-                    <div key={m.id} className={`flex gap-3 ${isClient ? 'justify-start text-left' : 'justify-end text-right'}`}>
-                      <div className="max-w-[70%]">
-                        <div className={`p-3 rounded-2xl text-[11px] font-semibold leading-relaxed shadow-sm ${isClient ? 'bg-slate-100 text-slate-800 rounded-tl-none' : 'bg-blue-600 text-white rounded-tr-none'}`}>
-                          {m.content}
-                        </div>
-                        <div className="text-[9px] text-slate-400 font-bold mt-1 px-1">{m.time}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {isTypingState[selectedContactId] && (
-                  <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-bold px-2 shrink-0">
-                    <span className="flex gap-1">
-                      <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" />
-                    </span>
-                    {activeContact.name} กำลังพิมพ์...
-                  </div>
-                )}
-              </div>
-
-              {/* Actions & Inputs */}
-              <div className="p-4 border-t bg-white space-y-3 shrink-0">
-                <div className="flex flex-wrap gap-2">
-                  <button onClick={() => sendQuickAction('location')} className="px-3 py-1.5 bg-slate-50 hover:bg-blue-50 text-slate-500 rounded-xl text-[10px] font-extrabold border transition">📍 ส่งพิกัดจุดนัดพบ</button>
-                  <button onClick={() => sendQuickAction('document')} className="px-3 py-1.5 bg-slate-50 hover:bg-blue-50 text-slate-500 rounded-xl text-[10px] font-extrabold border transition">📄 ส่งไฟล์เอกสารบ้าน</button>
-                  <button onClick={() => sendQuickAction('callback')} className="px-3 py-1.5 bg-slate-50 hover:bg-blue-50 text-slate-500 rounded-xl text-[10px] font-extrabold border transition">📋 ขอเบอร์ติดต่อกลับ</button>
-                </div>
-
-                <div className="relative bg-[#f8fafc] border rounded-2xl p-1.5 flex items-center shadow-inner">
-                  <input 
-                    type="text" 
-                    value={newMessageText}
-                    onChange={(e) => setNewMessageText(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage(); }}
-                    placeholder={`ตอบกลับ${activeContact.name.split(' ')[0]}... ข้อมูลบันทึกตามมาตรฐาน PDPA`}
-                    className="w-full bg-transparent border-none outline-none pl-3 pr-12 text-slate-800 placeholder-slate-400 font-semibold text-xs py-2"
-                  />
-                  <button onClick={() => handleSendMessage()} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-extrabold text-xs transition">ส่ง 📤</button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-slate-400 font-bold">กรุณาเลือกผู้ติดต่อเพื่อเริ่มแชท</div>
-          )}
-        </section>
+        <ChatRoom 
+          activeContact={activeContact}
+          selectedContactId={selectedContactId}
+          isTypingState={isTypingState}
+          newMessageText={newMessageText}
+          setNewMessageText={setNewMessageText}
+          handleSendMessage={handleSendMessage}
+          sendQuickAction={sendQuickAction}
+        />
 
       </main>
 
