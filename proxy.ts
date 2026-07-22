@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
-// Middleware ดักกรองความปลอดภัยและการจัดการสิทธิ์การเข้าถึงหน้าเว็บสำหรับ Next.js App Router
-export async function middleware(request: NextRequest) {
+// โค้ดดักกรองความปลอดภัยและการจัดการสิทธิ์การเข้าถึงหน้าเว็บ (Proxy Middleware สำหรับ Next.js 16)
+export default async function proxy(request: NextRequest) {
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
   const url = request.nextUrl.clone();
   
@@ -37,7 +37,7 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// กำหนดเส้นทางที่จะรัน middleware ตัวนี้ (คุ้มครองทั้งหน้าแอดมิน นายหน้า และ API)
+// กำหนดเส้นทางที่จะรัน proxy ตัวนี้ (คุ้มครองทั้งหน้าแอดมิน นายหน้า และ API)
 export const config = {
   matcher: ['/agent/:path*', '/admin/:path*', '/api/admin/:path*'],
 };
