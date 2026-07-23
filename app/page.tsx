@@ -1,12 +1,12 @@
 'use client';
 
 import { useApp } from '@/context/AppContext';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
-import HeroSection from '@/components/home/HeroSection';
-import PopularLocations from '@/components/home/PopularLocations';
-import PremiumListings from '@/components/home/PremiumListings';
-import RecentListings from '@/components/home/RecentListings';
+import Navbar from '@/components/layout/Navbar';
+import Footer from '@/components/layout/Footer';
+import HeroSection from '@/components/customer/HeroSection';
+import PopularLocations from '@/components/customer/PopularLocations';
+import PremiumListings from '@/components/customer/PremiumListings';
+import RecentListings from '@/components/customer/RecentListings';
 
 export default function Home() {
   const { properties, favorites, toggleFavorite } = useApp();

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import ImageUploader from '@/components/agent/ImageUploader';
+import ImageUploader from '@/components/property/ImageUploader';
 
 export default function AgentAddPropertyPage() {
   const router = useRouter();

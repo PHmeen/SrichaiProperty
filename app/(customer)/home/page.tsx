@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useApp } from '@/context/AppContext';
-import PropertyCard from '../../../components/PropertyCard';
+import PropertyCard from '@/components/customer/PropertyCard';
 
 export default function CustomerHomePage() {
   const [activeTab, setActiveTab] = useState<'buy' | 'rent' | 'sell'>('buy');

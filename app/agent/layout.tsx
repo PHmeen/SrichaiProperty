@@ -1,6 +1,5 @@
-import React from 'react';
-import AgentNavbar from '@/components/agent/Navbar';
-import AgentFooter from '@/components/agent/Footer';
+import AgentNavbar from '@/components/layout/AgentNavbar';
+import AgentFooter from '@/components/layout/AgentFooter';
 
 export default function AgentLayout({
   children,
