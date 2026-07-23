@@ -3,8 +3,8 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import BookingSidebar from './components/BookingSidebar';
-import BookingCalendar from './components/BookingCalendar';
+import BookingSidebar from '@/components/customer/BookingSidebar';
+import BookingCalendar from '@/components/customer/BookingCalendar';
 
 function BookAppointmentForm() {
   const searchParams = useSearchParams();

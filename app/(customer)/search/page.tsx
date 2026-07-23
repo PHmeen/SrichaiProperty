@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import SearchSidebar from './components/SearchSidebar';
+import SearchSidebar from '@/components/customer/SearchSidebar';
 import PropertyCard from '@/components/customer/PropertyCard';
 
 function SearchPageContent() {

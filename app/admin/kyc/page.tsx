@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import AdminKycAgentCard, { AgentData } from './components/AdminKycAgentCard';
+import AdminKycAgentCard, { AgentData } from '@/components/admin/AdminKycAgentCard';
 
 export default function AdminKycPage() {
   const [agents, setAgents] = useState<AgentData[]>([]);
