@@ -36,24 +36,20 @@ function BookAppointmentForm() {
 
   useEffect(() => {
     let active = true;
-    const fetchThaiHolidays = async () => {
+    const fetchHolidays = async () => {
       try {
-        const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${currentYear}/TH`);
-        if (res.ok && res.status !== 204) {
-          const text = await res.text();
-          if (text) {
-            const data = JSON.parse(text);
-            if (active && Array.isArray(data)) {
-              const dateStrings = data.map((h: { date: string }) => h.date);
-              setHolidays(dateStrings);
-            }
+        const res = await fetch(`/api/holidays?year=${currentYear}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (active && data.success && Array.isArray(data.holidays)) {
+            setHolidays(data.holidays);
           }
         }
       } catch (err) {
-        console.error('Error fetching Thai holidays:', err);
+        console.error('Failed to fetch holidays:', err);
       }
     };
-    fetchThaiHolidays();
+    fetchHolidays();
     return () => {
       active = false;
     };
