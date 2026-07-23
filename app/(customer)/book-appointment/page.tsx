@@ -39,11 +39,14 @@ function BookAppointmentForm() {
     const fetchThaiHolidays = async () => {
       try {
         const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${currentYear}/TH`);
-        if (res.ok) {
-          const data = await res.json();
-          if (active && Array.isArray(data)) {
-            const dateStrings = data.map((h: { date: string }) => h.date);
-            setHolidays(dateStrings);
+        if (res.ok && res.status !== 204) {
+          const text = await res.text();
+          if (text) {
+            const data = JSON.parse(text);
+            if (active && Array.isArray(data)) {
+              const dateStrings = data.map((h: { date: string }) => h.date);
+              setHolidays(dateStrings);
+            }
           }
         }
       } catch (err) {

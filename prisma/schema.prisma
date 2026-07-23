@@ -1,191 +1,130 @@
+// ==========================================
+//  การตั้งค่าหลักของ Prisma (Configuration)
+// ==========================================
+
+// ตัวสร้าง Prisma Client สำหรับนำไปใช้เขียนโค้ดภาษา TypeScript/JavaScript
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["partialIndexes"]
 }
 
+// แหล่งข้อมูลฐานข้อมูล (เชื่อมต่อกับ PostgreSQL)
 datasource db {
   provider = "postgresql"
 }
 
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+// ==========================================
+// 1. ระบบผู้ใช้งานและสิทธิ์ (Users & Auth)
+// ==========================================
+
+/// ตารางบทบาท/สิทธิ์การใช้งานระบบ (เช่น admin, agent, customer)
+model roles {
+  id         String   @id @db.VarChar(10) // รหัสสิทธิ์ เช่น "admin", "agent", "customer"
+  name       String   @unique @db.VarChar(50) // ชื่อสิทธิ์
+  created_at DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  users      users[]
+}
+
+/// ตารางผู้ใช้งานระบบ (รวมทั้งลูกค้า, นายหน้า, และแอดมิน)
+model users {
+  id                                                  String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                                               String                  @unique @db.VarChar(100) // อีเมลสำหรับเข้าสู่ระบบ
+  password_hash                                       String                  @db.VarChar(255) // รหัสผ่านที่ผ่านการเข้ารหัสแล้ว
+  first_name                                          String                  @db.VarChar(100) // ชื่อจริง
+  last_name                                           String                  @db.VarChar(100) // นามสกุล
+  phone                                               String?                 @db.VarChar(15) // เบอร์โทรศัพท์
+  profile_image                                       String?                 @db.VarChar(255) // URL รูปโปรไฟล์
+  role_id                                             String?                 @db.VarChar(10) // สิทธิ์ใช้งาน (เชื่อมกับตาราง roles)
+  status                                              String?                 @default("pending") @db.VarChar(20) // สถานะบัญชี (เช่น active, pending, suspended)
+  is_verified                                         Boolean?                @default(false) // ยืนยันตัวตนแล้วหรือยัง
+  plan_type                                           String?                 @default("basic") @db.VarChar(20) // แพ็กเกจใช้งานปัจจุบัน
+  plan_expired_at                                     DateTime?               @db.Timestamptz(6) // วันหมดอายุแพ็กเกจ
+  created_at                                          DateTime                @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  
+  // ข้อมูลเพิ่มเติมเฉพาะสำหรับ นายหน้า (Agent)
+  line_id                                             String?                 @db.VarChar(50) // LINE ID
+  experience                                          String?                 @db.VarChar(50) // ประสบการณ์การทำงาน
+  specialty_zone                                      String?                 @db.VarChar(150) // ทำเลที่เชี่ยวชาญ
+  specialty_type                                      String?                 @db.VarChar(50) // ประเภทอสังหาฯ ที่เชี่ยวชาญ
+  kyc_doc                                             String?                 @db.VarChar(255) // เอกสารยืนยันตัวตน (KYC)
+
+  // ความสัมพันธ์กับตารางอื่นๆ (Relations)
+  roles                                               roles?                  @relation(fields: [role_id], references: [id], onUpdate: NoAction)
+  agent_availabilities                                agent_availabilities[]
+  appointments_appointments_agent_idTousers           appointments[]          @relation("appointments_agent_idTousers")
+  appointments_appointments_customer_idTousers        appointments[]          @relation("appointments_customer_idTousers")
+  chat_sessions_chat_sessions_agent_idTousers         chat_sessions[]         @relation("chat_sessions_agent_idTousers")
+  chat_sessions_chat_sessions_customer_idTousers      chat_sessions[]         @relation("chat_sessions_customer_idTousers")
+  login_histories                                     login_histories[]
+  messages                                            messages[]
+  notifications                                       notifications[]
+  properties                                          properties[]
+  quick_reply_templates                               quick_reply_templates[]
+  reports_reports_reported_agent_idTousers            reports[]               @relation("reports_reported_agent_idTousers")
+  reports_reports_reporter_idTousers                  reports[]               @relation("reports_reporter_idTousers")
+  sale_transactions_sale_transactions_agent_idTousers sale_transactions[]     @relation("sale_transactions_agent_idTousers")
+  sale_transactions_sale_transactions_buyer_idTousers sale_transactions[]     @relation("sale_transactions_buyer_idTousers")
+  saved_properties                                    saved_properties[]
+}
+
+/// ตารางเก็บเวลาที่นายหน้า (Agent) สะดวกรับนัดหมาย
 model agent_availabilities {
   id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  agent_id       String?  @db.Uuid
-  available_date DateTime @db.Date
-  time_slot      String?  @db.VarChar(20)
-  is_booked      Boolean? @default(false)
+  agent_id       String?  @db.Uuid // รหัสนายหน้า
+  available_date DateTime @db.Date // วันที่ว่าง
+  time_slot      String?  @db.VarChar(20) // ช่วงเวลาที่ว่าง (เช่น "09:00-10:00")
+  is_booked      Boolean? @default(false) // ถูกจองแล้วหรือยัง
   created_at     DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   users          users?   @relation(fields: [agent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([agent_id, available_date, time_slot])
 }
 
-model amenities {
-  id                 Int                  @id @default(autoincrement())
-  name               String               @unique @db.VarChar(100)
-  created_at         DateTime             @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  property_amenities property_amenities[]
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model appointments {
-  id                                    String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  customer_id                           String?     @db.Uuid
-  agent_id                              String?     @db.Uuid
-  property_id                           String?     @db.Uuid
-  appointment_date                      DateTime    @db.Date
-  time_slot                             String?     @db.VarChar(20)
-  status                                String?     @default("pending") @db.VarChar(20)
-  note                                  String?
-  created_at                            DateTime    @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  users_appointments_agent_idTousers    users?      @relation("appointments_agent_idTousers", fields: [agent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users_appointments_customer_idTousers users?      @relation("appointments_customer_idTousers", fields: [customer_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  properties                            properties? @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  reviews                               reviews?
-
-  @@index([agent_id], map: "idx_appointments_agent")
-  @@index([customer_id], map: "idx_appointments_customer")
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model banner_campaigns {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  title      String   @db.VarChar(100)
-  image_url  String   @db.VarChar(255)
-  link_url   String?  @db.VarChar(255)
-  start_date DateTime @db.Date
-  end_date   DateTime @db.Date
-  status     String?  @default("inactive") @db.VarChar(20)
-  created_at DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-}
-
-model chat_sessions {
-  id                                     String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  customer_id                            String?     @db.Uuid
-  agent_id                               String?     @db.Uuid
-  property_id                            String?     @db.Uuid
-  created_at                             DateTime    @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  users_chat_sessions_agent_idTousers    users?      @relation("chat_sessions_agent_idTousers", fields: [agent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users_chat_sessions_customer_idTousers users?      @relation("chat_sessions_customer_idTousers", fields: [customer_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  properties                             properties? @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  messages                               messages[]
-
-  @@unique([customer_id, agent_id, property_id])
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model listing_package_orders {
-  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  property_id          String?                @db.Uuid
-  package_id           Int?
-  start_date           DateTime               @db.Date
-  end_date             DateTime               @db.Date
-  status               String?                @default("pending") @db.VarChar(20)
-  created_at           DateTime               @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  listing_packages     listing_packages?      @relation(fields: [package_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  properties           properties?            @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  payment_transactions payment_transactions[]
-}
-
-model listing_packages {
-  id                     Int                      @id @default(autoincrement())
-  name                   String                   @unique @db.VarChar(50)
-  price                  Decimal                  @db.Decimal(10, 2)
-  max_duration_days      Int
-  created_at             DateTime                 @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  listing_package_orders listing_package_orders[]
-}
-
+/// ตารางประวัติการเข้าสู่ระบบของผู้ใช้
 model login_histories {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id    String?  @db.Uuid
-  ip_address String?  @db.VarChar(45)
-  user_agent String?
+  user_id    String?  @db.Uuid // ผู้ใช้งานที่ล็อกอิน
+  ip_address String?  @db.VarChar(45) // IP Address ตอนล็อกอิน
+  user_agent String?  // เบราว์เซอร์/อุปกรณ์ที่ใช้ล็อกอิน
   created_at DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   users      users?   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model messages {
-  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  session_id    String?        @db.Uuid
-  sender_id     String?        @db.Uuid
-  content       String?
-  file_url      String?        @db.VarChar(255)
-  latitude      Decimal?       @db.Decimal(10, 8)
-  longitude     Decimal?       @db.Decimal(11, 8)
-  created_at    DateTime       @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  users         users?         @relation(fields: [sender_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  chat_sessions chat_sessions? @relation(fields: [session_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@index([session_id], map: "idx_messages_session")
+// ==========================================
+// 🏠 2. ระบบอสังหาริมทรัพย์ (Properties)
+// ==========================================
+
+/// ตารางประเภทอสังหาริมทรัพย์ (เช่น บ้านเดี่ยว, คอนโด, ทาวน์โฮม, ที่ดิน)
+model property_types {
+  id         Int          @id @default(autoincrement())
+  name       String       @unique @db.VarChar(50) // ชื่อประเภทอสังหาฯ
+  created_at DateTime     @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  properties properties[]
 }
 
-model nearby_places {
-  id                Int                 @id @default(autoincrement())
-  name              String              @db.VarChar(150)
-  type              String?             @db.VarChar(50)
-  created_at        DateTime            @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  property_nearbies property_nearbies[]
-}
-
-model notifications {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id    String?  @db.Uuid
-  title      String   @db.VarChar(150)
-  content    String
-  is_read    Boolean? @default(false)
-  type       String?  @db.VarChar(50)
-  created_at DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  users      users?   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@index([user_id], map: "idx_notifications_user_unread", where: raw("(is_read = false)"))
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model payment_transactions {
-  id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  order_id               String?                 @db.Uuid
-  amount                 Decimal                 @db.Decimal(10, 2)
-  payment_method         String?                 @db.VarChar(50)
-  slip_url               String?                 @db.VarChar(255)
-  status                 String?                 @default("pending") @db.VarChar(20)
-  created_at             DateTime                @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  listing_package_orders listing_package_orders? @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-}
-
-model promotions {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name          String   @db.VarChar(100)
-  discount_rate Decimal? @db.Decimal(4, 2)
-  start_date    DateTime @db.Date
-  end_date      DateTime @db.Date
-  code          String?  @unique @db.VarChar(20)
-  created_at    DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+/// ตารางหลักสำหรับเก็บข้อมูลอสังหาริมทรัพย์ (บ้าน/คอนโด/ที่ดิน)
 model properties {
   id                     String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  title                  String                   @db.VarChar(150)
-  price                  Decimal                  @db.Decimal(12, 2)
-  type_id                Int?
-  location               String
-  latitude               Decimal?                 @db.Decimal(10, 8)
-  longitude              Decimal?                 @db.Decimal(11, 8)
-  description            String?
-  bedrooms               Int?                     @default(0)
-  bathrooms              Int?                     @default(0)
-  area_sqm               Decimal?                 @db.Decimal(8, 2)
-  status                 String?                  @default("pending") @db.VarChar(20)
-  agent_id               String?                  @db.Uuid
-  province_id            Int?
-  amphure_id             Int?
-  district_id            Int?
+  title                  String                   @db.VarChar(150) // หัวข้อ/ชื่อประกาศ
+  price                  Decimal                  @db.Decimal(12, 2) // ราคาขาย/เช่า
+  type_id                Int?                     // ประเภทอสังหาฯ (เชื่อมกับ property_types)
+  location               String                   // ที่อยู่/ข้อความทำเล
+  latitude               Decimal?                 @db.Decimal(10, 8) // พิกัดละติจูด
+  longitude              Decimal?                 @db.Decimal(11, 8) // พิกัดลองจิจูด
+  description            String?                  // รายละเอียดเพิ่มเติม
+  bedrooms               Int?                     @default(0) // จำนวนห้องนอน
+  bathrooms              Int?                     @default(0) // จำนวนห้องน้ำ
+  area_sqm               Decimal?                 @db.Decimal(8, 2) // พื้นที่ (ตร.ม.)
+  status                 String?                  @default("pending") @db.VarChar(20) // สถานะประกาศ (เช่น active, pending, sold)
+  agent_id               String?                  @db.Uuid // นายหน้าดูแลประกาศ (เชื่อมกับ users)
+  province_id            Int?                     // จังหวัด
+  amphure_id             Int?                     // อำเภอ/เขต
+  district_id            Int?                     // ตำบล/แขวง
   created_at             DateTime                 @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+
+  // ความสัมพันธ์กับตารางอื่นๆ
   appointments           appointments[]
   chat_sessions          chat_sessions[]
   listing_package_orders listing_package_orders[]
@@ -209,6 +148,36 @@ model properties {
   @@index([district_id], map: "idx_properties_district")
 }
 
+/// ตารางรูปภาพของอสังหาริมทรัพย์
+model property_images {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  property_id String?     @db.Uuid // อสังหาริมทรัพย์เจ้าของรูป
+  image_url   String      @db.VarChar(255) // URL รูปภาพ
+  order_index Int?        @default(0) // ลำดับการแสดงผลรูปภาพ
+  created_at  DateTime    @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  properties  properties? @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// ตารางเอกสารแนบของอสังหาริมทรัพย์ (เช่น โฉนดที่ดิน, สัญญา)
+model property_documents {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  property_id String?     @db.Uuid
+  doc_url     String      @db.VarChar(255) // URL ไฟล์เอกสาร
+  doc_type    String?     @db.VarChar(50) // ประเภทเอกสาร
+  status      String?     @default("pending") @db.VarChar(20) // สถานะตรวจสอบเอกสาร
+  created_at  DateTime    @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  properties  properties? @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// ตารางมาสเตอร์สิ่งอำนวยความสะดวก (เช่น สระว่ายน้ำ, ฟิตเนส, รปภ. 24 ชม.)
+model amenities {
+  id                 Int                  @id @default(autoincrement())
+  name               String               @unique @db.VarChar(100) // ชื่อสิ่งอำนวยความสะดวก
+  created_at         DateTime             @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  property_amenities property_amenities[]
+}
+
+/// ตารางเชื่อมความสัมพันธ์ระหว่าง อสังหาริมทรัพย์ กับ สิ่งอำนวยความสะดวก (Many-to-Many)
 model property_amenities {
   property_id String     @db.Uuid
   amenity_id  Int
@@ -218,103 +187,30 @@ model property_amenities {
   @@id([property_id, amenity_id])
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model property_documents {
-  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  property_id String?     @db.Uuid
-  doc_url     String      @db.VarChar(255)
-  doc_type    String?     @db.VarChar(50)
-  status      String?     @default("pending") @db.VarChar(20)
-  created_at  DateTime    @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  properties  properties? @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+/// ตารางมาสเตอร์สถานที่ใกล้เคียง (เช่น สถานีรถไฟฟ้า, ห้างสรรพสินค้า, โรงพยาบาล)
+model nearby_places {
+  id                Int                 @id @default(autoincrement())
+  name              String              @db.VarChar(150) // ชื่อสถานที่ใกล้เคียง
+  type              String?             @db.VarChar(50) // ประเภท เช่น BTS, Hospital, Mall
+  created_at        DateTime            @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  property_nearbies property_nearbies[]
 }
 
-model property_images {
-  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  property_id String?     @db.Uuid
-  image_url   String      @db.VarChar(255)
-  order_index Int?        @default(0)
-  created_at  DateTime    @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  properties  properties? @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-}
-
+/// ตารางเชื่อมความสัมพันธ์ระหว่าง อสังหาริมทรัพย์ กับ สถานที่ใกล้เคียง (Many-to-Many)
 model property_nearbies {
   property_id     String        @db.Uuid
   nearby_place_id Int
-  distance_meters Decimal?      @db.Decimal(6, 1)
+  distance_meters Decimal?      @db.Decimal(6, 1) // ระยะห่าง (เมตร)
   nearby_places   nearby_places @relation(fields: [nearby_place_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   properties      properties    @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([property_id, nearby_place_id])
 }
 
-model property_types {
-  id         Int          @id @default(autoincrement())
-  name       String       @unique @db.VarChar(50)
-  created_at DateTime     @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  properties properties[]
-}
-
-model quick_reply_templates {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  agent_id   String?  @db.Uuid
-  title      String   @db.VarChar(100)
-  content    String
-  created_at DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  users      users?   @relation(fields: [agent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model reports {
-  id                                     String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  reporter_id                            String?     @db.Uuid
-  reported_property_id                   String?     @db.Uuid
-  reported_agent_id                      String?     @db.Uuid
-  reason                                 String      @db.VarChar(150)
-  details                                String?
-  status                                 String?     @default("pending") @db.VarChar(20)
-  created_at                             DateTime    @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  users_reports_reported_agent_idTousers users?      @relation("reports_reported_agent_idTousers", fields: [reported_agent_id], references: [id], onUpdate: NoAction)
-  properties                             properties? @relation(fields: [reported_property_id], references: [id], onUpdate: NoAction)
-  users_reports_reporter_idTousers       users?      @relation("reports_reporter_idTousers", fields: [reporter_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-}
-
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model reviews {
-  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  appointment_id String?       @unique @db.Uuid
-  rating         Int?
-  comment        String?
-  created_at     DateTime      @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  appointments   appointments? @relation(fields: [appointment_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-}
-
-model roles {
-  id         String   @id @db.VarChar(10)
-  name       String   @unique @db.VarChar(50)
-  created_at DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  users      users[]
-}
-
-model sale_transactions {
-  id                                      String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  property_id                             String?     @db.Uuid
-  agent_id                                String?     @db.Uuid
-  buyer_id                                String?     @db.Uuid
-  final_price                             Decimal     @db.Decimal(12, 2)
-  commission_rate                         Decimal     @db.Decimal(4, 2)
-  commission_amount                       Decimal     @db.Decimal(10, 2)
-  transaction_date                        DateTime    @db.Date
-  agreement_file_url                      String?     @db.VarChar(255)
-  created_at                              DateTime    @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  users_sale_transactions_agent_idTousers users?      @relation("sale_transactions_agent_idTousers", fields: [agent_id], references: [id], onUpdate: NoAction)
-  users_sale_transactions_buyer_idTousers users?      @relation("sale_transactions_buyer_idTousers", fields: [buyer_id], references: [id], onUpdate: NoAction)
-  properties                              properties? @relation(fields: [property_id], references: [id], onUpdate: NoAction)
-}
-
+/// ตารางเก็บรายการอสังหาริมทรัพย์ที่ผู้ใช้กดบันทึกไว้เป็น "รายการโปรด" (Bookmark / Favorites)
 model saved_properties {
-  user_id     String     @db.Uuid
-  property_id String     @db.Uuid
+  user_id     String     @db.Uuid // รหัสผู้ใช้
+  property_id String     @db.Uuid // รหัสอสังหาฯ ที่เซฟไว้
   created_at  DateTime   @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   properties  properties @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   users       users      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -322,67 +218,27 @@ model saved_properties {
   @@id([user_id, property_id])
 }
 
-model system_configs {
-  key         String   @id @db.VarChar(50)
-  value       String   @db.VarChar(255)
-  description String?
-  updated_at  DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-}
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
-model users {
-  id                                                  String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email                                               String                  @unique @db.VarChar(100)
-  password_hash                                       String                  @db.VarChar(255)
-  first_name                                          String                  @db.VarChar(100)
-  last_name                                           String                  @db.VarChar(100)
-  phone                                               String?                 @db.VarChar(15)
-  profile_image                                       String?                 @db.VarChar(255)
-  role_id                                             String?                 @db.VarChar(10)
-  status                                              String?                 @default("pending") @db.VarChar(20)
-  is_verified                                         Boolean?                @default(false)
-  plan_type                                           String?                 @default("basic") @db.VarChar(20)
-  plan_expired_at                                     DateTime?               @db.Timestamptz(6)
-  created_at                                          DateTime                @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  agent_availabilities                                agent_availabilities[]
-  appointments_appointments_agent_idTousers           appointments[]          @relation("appointments_agent_idTousers")
-  appointments_appointments_customer_idTousers        appointments[]          @relation("appointments_customer_idTousers")
-  chat_sessions_chat_sessions_agent_idTousers         chat_sessions[]         @relation("chat_sessions_agent_idTousers")
-  chat_sessions_chat_sessions_customer_idTousers      chat_sessions[]         @relation("chat_sessions_customer_idTousers")
-  login_histories                                     login_histories[]
-  messages                                            messages[]
-  notifications                                       notifications[]
-  properties                                          properties[]
-  quick_reply_templates                               quick_reply_templates[]
-  reports_reports_reported_agent_idTousers            reports[]               @relation("reports_reported_agent_idTousers")
-  reports_reports_reporter_idTousers                  reports[]               @relation("reports_reporter_idTousers")
-  sale_transactions_sale_transactions_agent_idTousers sale_transactions[]     @relation("sale_transactions_agent_idTousers")
-  sale_transactions_sale_transactions_buyer_idTousers sale_transactions[]     @relation("sale_transactions_buyer_idTousers")
-  saved_properties                                    saved_properties[]
-  line_id                                             String?                 @db.VarChar(50)
-  experience                                          String?                 @db.VarChar(50)
-  specialty_zone                                      String?                 @db.VarChar(150)
-  specialty_type                                      String?                 @db.VarChar(50)
-  kyc_doc                                             String?                 @db.VarChar(255)
-  roles                                               roles?                  @relation(fields: [role_id], references: [id], onUpdate: NoAction)
-}
+// ==========================================
+// 📍 3. ระบบทำเลที่ตั้งและจังหวัด (Locations)
+// ==========================================
 
-
+/// ตารางจังหวัด
 model provinces {
   id         Int          @id
-  name_th    String       @db.VarChar(150)
-  name_en    String       @db.VarChar(150)
+  name_th    String       @db.VarChar(150) // ชื่อจังหวัด (ภาษาไทย)
+  name_en    String       @db.VarChar(150) // ชื่อจังหวัด (ภาษาอังกฤษ)
   created_at DateTime     @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   amphures   amphures[]
   properties properties[]
 }
 
+/// ตารางอำเภอ/เขต
 model amphures {
   id          Int          @id
-  name_th     String       @db.VarChar(150)
-  name_en     String       @db.VarChar(150)
-  province_id Int
+  name_th     String       @db.VarChar(150) // ชื่ออำเภอ/เขต (ภาษาไทย)
+  name_en     String       @db.VarChar(150) // ชื่ออำเภอ/เขต (ภาษาอังกฤษ)
+  province_id Int          // รหัสจังหวัดที่สังกัด
   created_at  DateTime     @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   provinces   provinces    @relation(fields: [province_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   districts   districts[]
@@ -391,15 +247,225 @@ model amphures {
   @@index([province_id], map: "idx_amphures_province")
 }
 
+/// ตารางตำบล/แขวง
 model districts {
   id         Int          @id
-  name_th    String       @db.VarChar(150)
-  name_en    String       @db.VarChar(150)
-  zip_code   Int
-  amphure_id Int
+  name_th    String       @db.VarChar(150) // ชื่อตำบล/แขวง (ภาษาไทย)
+  name_en    String       @db.VarChar(150) // ชื่อตำบล/แขวง (ภาษาอังกฤษ)
+  zip_code   Int          // รหัสไปรษณีย์
+  amphure_id Int          // รหัสอำเภอที่สังกัด
   created_at DateTime     @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   amphures   amphures     @relation(fields: [amphure_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   properties properties[]
 
   @@index([amphure_id], map: "idx_districts_amphure")
+}
+
+
+// ==========================================
+// 📅 4. ระบบการนัดหมายและรีวิว (Appointments & Reviews)
+// ==========================================
+
+/// ตารางนัดหมายเข้าดูอสังหาริมทรัพย์ ระหว่าง ลูกค้า กับ นายหน้า
+model appointments {
+  id                                    String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customer_id                           String?     @db.Uuid // รหัสลูกค้า
+  agent_id                              String?     @db.Uuid // รหัสนายหน้า
+  property_id                           String?     @db.Uuid // รหัสอสังหาริมทรัพย์ที่ต้องการดู
+  appointment_date                      DateTime    @db.Date // วันที่นัดหมาย
+  time_slot                             String?     @db.VarChar(20) // ช่วงเวลานัดหมาย
+  status                                String?     @default("pending") @db.VarChar(20) // สถานะนัดหมาย (pending, confirmed, cancelled, completed)
+  note                                  String?     // ข้อความ/โน้ตเพิ่มเติมจากลูกค้า
+  created_at                            DateTime    @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  users_appointments_agent_idTousers    users?      @relation("appointments_agent_idTousers", fields: [agent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_appointments_customer_idTousers users?      @relation("appointments_customer_idTousers", fields: [customer_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  properties                            properties? @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  reviews                               reviews?
+
+  @@index([agent_id], map: "idx_appointments_agent")
+  @@index([customer_id], map: "idx_appointments_customer")
+}
+
+/// ตารางรีวิวและให้คะแนนการบริการจากการนัดหมาย
+model reviews {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  appointment_id String?       @unique @db.Uuid // อ้างอิงการนัดหมายที่รีวิว
+  rating         Int?          // คะแนน (เช่น 1 - 5 ดาว)
+  comment        String?       // ข้อความแสดงความคิดเห็น
+  created_at     DateTime      @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  appointments   appointments? @relation(fields: [appointment_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+
+// ==========================================
+// 💬 5. ระบบแชทและการสื่อสาร (Chat System)
+// ==========================================
+
+/// ตารางห้องแชทระหว่าง ลูกค้า และ นายหน้า (ต่อ 1 อสังหาฯ)
+model chat_sessions {
+  id                                     String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customer_id                            String?     @db.Uuid // รหัสลูกค้า
+  agent_id                               String?     @db.Uuid // รหัสนายหน้า
+  property_id                            String?     @db.Uuid // อสังหาฯ ที่พูดคุยสอบถาม
+  created_at                             DateTime    @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  users_chat_sessions_agent_idTousers    users?      @relation("chat_sessions_agent_idTousers", fields: [agent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users_chat_sessions_customer_idTousers users?      @relation("chat_sessions_customer_idTousers", fields: [customer_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  properties                             properties? @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  messages                               messages[]
+
+  @@unique([customer_id, agent_id, property_id])
+}
+
+/// ตารางข้อความภายในห้องแชท
+model messages {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  session_id    String?        @db.Uuid // รหัสห้องแชท (เชื่อมกับ chat_sessions)
+  sender_id     String?        @db.Uuid // รหัสผู้ส่งข้อความ
+  content       String?        // ข้อความแชท
+  file_url      String?        @db.VarChar(255) // URL ไฟล์หรือรูปภาพที่แนบส่ง
+  latitude      Decimal?       @db.Decimal(10, 8) // พิกัดละติจูด (กรณีแชร์โลเคชัน)
+  longitude     Decimal?       @db.Decimal(11, 8) // พิกัดลองจิจูด (กรณีแชร์โลเคชัน)
+  created_at    DateTime       @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  users         users?         @relation(fields: [sender_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  chat_sessions chat_sessions? @relation(fields: [session_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([session_id], map: "idx_messages_session")
+}
+
+/// ตารางเทมเพลตข้อความตอบกลับด่วนสำหรับนายหน้า
+model quick_reply_templates {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agent_id   String?  @db.Uuid // นายหน้าเจ้าของเทมเพลต
+  title      String   @db.VarChar(100) // ชื่อเทมเพลต (เช่น "สอบถามสถานะ", "ส่งที่อยู่")
+  content    String   // ข้อความตอบกลับสำเร็จรูป
+  created_at DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  users      users?   @relation(fields: [agent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+
+// ==========================================
+// 💳 6. ระบบแพ็กเกจและการชำระเงิน (Packages & Payments)
+// ==========================================
+
+/// ตารางมาสเตอร์แพ็กเกจการลงประกาศ (เช่น แพ็กเกจ Basic, Premium, VIP)
+model listing_packages {
+  id                     Int                      @id @default(autoincrement())
+  name                   String                   @unique @db.VarChar(50) // ชื่อแพ็กเกจ
+  price                  Decimal                  @db.Decimal(10, 2) // ราคา
+  max_duration_days      Int                      // จำนวนวันที่ลงประกาศได้
+  created_at             DateTime                 @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  listing_package_orders listing_package_orders[]
+}
+
+/// ตารางประวัติการสั่งซื้อแพ็กเกจลงประกาศ
+model listing_package_orders {
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  property_id          String?                @db.Uuid // อสังหาฯ ที่ใช้แพ็กเกจนี้
+  package_id           Int?                   // แพ็กเกจที่ซื้อ
+  start_date           DateTime               @db.Date // วันเริ่มใช้งาน
+  end_date             DateTime               @db.Date // วันสิ้นสุดการใช้งาน
+  status               String?                @default("pending") @db.VarChar(20) // สถานะออเดอร์ (pending, paid, expired)
+  created_at           DateTime               @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  listing_packages     listing_packages?      @relation(fields: [package_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  properties           properties?            @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  payment_transactions payment_transactions[]
+}
+
+/// ตารางรายการชำระเงิน และสลิปการโอนเงิน
+model payment_transactions {
+  id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id               String?                 @db.Uuid // อ้างอิงคำสั่งซื้อ
+  amount                 Decimal                 @db.Decimal(10, 2) // จำนวนเงิน
+  payment_method         String?                 @db.VarChar(50) // ช่องทางชำระเงิน (เช่น PromptPay, Bank Transfer)
+  slip_url               String?                 @db.VarChar(255) // URL หลักฐานสลิปการโอนเงิน
+  status                 String?                 @default("pending") @db.VarChar(20) // สถานะชำระเงิน (pending, approved, rejected)
+  created_at             DateTime                @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  listing_package_orders listing_package_orders? @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// ตารางบันทึกการปิดการขายและค่าคอมมิชชั่น
+model sale_transactions {
+  id                                      String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  property_id                             String?     @db.Uuid // อสังหาฯ ที่ขายได้
+  agent_id                                String?     @db.Uuid // นายหน้าที่ขายได้
+  buyer_id                                String?     @db.Uuid // ผู้ซื้อ
+  final_price                             Decimal     @db.Decimal(12, 2) // ราคาขายจริง
+  commission_rate                         Decimal     @db.Decimal(4, 2) // เปอร์เซ็นต์ค่าคอมมิชชั่น (%)
+  commission_amount                       Decimal     @db.Decimal(10, 2) // จำนวนเงินค่าคอมมิชชั่น
+  transaction_date                        DateTime    @db.Date // วันที่ปิดการขาย
+  agreement_file_url                      String?     @db.VarChar(255) // URL ไฟล์สัญญาซื้อขาย
+  created_at                              DateTime    @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  users_sale_transactions_agent_idTousers users?      @relation("sale_transactions_agent_idTousers", fields: [agent_id], references: [id], onUpdate: NoAction)
+  users_sale_transactions_buyer_idTousers users?      @relation("sale_transactions_buyer_idTousers", fields: [buyer_id], references: [id], onUpdate: NoAction)
+  properties                              properties? @relation(fields: [property_id], references: [id], onUpdate: NoAction)
+}
+
+
+// ==========================================
+// 🔔 7. รายงาน การแจ้งเตือน และโฆษณา (Reports & Ads)
+// ==========================================
+
+/// ตารางแจ้งเตือนในระบบของผู้ใช้งาน (Notifications)
+model notifications {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String?  @db.Uuid // ผู้รับการแจ้งเตือน
+  title      String   @db.VarChar(150) // หัวข้อการแจ้งเตือน
+  content    String   // รายละเอียดข้อความ
+  is_read    Boolean? @default(false) // อ่านแล้วหรือยัง (true/false)
+  type       String?  @db.VarChar(50) // ประเภทการแจ้งเตือน
+  created_at DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  users      users?   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_notifications_user_unread", where: raw("(is_read = false)"))
+}
+
+/// ตารางการรายงานความผิดปกติ/ร้องเรียน (Report ประกาศ หรือ นายหน้า)
+model reports {
+  id                                     String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reporter_id                            String?     @db.Uuid // ผู้แจ้งเรื่องร้องเรียน
+  reported_property_id                   String?     @db.Uuid // อสังหาฯ ที่ถูกร้องเรียน (ถ้ามี)
+  reported_agent_id                      String?     @db.Uuid // นายหน้าที่ถูกร้องเรียน (ถ้ามี)
+  reason                                 String      @db.VarChar(150) // สาเหตุที่ร้องเรียน
+  details                                String?     // รายละเอียดเพิ่มเติม
+  status                                 String?     @default("pending") @db.VarChar(20) // สถานะเรื่องร้องเรียน (pending, resolved, dismissed)
+  created_at                             DateTime    @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  users_reports_reported_agent_idTousers users?      @relation("reports_reported_agent_idTousers", fields: [reported_agent_id], references: [id], onUpdate: NoAction)
+  properties                             properties? @relation(fields: [reported_property_id], references: [id], onUpdate: NoAction)
+  users_reports_reporter_idTousers       users?      @relation("reports_reporter_idTousers", fields: [reporter_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// ตารางแบนเนอร์และแคมเปญโฆษณาหน้าเว็บ
+model banner_campaigns {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title      String   @db.VarChar(100) // ชื่อแบนเนอร์/แคมเปญ
+  image_url  String   @db.VarChar(255) // URL รูปภาพแบนเนอร์
+  link_url   String?  @db.VarChar(255) // ลิงก์เมื่อกดแบนเนอร์
+  start_date DateTime @db.Date // วันเริ่มแสดงผล
+  end_date   DateTime @db.Date // วันสิ้นสุดแสดงผล
+  status     String?  @default("inactive") @db.VarChar(20) // สถานะแคมเปญ (active/inactive)
+  created_at DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+}
+
+/// ตารางโปรโมชันและโค้ดส่วนลด
+model promotions {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String   @db.VarChar(100) // ชื่อโปรโมชัน
+  discount_rate Decimal? @db.Decimal(4, 2) // อัตราส่วนลด
+  start_date    DateTime @db.Date // วันเริ่มโปรโมชัน
+  end_date      DateTime @db.Date // วันหมดอายุโปรโมชัน
+  code          String?  @unique @db.VarChar(20) // โค้ดส่วนลด (เช่น SAVE10)
+  created_at    DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+}
+
+
+// ==========================================
+// ⚙️ 8. ตั้งค่าระบบทั่วไป (System Configs)
+// ==========================================
+
+/// ตารางเก็บค่าคอนฟิกต่างๆ ของระบบ (Key-Value Pair)
+model system_configs {
+  key         String   @id @db.VarChar(50) // ชื่อคีย์การตั้งค่า
+  value       String   @db.VarChar(255) // ค่าของการตั้งค่า
+  description String?  // คำอธิบายการตั้งค่า
+  updated_at  DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
 }
