@@ -75,7 +75,7 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: `${user.first_name} ${user.last_name}`,
-          role: user.role_id || "buyer",
+          role: user.role_id || "customer",
           phone: user.phone,
           status: user.status || "pending"
         };
@@ -108,7 +108,7 @@ export const authOptions: NextAuthOptions = {
               first_name: firstName,
               last_name: lastName,
               profile_image: user.image || null,
-              role_id: "buyer", // กำหนดบทบาทเริ่มต้น
+              role_id: "customer", // กำหนดบทบาทเริ่มต้นเป็น customer ตามตาราง roles
               status: "approved", // โซเชียลล็อกอินอนุมัติให้เลย
               is_verified: true
             }
@@ -121,7 +121,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         const u = user as { id: string; role: string; phone?: string | null; image?: string | null; status?: string | null };
         token.id = u.id;
-        token.role = u.role || "buyer";
+        token.role = u.role || "customer";
         token.phone = u.phone || null;
         token.picture = u.image || null;
         token.status = u.status || "pending";
@@ -133,7 +133,7 @@ export const authOptions: NextAuthOptions = {
         });
         if (dbUser) {
           token.id = dbUser.id;
-          token.role = dbUser.role_id || "buyer";
+          token.role = dbUser.role_id || "customer";
           token.phone = dbUser.phone || null;
           token.picture = dbUser.profile_image || token.picture || null;
           token.status = dbUser.status || "pending";

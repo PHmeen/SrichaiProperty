@@ -7,7 +7,7 @@ export default function SocialLoginButtons() {
     <div className="grid grid-cols-2 gap-3 mb-6">
       <button 
         type="button"
-        onClick={() => signIn('google', { callbackUrl: '/home' })}
+        onClick={() => signIn('google', { callbackUrl: '/' })}
         className="flex items-center justify-center gap-2.5 w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 hover:border-slate-300 hover:shadow transition-all duration-300 font-bold text-slate-700 active:scale-[0.98] cursor-pointer text-xs"
       >
         <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -20,7 +20,7 @@ export default function SocialLoginButtons() {
       </button>
       <button 
         type="button"
-        onClick={() => signIn('facebook', { callbackUrl: '/home' })}
+        onClick={() => signIn('facebook', { callbackUrl: '/' })}
         className="flex items-center justify-center gap-2.5 w-full px-3 py-2.5 bg-[#1877F2] hover:bg-[#166FE5] text-white rounded-xl shadow-sm hover:shadow hover:shadow-blue-500/10 transition-all duration-300 font-bold active:scale-[0.98] cursor-pointer text-xs"
       >
         <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
