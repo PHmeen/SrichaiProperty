@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const properties = await db.properties.findMany({
       where: {
-        status: "approved"
+        status: { in: ["approved", "active"] }
       },
       include: {
         users: {
