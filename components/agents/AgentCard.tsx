@@ -51,16 +51,16 @@ export default function AgentCard({ agent }: AgentCardProps) {
       </div>
 
       <div className="w-full text-left space-y-1.5 text-xs text-slate-500 border-t border-slate-100 pt-3">
-        <p>📍 <strong>พื้นที่:</strong> {agent.location}</p>
-        <p>📞 <strong>เบอร์โทร:</strong> {agent.phone}</p>
-        <p>✉️ <strong>อีเมล:</strong> {agent.email}</p>
+        <p> <strong>พื้นที่:</strong> {agent.location}</p>
+        <p> <strong>เบอร์โทร:</strong> {agent.phone}</p>
+        <p> <strong>อีเมล:</strong> {agent.email}</p>
       </div>
 
       <Link 
         href={`/chat?agentId=${agent.id}`}
         className="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
       >
-        💬 ส่งข้อความแชท
+         ส่งข้อความแชท
       </Link>
     </div>
   );
