@@ -23,13 +23,18 @@ export default async function proxy(request: NextRequest) {
     }
   }
 
+  // Allow access to admin login page
+  if (url.pathname === '/admin/login') {
+    return NextResponse.next();
+  }
+
   // 2. ป้องกันหน้าของแอดมิน (Admin Pages & APIs)
   if (url.pathname.startsWith('/admin') || url.pathname.startsWith('/api/admin')) {
     if (!isLoggedIn || userRole !== 'admin') {
       if (url.pathname.startsWith('/api/')) {
         return NextResponse.json({ error: "Unauthorized: Admins only" }, { status: 401 });
       }
-      url.pathname = '/login';
+      url.pathname = '/admin/login';
       return NextResponse.redirect(url);
     }
   }
