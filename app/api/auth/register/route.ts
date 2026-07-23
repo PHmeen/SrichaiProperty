@@ -31,6 +31,9 @@ export async function POST(request: Request) {
     const firstName = nameParts[0] || "";
     const lastName = nameParts.slice(1).join(" ") || "";
 
+    const userRole = role === 'buyer' ? 'customer' : (role || 'customer');
+    const userStatus = userRole === 'agent' ? 'pending' : 'approved';
+
     const newUser = await db.users.create({
       data: {
         email,
@@ -38,7 +41,9 @@ export async function POST(request: Request) {
         first_name: firstName,
         last_name: lastName,
         phone,
-        role_id: role || "buyer",
+        role_id: userRole,
+        status: userStatus,
+        is_verified: userRole !== 'agent',
         line_id: lineId || null,
         experience: experience || null,
         specialty_zone: zone || null,

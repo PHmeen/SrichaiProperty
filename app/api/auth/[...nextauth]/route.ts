@@ -70,6 +70,15 @@ export const authOptions: NextAuthOptions = {
           throw new Error("รหัสผ่านไม่ถูกต้อง");
         }
 
+        // หากเป็นนายหน้า และสถานะยังอยู่ระหว่างรออนุมัติ (pending) ห้ามเข้าใช้งาน
+        if (user.role_id === 'agent' && user.status === 'pending') {
+          throw new Error("บัญชีนายหน้าของคุณอยู่ระหว่างรอแอดมินตรวจสอบและอนุมัติ");
+        }
+
+        if (user.status === 'banned') {
+          throw new Error("บัญชีของคุณถูกระงับการใช้งาน");
+        }
+
         // ส่งข้อมูลผู้ใช้กลับไปให้ระบบล็อกอินจำไว้
         return {
           id: user.id,

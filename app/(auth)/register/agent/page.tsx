@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { signIn } from 'next-auth/react';
 import AgentRegisterBanner from '@/components/auth/AgentRegisterBanner';
 import OtpVerificationModal from '@/components/auth/OtpVerificationModal';
 
@@ -126,20 +125,9 @@ export default function AgentRegisterPage() {
         return;
       }
 
-      // เข้าสู่ระบบอัตโนมัติ
-      const loginRes = await signIn('credentials', {
-        redirect: false,
-        email,
-        password,
-      });
-
-      if (loginRes?.error) {
-        alert("สมัครสมาชิกนายหน้าสำเร็จเรียบร้อย! กรุณาเข้าสู่ระบบด้วยบัญชีของคุณ");
-        window.location.href = '/login/agent';
-      } else {
-        alert("สมัครสมาชิกและเข้าสู่ระบบสำเร็จ!");
-        window.location.href = '/agent/dashboard';
-      }
+      alert("สมัครสมาชิกนายหน้าสำเร็จเรียบร้อย! บัญชีของคุณอยู่ระหว่างรอแอดมินตรวจสอบและอนุมัติก่อนเข้าใช้งาน");
+      setShowOtpModal(false);
+      window.location.href = '/login/agent';
     } catch {
       alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์หลังบ้านเพื่อสมัครสมาชิกได้");
     }
@@ -168,7 +156,7 @@ export default function AgentRegisterPage() {
       alert("กรุณากดยอมรับเงื่อนไขการเป็นนายหน้า");
       return;
     }
-    setShowOtpModal(true);
+    verifyOtp();
   };
 
   return (

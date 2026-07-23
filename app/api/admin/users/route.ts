@@ -65,3 +65,33 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
+
+export async function PATCH(req: Request) {
+  try {
+    const session = await getServerSession(authOptions) as AdminSession | null;
+    if (!session || !session.user || session.user.role !== 'admin') {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { userId, status } = body;
+
+    if (!userId || !status) {
+      return NextResponse.json({ error: "Missing userId or status" }, { status: 400 });
+    }
+
+    // แปลงสถานะ 'rejected' เป็น 'banned' เพื่อให้ตรงตาม PostgreSQL check constraint ('pending', 'approved', 'banned')
+    const dbStatus = status === 'rejected' ? 'banned' : status;
+
+    const updatedUser = await db.users.update({
+      where: { id: userId },
+      data: { status: dbStatus }
+    });
+
+    return NextResponse.json({ success: true, user: updatedUser });
+  } catch (error) {
+    const err = error as Error;
+    console.error("Error updating user status:", err);
+    return NextResponse.json({ error: err.message || "Internal Server Error" }, { status: 500 });
+  }
+}

@@ -21,6 +21,13 @@ export default async function proxy(request: NextRequest) {
       url.pathname = '/';
       return NextResponse.redirect(url);
     }
+
+    // หากเป็นนายหน้า แต่บัญชียังไม่อนุมัติ (pending หรือ banned) ห้ามเข้าหน้าแผงควบคุมนายหน้า
+    const userStatus = (token?.status as string) || 'pending';
+    if (userRole === 'agent' && userStatus !== 'approved') {
+      url.pathname = '/login';
+      return NextResponse.redirect(url);
+    }
   }
 
   // Allow access to admin login page

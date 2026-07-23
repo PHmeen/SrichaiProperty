@@ -46,6 +46,31 @@ export default function AdminUsersPage() {
       });
   }, [roleFilter]);
 
+  const handleStatusChange = async (userId: string, newStatus: string) => {
+    if (!confirm(`ยืนยันการ${newStatus === 'approved' ? 'อนุมัติ' : 'ไม่อนุมัติ'} บัญชีนี้ในฐานข้อมูล?`)) return;
+
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, status: newStatus })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u));
+        setStats(prev => ({
+          ...prev,
+          pending: Math.max(0, prev.pending - (newStatus === 'approved' ? 1 : 0))
+        }));
+      } else {
+        alert("เกิดข้อผิดพลาด: " + data.error);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล");
+    }
+  };
+
   return (
     <>
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 relative z-0">
@@ -96,9 +121,6 @@ export default function AdminUsersPage() {
                   <option value="agent">นายหน้า (Agent)</option>
                   <option value="customer">ลูกค้า (Buyer)</option>
                 </select>
-                <button className="bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 font-bold py-2 px-4 rounded-lg text-xs flex items-center gap-1.5 transition">
-                  <span>+</span> เพิ่มผู้ใช้
-                </button>
               </div>
             </div>
 
@@ -148,20 +170,36 @@ export default function AdminUsersPage() {
                             'bg-slate-100 text-slate-600 border-slate-200'
                           }`}>
                             <span>{user.role_id === 'admin' ? '🛡️' : user.role_id === 'agent' ? '💼' : '👤'}</span>
-                            {user.role_id === 'admin' ? 'Admin (R1)' : user.role_id === 'agent' ? 'Agent (R2)' : 'Buyer (R3)'}
+                            {user.role_id === 'admin' ? 'Admin' : user.role_id === 'agent' ? 'Agent' : 'Customer'}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-center">
                           <Badge status={user.status} />
                         </td>
                         <td className="px-6 py-4 text-right">
-                          {user.status === 'pending' && user.role_id === 'agent' ? (
-                            <Link href="/admin/kyc" className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-black transition-colors">
-                              ตรวจสอบเอกสาร
-                            </Link>
-                          ) : (
-                            <span className="text-slate-300 text-[10px] font-bold italic">Restricted</span>
-                          )}
+                          <div className="flex items-center justify-end gap-1.5">
+                            {user.status !== 'approved' && (
+                              <button 
+                                onClick={() => handleStatusChange(user.id, 'approved')}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded-md text-[10px] font-extrabold transition cursor-pointer"
+                              >
+                                ✓ อนุมัติ
+                              </button>
+                            )}
+                            {user.status !== 'rejected' && (
+                              <button 
+                                onClick={() => handleStatusChange(user.id, 'rejected')}
+                                className="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1 rounded-md text-[10px] font-extrabold transition cursor-pointer"
+                              >
+                                ✕ ไม่อนุมัติ
+                              </button>
+                            )}
+                            {user.role_id === 'agent' && (
+                              <Link href="/admin/kyc" className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-md text-[10px] font-bold transition">
+                                KYC
+                              </Link>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))

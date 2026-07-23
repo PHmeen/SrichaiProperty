@@ -21,10 +21,12 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status') || 'pending'; // pending, approved, rejected
 
+    const statusFilter = status === 'rejected' ? { in: ['rejected', 'banned'] } : status;
+
     const users = await db.users.findMany({
       where: {
         role_id: 'agent',
-        status: status,
+        status: statusFilter,
       },
       select: {
         id: true,
@@ -64,14 +66,18 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    // แปลงสถานะ 'rejected' เป็น 'banned' เพื่อให้ตรงตาม PostgreSQL check constraint ('pending', 'approved', 'banned')
+    const dbStatus = status === 'rejected' ? 'banned' : status;
+
     const updatedUser = await db.users.update({
       where: { id: userId },
-      data: { status: status }
+      data: { status: dbStatus }
     });
 
     return NextResponse.json({ success: true, user: updatedUser });
   } catch (error) {
-    console.error("Error updating user status:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    const err = error as Error;
+    console.error("Error updating user status:", err);
+    return NextResponse.json({ error: err.message || "Internal Server Error" }, { status: 500 });
   }
 }
