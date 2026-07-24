@@ -55,7 +55,7 @@ export async function GET() {
     ]);
 
     // จัดระเบียบข้อมูลส่งคืนฝั่งหน้าบ้าน
-    const formattedModerationItems = pendingProperties.map(p => {
+    const formattedModerationItems = pendingProperties.map((p) => {
       const sellerName = p.users ? `${p.users.first_name} ${p.users.last_name}` : "ไม่ระบุตัวแทน";
       const mainImage = p.property_images[0]?.image_url || "";
       const isPremium = Number(p.price) > 7000000;
