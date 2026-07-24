@@ -1,5 +1,26 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { Prisma } from "@prisma/client";
+
+type PendingPropertyWithRelations = Prisma.propertiesGetPayload<{
+  include: {
+    users: {
+      select: {
+        first_name: true;
+        last_name: true;
+        plan_type: true;
+        is_verified: true;
+      };
+    };
+    property_types: true;
+    property_images: {
+      orderBy: { order_index: "asc" };
+      take: 1;
+    };
+  };
+}>;
+
+type UserItem = Prisma.usersGetPayload<Record<string, never>>;
 
 export async function GET() {
   try {
@@ -55,7 +76,7 @@ export async function GET() {
     ]);
 
     // จัดระเบียบข้อมูลส่งคืนฝั่งหน้าบ้าน
-    const formattedModerationItems = pendingProperties.map((p) => {
+    const formattedModerationItems = pendingProperties.map((p: PendingPropertyWithRelations) => {
       const sellerName = p.users ? `${p.users.first_name} ${p.users.last_name}` : "ไม่ระบุตัวแทน";
       const mainImage = p.property_images[0]?.image_url || "";
       const isPremium = Number(p.price) > 7000000;
@@ -75,7 +96,7 @@ export async function GET() {
       };
     });
 
-    const formattedNewAgents = newAgents.map(u => ({
+    const formattedNewAgents = newAgents.map((u: UserItem) => ({
       id: u.id,
       name: `${u.first_name} ${u.last_name}`,
       timeAgo: "สมัครเมื่อเร็วๆ นี้",
