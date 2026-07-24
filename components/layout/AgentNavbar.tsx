@@ -34,6 +34,9 @@ export default function AgentNavbar() {
           <Link href="/agent/add-property" className="text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 px-3.5 py-1.5 rounded-xl transition shadow-md active:scale-95">
             + ลงประกาศใหม่
           </Link>
+          <Link href="/agent/availability" className="text-xs font-bold text-slate-300 hover:text-amber-400 transition hidden sm:inline-block">
+            📅 วันว่างของฉัน
+          </Link>
           <Link href="/agent/home" className="relative text-xs font-bold text-slate-300 hover:text-amber-400 transition hidden sm:inline-block">
             💬 แชทลูกค้า
             <span className="ml-1 bg-red-500 text-white text-[9px] px-1.5 py-0.2 rounded-full font-extrabold">2</span>
