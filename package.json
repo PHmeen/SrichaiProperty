@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "postinstall": "prisma generate",
     "socket": "node socket-server.js",
     "lint": "eslint"
   },
@@ -13,7 +14,7 @@
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "bcryptjs": "^3.0.3",
-    "next": "^16.3.0-canary.87",
+    "next": "16.2.11",
     "next-auth": "^4.24.14",
     "pg": "^8.22.0",
     "react": "^19.2.7",
