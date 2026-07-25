@@ -31,13 +31,15 @@ export default function RecentListings({ properties, favorites, toggleFavorite }
           {properties.map((prop) => {
             const isFav = favorites.includes(prop.id);
             return (
-              <div 
+              <Link 
                 key={prop.id}
-                className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 border border-slate-100 relative group cursor-pointer"
+                href={`/property/${prop.id}`}
+                className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 border border-slate-100 relative group cursor-pointer block"
               >
                 <button 
                   onClick={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     toggleFavorite(prop.id);
                   }} 
                   className="absolute top-3 right-3 z-10 w-8 h-8 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center hover:scale-110 transition shadow-sm"
@@ -103,7 +105,7 @@ export default function RecentListings({ properties, favorites, toggleFavorite }
                     </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>
