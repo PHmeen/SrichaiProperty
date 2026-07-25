@@ -59,6 +59,7 @@ export async function GET() {
         bathrooms: p.bathrooms || 0,
         area: Number(p.area_sqm) || 0,
         image: mainImage,
+        images: p.property_images.map((img) => img.image_url),
         agentName: fullName,
         agentImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=1e40af&color=fff`,
         isPremium: isPremium,
