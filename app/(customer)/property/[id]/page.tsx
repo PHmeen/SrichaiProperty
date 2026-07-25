@@ -110,10 +110,10 @@ export default function PropertyDetailPage() {
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-8">
         
         {/* Photo Gallery Grid (Clickable) */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 rounded-3xl overflow-hidden shadow-sm relative border border-slate-200/40 bg-white">
+        <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-3 rounded-3xl overflow-hidden shadow-sm relative border border-slate-200/40 bg-white md:h-[420px]">
           <div 
             onClick={() => { setSelectedImageIndex(0); setIsGalleryOpen(true); }}
-            className="md:col-span-2 md:row-span-2 relative aspect-[4/3] md:aspect-auto cursor-pointer group"
+            className="md:col-span-2 md:row-span-2 relative aspect-[4/3] md:aspect-auto md:h-full cursor-pointer group"
           >
             <Image src={galleryImages[0]} alt="รูปหลัก" width={600} height={450} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
             <div className="absolute bottom-3 left-3 bg-slate-900/70 text-white text-[10px] px-3 py-1 rounded-full font-bold backdrop-blur-md md:hidden">
@@ -122,25 +122,25 @@ export default function PropertyDetailPage() {
           </div>
           <div 
             onClick={() => { setSelectedImageIndex(1); setIsGalleryOpen(true); }}
-            className="hidden md:block relative aspect-[4/3] overflow-hidden cursor-pointer group"
+            className="hidden md:block relative md:h-full overflow-hidden cursor-pointer group"
           >
             <Image src={galleryImages[1]} alt="รูปประกอบ 1" width={300} height={225} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
           </div>
           <div 
             onClick={() => { setSelectedImageIndex(2); setIsGalleryOpen(true); }}
-            className="hidden md:block relative aspect-[4/3] overflow-hidden cursor-pointer group"
+            className="hidden md:block relative md:h-full overflow-hidden cursor-pointer group"
           >
             <Image src={galleryImages[2]} alt="รูปประกอบ 2" width={300} height={225} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
           </div>
           <div 
             onClick={() => { setSelectedImageIndex(3); setIsGalleryOpen(true); }}
-            className="hidden md:block relative aspect-[4/3] overflow-hidden cursor-pointer group"
+            className="hidden md:block relative md:h-full overflow-hidden cursor-pointer group"
           >
             <Image src={galleryImages[3]} alt="รูปประกอบ 3" width={300} height={225} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
           </div>
           <div 
             onClick={() => { setSelectedImageIndex(4); setIsGalleryOpen(true); }}
-            className="hidden md:block relative aspect-[4/3] overflow-hidden cursor-pointer group"
+            className="hidden md:block relative md:h-full overflow-hidden cursor-pointer group"
           >
             <Image src={galleryImages[4]} alt="รูปประกอบ 4" width={300} height={225} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80" />
             <div className="absolute inset-0 bg-slate-950/50 hover:bg-slate-950/60 transition-colors flex items-center justify-center text-white font-extrabold text-xs tracking-wide">
