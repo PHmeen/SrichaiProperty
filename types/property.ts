@@ -10,6 +10,7 @@ export interface Property {
   bathrooms: number;
   area: number;
   image: string;
+  images?: string[];
   agentName: string;
   agentImage: string;
   isPremium?: boolean;
