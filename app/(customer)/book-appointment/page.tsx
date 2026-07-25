@@ -15,19 +15,20 @@ function BookAppointmentForm() {
   const [currentYear, setCurrentYear] = useState<number>(today.getFullYear());
   const [currentMonth, setCurrentMonth] = useState<number>(today.getMonth());
 
-  const [selectedDateStr, setSelectedDateStr] = useState<string>(() => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString().split('T')[0];
-  });
+  const [selectedDateStr, setSelectedDateStr] = useState<string>('');
 
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('รอบบ่าย (13:00 - 17:00 น.)');
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('');
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [holidays, setHolidays] = useState<string[]>([]);
 
   const { properties } = useApp();
   const property = properties.find(p => String(p.id) === String(propertyId)) || properties[0];
+
+  // ทุกครั้งที่ลูกค้าเปลี่ยนวันที่ ให้ล้างรอบเวลาที่เคยเลือกไว้ทิ้ง (บังคับเลือกใหม่เสมอ)
+  useEffect(() => {
+    setSelectedTimeSlot('');
+  }, [selectedDateStr]);
 
   const monthNamesTH = [
     "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -56,6 +57,7 @@ function BookAppointmentForm() {
   }, [currentYear]);
 
   const getThaiPreviewDate = () => {
+    if (!selectedDateStr) return 'ยังไม่ได้เลือกวันที่';
     try {
       const parts = selectedDateStr.split('-');
       const d = parseInt(parts[2]);
@@ -69,7 +71,9 @@ function BookAppointmentForm() {
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!property) return;
-    
+    if (!selectedDateStr) return alert('กรุณาเลือกวันที่ต้องการเข้าชมบ้านก่อน');
+    if (!selectedTimeSlot) return alert('กรุณาเลือกช่วงเวลา (รอบเช้า/รอบบ่าย) ก่อน');
+
     setSubmitting(true);
     try {
       const res = await fetch('/api/appointments', {
@@ -158,7 +162,7 @@ function BookAppointmentForm() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <button
                     type="button"
-                    onClick={() => setSelectedTimeSlot('รอบเช้า (09:00 - 12:00 น.)')}
+                    onClick={() => setSelectedTimeSlot(prev => prev.includes('รอบเช้า') ? '' : 'รอบเช้า (09:00 - 12:00 น.)')}
                     className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex justify-between items-center ${
                       selectedTimeSlot.includes('รอบเช้า')
                         ? 'border-blue-600 bg-blue-50 text-blue-700 ring-2 ring-blue-600/10'
@@ -174,7 +178,7 @@ function BookAppointmentForm() {
 
                   <button
                     type="button"
-                    onClick={() => setSelectedTimeSlot('รอบบ่าย (13:00 - 17:00 น.)')}
+                    onClick={() => setSelectedTimeSlot(prev => prev.includes('รอบบ่าย') ? '' : 'รอบบ่าย (13:00 - 17:00 น.)')}
                     className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex justify-between items-center ${
                       selectedTimeSlot.includes('รอบบ่าย')
                         ? 'border-blue-600 bg-blue-50 text-blue-700 ring-2 ring-blue-600/10'
@@ -206,10 +210,14 @@ function BookAppointmentForm() {
 
                 <button
                   type="submit"
-                  disabled={submitting}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white font-extrabold py-3.5 px-6 rounded-2xl transition-all duration-150 shadow-md hover:shadow-lg active:scale-[0.99] text-xs cursor-pointer flex items-center justify-center gap-2 disabled:cursor-not-allowed"
+                  disabled={submitting || !selectedDateStr || !selectedTimeSlot}
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-extrabold py-3.5 px-6 rounded-2xl transition-all duration-150 shadow-md hover:shadow-lg active:scale-[0.99] text-xs cursor-pointer flex items-center justify-center gap-2 disabled:cursor-not-allowed"
                 >
-                  {submitting ? '⏳ กำลังบันทึกข้อมูลนัดชม...' : 'ยืนยันการนัดหมาย'}
+                  {submitting
+                    ? '⏳ กำลังบันทึกข้อมูลนัดชม...'
+                    : (!selectedDateStr || !selectedTimeSlot)
+                      ? 'กรุณาเลือกวันและช่วงเวลาก่อน'
+                      : 'ยืนยันการนัดหมาย'}
                 </button>
               </div>
 
