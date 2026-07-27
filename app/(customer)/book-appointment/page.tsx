@@ -78,7 +78,7 @@ function BookAppointmentForm() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          propertyId: Number(property.id),
+          propertyId: property.id,
           date: selectedDateStr,
           timeSlot: selectedTimeSlot,
           note: note
