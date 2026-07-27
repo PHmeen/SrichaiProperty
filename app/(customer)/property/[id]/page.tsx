@@ -16,36 +16,26 @@ export default function PropertyDetailPage() {
   const params = useParams();
   const id = params.id;
 
-  // === 1. ดึงเมธอดข้อมูลอสังหาฯ และโปรไฟล์ปัจจุบัน ===
   const { properties, favorites, toggleFavorite } = useApp();
 
-  // ค้นหารอยการอสังหาฯ ที่มีรหัสไอดีตรงกัน
   const property = properties.find(p => String(p.id) === String(id)) || properties[0];
 
-  // อาเรย์รูปภาพทั้งหมด 10 รูปสำหรับแกลเลอรี
-  const galleryImages = property ? [
-    property.image,
-    "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1200&q=80"
-  ] : [];
+  // รูปภาพจริงที่นายหน้าอัปโหลดไว้ (ใช้แค่บอกจำนวนจริง) และเวอร์ชันวนซ้ำให้ครบ 5 ช่องสำหรับกริดแสดงผล
+  const realImages = property
+    ? (property.images && property.images.length > 0 ? property.images : [property.image])
+    : [];
+  const galleryImages = realImages.length > 0
+    ? Array.from({ length: Math.max(5, realImages.length) }, (_, i) => realImages[i % realImages.length])
+    : [];
 
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
-  // === 2. โครงสร้างสถานะและการคำนวณของเครื่องคำนวณสินเชื่อ (Mortgage Calculator) ===
   const numericPrice = property ? (parseInt(property.price.replace(/[^\d]/g, '')) || 0) : 0;
   const [loanAmount, setLoanAmount] = useState(numericPrice);
   const [interestRate, setInterestRate] = useState(3.5);
   const [loanYears, setLoanYears] = useState(30);
 
-  // ซิงค์ราคากับเครื่องคำนวณเมื่อหน้าเว็บเปลี่ยนไปแสดงทรัพย์ชิ้นอื่น
   useEffect(() => {
     const timer = setTimeout(() => {
       setLoanAmount(numericPrice);
@@ -53,7 +43,6 @@ export default function PropertyDetailPage() {
     return () => clearTimeout(timer);
   }, [numericPrice]);
 
-  // ดักตรวจสอบป้องกันกรณีที่ไม่มีข้อมูลหรือไม่พบข้อมูลเพื่อหลีกเลี่ยงแอปล่ม (No Bug/No Error Guarantee)
   if (!property) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500 font-bold">
@@ -75,7 +64,6 @@ export default function PropertyDetailPage() {
 
   const monthlyInstallment = calculateMonthlyPayment();
 
-  // ฟังก์ชันแชร์ลิงก์หน้านี้
   const handleShare = () => {
     if (typeof window !== 'undefined') {
       navigator.clipboard.writeText(window.location.href);
@@ -83,7 +71,6 @@ export default function PropertyDetailPage() {
     }
   };
 
-  // สร้างฟังก์ชันวาดรูปภาพอักษรย่อกรณีไม่มีรูป
   const getInitialsAvatar = (name: string) => {
     const initials = name.trim().split(/\s+/).map(n => n[0]).slice(0, 2).join("").toUpperCase() || "?";
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#1d4ed8"/><text x="50" y="55" font-family="sans-serif" font-weight="bold" font-size="35" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${initials}</text></svg>`;
@@ -94,7 +81,6 @@ export default function PropertyDetailPage() {
     <div className="font-sans bg-slate-50/50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm pb-24">
       <div className="pt-16"></div>
 
-      {/* 📍 แถบเส้นทางตำแหน่ง (Breadcrumb Sticky Bar) */}
       <div className="bg-white border-b border-slate-200/80 sticky top-16 z-40 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center text-xs">
           <nav className="flex text-slate-500 font-extrabold whitespace-nowrap overflow-x-auto items-center gap-1">
@@ -121,59 +107,53 @@ export default function PropertyDetailPage() {
         </div>
       </div>
 
-      {/* 📦 เนื้อหาหลักแสดงรูปและส่วนจอง */}
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-8">
         
         {/* Photo Gallery Grid (Clickable) */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 rounded-3xl overflow-hidden shadow-sm relative border border-slate-200/40 bg-white">
+        <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-3 rounded-3xl overflow-hidden shadow-sm relative border border-slate-200/40 bg-white md:h-[420px]">
           <div 
             onClick={() => { setSelectedImageIndex(0); setIsGalleryOpen(true); }}
-            className="md:col-span-2 md:row-span-2 relative aspect-[4/3] md:aspect-auto cursor-pointer group"
+            className="md:col-span-2 md:row-span-2 relative aspect-[4/3] md:aspect-auto md:h-full cursor-pointer group"
           >
             <Image src={galleryImages[0]} alt="รูปหลัก" width={600} height={450} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
             <div className="absolute bottom-3 left-3 bg-slate-900/70 text-white text-[10px] px-3 py-1 rounded-full font-bold backdrop-blur-md md:hidden">
-              📷 1 / {galleryImages.length} รูป
+              📷 1 / {realImages.length} รูป
             </div>
           </div>
           <div 
             onClick={() => { setSelectedImageIndex(1); setIsGalleryOpen(true); }}
-            className="hidden md:block relative aspect-[4/3] overflow-hidden cursor-pointer group"
+            className="hidden md:block relative md:h-full overflow-hidden cursor-pointer group"
           >
             <Image src={galleryImages[1]} alt="รูปประกอบ 1" width={300} height={225} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
           </div>
           <div 
             onClick={() => { setSelectedImageIndex(2); setIsGalleryOpen(true); }}
-            className="hidden md:block relative aspect-[4/3] overflow-hidden cursor-pointer group"
+            className="hidden md:block relative md:h-full overflow-hidden cursor-pointer group"
           >
             <Image src={galleryImages[2]} alt="รูปประกอบ 2" width={300} height={225} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
           </div>
           <div 
             onClick={() => { setSelectedImageIndex(3); setIsGalleryOpen(true); }}
-            className="hidden md:block relative aspect-[4/3] overflow-hidden cursor-pointer group"
+            className="hidden md:block relative md:h-full overflow-hidden cursor-pointer group"
           >
             <Image src={galleryImages[3]} alt="รูปประกอบ 3" width={300} height={225} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
           </div>
           <div 
             onClick={() => { setSelectedImageIndex(4); setIsGalleryOpen(true); }}
-            className="hidden md:block relative aspect-[4/3] overflow-hidden cursor-pointer group"
+            className="hidden md:block relative md:h-full overflow-hidden cursor-pointer group"
           >
             <Image src={galleryImages[4]} alt="รูปประกอบ 4" width={300} height={225} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80" />
             <div className="absolute inset-0 bg-slate-950/50 hover:bg-slate-950/60 transition-colors flex items-center justify-center text-white font-extrabold text-xs tracking-wide">
-              🖼️ + ดูทั้งหมด {galleryImages.length} รูป
+              🖼️ + ดูทั้งหมด {realImages.length} รูป
             </div>
           </div>
         </div>
 
-        {/* ส่วนแบ่งคอลัมน์ซ้าย-ขวา */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* ==================================================== */}
-          {/* 🏡 ฝั่งซ้าย: ข้อมูลบ้านพักอาศัยและสเปค                     */}
-          {/* ==================================================== */}
           <div className="lg:col-span-2 space-y-8">
             <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/60 shadow-sm space-y-6">
               
-              {/* ป้ายแท็กและหัวเรื่อง */}
               <div>
                 <div className="flex gap-2">
                   <span className="bg-blue-50 text-blue-700 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider border border-blue-100">{property.type}</span>
@@ -194,7 +174,6 @@ export default function PropertyDetailPage() {
                 </div>
               </div>
 
-              {/* ตารางแสดงขนาดห้อง/ตารางเมตร */}
               <div className="border border-slate-200/60 py-4 grid grid-cols-4 text-center text-slate-600 bg-slate-50/50 rounded-2xl text-[11px] font-bold">
                 <div>
                   <p className="text-slate-400 font-medium mb-0.5">ห้องนอน</p>
@@ -214,7 +193,6 @@ export default function PropertyDetailPage() {
                 </div>
               </div>
 
-              {/* ข้อมูลจำเพาะ (Specifications Grid) */}
               <div className="pt-2">
                 <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider mb-3">📋 ข้อมูลจำเพาะ</h3>
                 <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50/40 p-4 rounded-2xl border border-slate-200/50">
@@ -241,7 +219,6 @@ export default function PropertyDetailPage() {
                 </div>
               </div>
 
-              {/* รายละเอียดอสังหาริมทรัพย์ */}
               <div className="space-y-3 pt-2 border-t border-slate-100">
                 <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">รายละเอียดอสังหาริมทรัพย์</h3>
                 <p className="text-slate-600 leading-relaxed text-xs">
@@ -255,7 +232,6 @@ export default function PropertyDetailPage() {
                 </ul>
               </div>
 
-              {/* สิ่งอำนวยความสะดวกในโครงการ */}
               <div className="space-y-3 pt-4 border-t border-slate-100">
                 <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">สิ่งอำนวยความสะดวกในโครงการ</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs text-slate-600 font-bold">
@@ -268,7 +244,6 @@ export default function PropertyDetailPage() {
                 </div>
               </div>
 
-              {/* สถานที่ใกล้เคียง */}
               <div className="space-y-3 pt-4 border-t border-slate-100">
                 <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">สถานที่ใกล้เคียง</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
@@ -291,7 +266,6 @@ export default function PropertyDetailPage() {
                 </div>
               </div>
 
-              {/* แผนที่ตั้งโครงการ (OpenStreetMap แบบ Interactive ฟรีไม่มีขีดจำกัด) */}
               <div className="space-y-3 pt-4 border-t border-slate-100">
                 <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">แผนที่ตั้งโครงการ</h3>
                 <div className="bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 h-64 relative">
@@ -304,7 +278,6 @@ export default function PropertyDetailPage() {
                 </div>
               </div>
 
-              {/* เครื่องคำนวณสินเชื่อบ้านที่คำนวณได้จริง */}
               <div className="pt-6 border-t border-slate-100">
                 <div className="bg-slate-950 text-white p-6 sm:p-8 rounded-3xl space-y-6 shadow-xl relative overflow-hidden">
                   <div className="absolute -right-10 -top-10 w-32 h-32 bg-blue-600/10 rounded-full blur-2xl"></div>
@@ -336,7 +309,6 @@ export default function PropertyDetailPage() {
                     </div>
                   </div>
 
-                  {/* สไลเดอร์ปี */}
                   <div className="space-y-2">
                     <div className="flex justify-between text-[10px] text-slate-400 font-bold">
                       <span>ระยะเวลากู้</span>
@@ -352,7 +324,6 @@ export default function PropertyDetailPage() {
                     />
                   </div>
 
-                  {/* กล่องยอดผลค่างวด */}
                   <div className="bg-blue-600/10 border border-blue-600/20 p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-center gap-4">
                     <div className="text-center sm:text-left">
                       <p className="text-[10px] text-blue-200 font-bold uppercase tracking-wider">ยอดผ่อนชำระประมาณ</p>
@@ -371,12 +342,8 @@ export default function PropertyDetailPage() {
             </div>
           </div>
 
-          {/* ==================================================== */}
-          {/* 📞 ฝั่งขวา: การ์ดนายหน้าผู้ดูแล (Sticky Sidebar Card)     */}
-          {/* ==================================================== */}
           <div className="lg:col-span-1">
             <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-5 sticky top-32">
-              {/* รายละเอียดตัวแทนนายหน้า */}
               <div className="text-center pb-4 border-b border-slate-100 space-y-3">
                 <div className="relative inline-block">
                   <Image 
@@ -395,7 +362,6 @@ export default function PropertyDetailPage() {
                 </div>
               </div>
 
-              {/* ช่องทางติดต่อ */}
               <div className="space-y-2">
                 <a 
                   href="tel:0812345678"
@@ -413,7 +379,6 @@ export default function PropertyDetailPage() {
                 </a>
               </div>
 
-              {/* ปุ่มสร้างคิวนัดหมายและแชท */}
               <div className="space-y-2 pt-3 border-t border-slate-100">
                 <Link 
                   href={`/book-appointment?propertyId=${property.id}`}
@@ -435,13 +400,11 @@ export default function PropertyDetailPage() {
         </div>
       </main>
 
-      {/* 🖼️ Fullscreen Interactive Image Gallery Lightbox Modal */}
       {isGalleryOpen && (
         <div 
           className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-xl flex flex-col justify-between p-4 sm:p-6 transition-all duration-300"
           onClick={() => setIsGalleryOpen(false)}
         >
-          {/* Header */}
           <div className="flex items-center justify-between text-white z-10 max-w-6xl mx-auto w-full pt-2" onClick={(e) => e.stopPropagation()}>
             <div>
               <h3 className="font-extrabold text-sm sm:text-base text-white truncate max-w-xs sm:max-w-md">{property.title}</h3>
@@ -455,7 +418,6 @@ export default function PropertyDetailPage() {
             </button>
           </div>
 
-          {/* Main Display Image */}
           <div className="relative flex-1 flex items-center justify-center my-4 max-w-5xl mx-auto w-full" onClick={(e) => e.stopPropagation()}>
             <button 
               onClick={() => setSelectedImageIndex((prev) => (prev > 0 ? prev - 1 : galleryImages.length - 1))}
@@ -482,7 +444,6 @@ export default function PropertyDetailPage() {
             </button>
           </div>
 
-          {/* Bottom Thumbnails Strip */}
           <div className="max-w-4xl mx-auto w-full overflow-x-auto pb-2 z-10 scrollbar-thin" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-center gap-2 px-2">
               {galleryImages.map((imgUrl, idx) => (

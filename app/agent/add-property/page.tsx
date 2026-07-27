@@ -5,6 +5,16 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import ImageUploader from '@/components/property/ImageUploader';
 
+interface ViewingSlot {
+  date: string; // YYYY-MM-DD
+  timeSlot: 'morning' | 'afternoon';
+}
+
+const MONTH_NAMES_TH = [
+  "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+  "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+];
+
 export default function AgentAddPropertyPage() {
   const router = useRouter();
 
@@ -20,11 +30,19 @@ export default function AgentAddPropertyPage() {
 
   const [provinces, setProvinces] = useState<{ id: number; name_th: string }[]>([]);
   const [amphures, setAmphures] = useState<{ id: number; name_th: string }[]>([]);
+  const [districts, setDistricts] = useState<{ id: number; name_th: string }[]>([]);
   const [agreed1, setAgreed1] = useState(false);
   const [agreed2, setAgreed2] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [docFileName, setDocFileName] = useState<string>('');
   const [loading, setLoading] = useState(false);
+
+  // === วันเวลาที่เปิดให้ลูกค้าเข้าชมบ้านหลังนี้ (เลือกไว้ล่วงหน้า บันทึกจริงตอนกดส่งประกาศ) ===
+  const today = new Date();
+  const [calYear, setCalYear] = useState(today.getFullYear());
+  const [calMonth, setCalMonth] = useState(today.getMonth()); // 0-11
+  const [viewingSlots, setViewingSlots] = useState<ViewingSlot[]>([]);
+  const [selectedCalDate, setSelectedCalDate] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/locations?type=provinces').then(r => r.json()).then(d => Array.isArray(d) && setProvinces(d));
@@ -32,7 +50,33 @@ export default function AgentAddPropertyPage() {
 
   const handleProvince = (pId: string) => {
     setF(prev => ({ ...prev, provinceId: pId, amphureId: '' }));
+    setDistricts([]);
     if (pId) fetch(`/api/locations?type=amphures&provinceId=${pId}`).then(r => r.json()).then(d => Array.isArray(d) && setAmphures(d));
+  };
+
+  const handleAmphure = (aId: string) => {
+    setF(prev => ({ ...prev, amphureId: aId }));
+    if (aId) fetch(`/api/locations?type=districts&amphureId=${aId}`).then(r => r.json()).then(d => Array.isArray(d) && setDistricts(d));
+  };
+
+  const handleCalPrevMonth = () => {
+    if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); }
+    else setCalMonth(m => m - 1);
+  };
+
+  const handleCalNextMonth = () => {
+    if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); }
+    else setCalMonth(m => m + 1);
+  };
+
+  const getSlotsForDate = (dateStr: string) => viewingSlots.filter(s => s.date === dateStr);
+
+  const toggleViewingSlot = (dateStr: string, timeSlot: 'morning' | 'afternoon') => {
+    setViewingSlots(prev => {
+      const exists = prev.some(s => s.date === dateStr && s.timeSlot === timeSlot);
+      if (exists) return prev.filter(s => !(s.date === dateStr && s.timeSlot === timeSlot));
+      return [...prev, { date: dateStr, timeSlot }];
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,10 +95,11 @@ export default function AgentAddPropertyPage() {
         body: JSON.stringify({
           title: f.title, type_id: parseInt(f.typeId), price: parseFloat(f.price) || 0,
           location: `${f.address ? f.address + ', ' : ''}${amp}, ${prov}`,
-          province_id: parseInt(f.provinceId), amphure_id: parseInt(f.amphureId), district_id: parseInt(f.amphureId) * 10 + 1,
+          province_id: parseInt(f.provinceId), amphure_id: parseInt(f.amphureId), district_id: districts[0]?.id || null,
           description: f.description, bedrooms: parseInt(f.bedrooms), bathrooms: parseInt(f.bathrooms),
           area_sqm: parseFloat(f.usableArea) || parseFloat(f.landArea) || 120,
-          images: uploadedImages.length > 0 ? uploadedImages : [f.image]
+          images: uploadedImages.length > 0 ? uploadedImages : [f.image],
+          viewingSlots
         })
       });
       const data = await res.json();
@@ -197,7 +242,7 @@ export default function AgentAddPropertyPage() {
               </div>
               <div>
                 <label className="block font-bold mb-1 text-slate-700">อำเภอ / เขต <span className="text-red-500">*</span></label>
-                <select value={f.amphureId} onChange={e => setF({ ...f, amphureId: e.target.value })} disabled={!f.provinceId} className="w-full p-2.5 bg-slate-50 border rounded-xl font-bold text-xs" required>
+                <select value={f.amphureId} onChange={e => handleAmphure(e.target.value)} disabled={!f.provinceId} className="w-full p-2.5 bg-slate-50 border rounded-xl font-bold text-xs" required>
                   <option value="">เลือกอำเภอ</option>
                   {amphures.map(a => <option key={a.id} value={a.id}>{a.name_th}</option>)}
                 </select>
@@ -265,6 +310,102 @@ export default function AgentAddPropertyPage() {
                 </span>
               </div>
             </div>
+          </div>
+
+          {/* Card 5: วันเวลาที่เปิดให้ลูกค้าเข้าชมบ้านหลังนี้ */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+              <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-black flex items-center justify-center text-[11px]">5</span>
+              <h2 className="font-extrabold text-slate-900 text-xs">📅 วันเวลาที่เปิดให้เข้าชมบ้านหลังนี้</h2>
+            </div>
+            <p className="text-[10px] text-slate-500 font-medium -mt-2">
+              เลือกวันและช่วงเวลาที่คุณสะดวกให้ลูกค้าจองเข้าชมบ้านหลังนี้ (เลือกได้หลายวัน ไม่บังคับ สามารถกลับมาเพิ่มทีหลังได้)
+            </p>
+
+            <div className="border border-slate-200 rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-3 px-1">
+                <button type="button" onClick={handleCalPrevMonth} className="text-slate-400 hover:text-slate-600 font-bold text-xs p-1 cursor-pointer">&lt;</button>
+                <span className="text-xs font-black text-slate-800">{MONTH_NAMES_TH[calMonth]} {calYear + 543}</span>
+                <button type="button" onClick={handleCalNextMonth} className="text-slate-400 hover:text-slate-600 font-bold text-xs p-1 cursor-pointer">&gt;</button>
+              </div>
+
+              <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-black pb-2 mb-2 border-b border-slate-100">
+                <span className="text-red-500">อา</span>
+                <span className="text-slate-400">จ</span>
+                <span className="text-slate-400">อ</span>
+                <span className="text-slate-400">พ</span>
+                <span className="text-slate-400">พฤ</span>
+                <span className="text-slate-400">ศ</span>
+                <span className="text-blue-500">ส</span>
+              </div>
+
+              <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold">
+                {Array.from({ length: new Date(calYear, calMonth, 1).getDay() }).map((_, idx) => (
+                  <div key={`cal-empty-${idx}`} className="w-8 h-8"></div>
+                ))}
+
+                {Array.from({ length: new Date(calYear, calMonth + 1, 0).getDate() }).map((_, i) => {
+                  const dayNum = i + 1;
+                  const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                  const isSelected = selectedCalDate === dateStr;
+
+                  const cellDate = new Date(calYear, calMonth, dayNum);
+                  const todayStart = new Date();
+                  todayStart.setHours(0, 0, 0, 0);
+                  const isPast = cellDate < todayStart;
+                  const hasSlots = getSlotsForDate(dateStr).length > 0;
+
+                  let dayClass = "w-8 h-8 flex items-center justify-center mx-auto rounded-full transition-all ";
+                  if (isPast) dayClass += "text-slate-200 cursor-not-allowed";
+                  else if (isSelected) dayClass += "bg-blue-600 text-white shadow-md active:scale-95 cursor-pointer";
+                  else if (hasSlots) dayClass += "border border-emerald-400 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 cursor-pointer";
+                  else dayClass += "text-slate-500 hover:bg-slate-50 cursor-pointer";
+
+                  return (
+                    <button
+                      key={dayNum}
+                      type="button"
+                      disabled={isPast}
+                      onClick={() => setSelectedCalDate(dateStr)}
+                      className={dayClass}
+                    >
+                      {dayNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {selectedCalDate && (
+                <div className="mt-4 pt-4 border-t border-slate-100">
+                  <p className="text-[10px] font-black text-slate-700 mb-2">ช่วงเวลาสำหรับวันที่ {selectedCalDate}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['morning', 'afternoon'] as const).map(slot => {
+                      const active = getSlotsForDate(selectedCalDate).some(s => s.timeSlot === slot);
+                      return (
+                        <button
+                          key={slot}
+                          type="button"
+                          onClick={() => toggleViewingSlot(selectedCalDate, slot)}
+                          className={`p-3 rounded-xl border text-left transition cursor-pointer ${active ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 hover:border-blue-400'}`}
+                        >
+                          <p className="text-[11px] font-black text-slate-800">{slot === 'morning' ? 'รอบเช้า' : 'รอบบ่าย'}</p>
+                          <p className="text-[9px] text-slate-500 font-bold">{slot === 'morning' ? '09:00 - 12:00' : '13:00 - 17:00'}</p>
+                          <p className={`text-[9px] font-black mt-1 ${active ? 'text-emerald-600' : 'text-slate-400'}`}>
+                            {active ? '✓ เลือกไว้แล้ว' : 'ยังไม่ได้เลือก'}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {viewingSlots.length > 0 && (
+              <p className="text-[10px] font-bold text-emerald-600">
+                ✓ เลือกไว้แล้วทั้งหมด {viewingSlots.length} ช่วงเวลา
+              </p>
+            )}
           </div>
 
           {/* Consents & Action Buttons */}

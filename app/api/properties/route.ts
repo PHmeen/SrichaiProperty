@@ -59,6 +59,7 @@ export async function GET() {
         bathrooms: p.bathrooms || 0,
         area: Number(p.area_sqm) || 0,
         image: mainImage,
+        images: p.property_images.map((img) => img.image_url),
         agentName: fullName,
         agentImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=1e40af&color=fff`,
         isPremium: isPremium,
@@ -90,7 +91,8 @@ export async function POST(request: Request) {
     const {
       title, price, type_id, type, location, description,
       bedrooms, bathrooms, area_sqm, areaSqm, agentId,
-      province_id, amphure_id, district_id, latitude, longitude, images
+      province_id, amphure_id, district_id, latitude, longitude, images,
+      viewingSlots
     } = body;
 
     if (!title || !price || (!type_id && !type) || !location) {
@@ -139,6 +141,19 @@ export async function POST(request: Request) {
           image_url: imgUrl,
           order_index: index
         }))
+      });
+    }
+
+    // 3. บันทึกวันเวลาที่นายหน้าเปิดว่างสำหรับบ้านหลังนี้ (ถ้ามีการเลือกไว้ตอนลงประกาศ)
+    if (Array.isArray(viewingSlots) && viewingSlots.length > 0) {
+      await db.property_viewing_slots.createMany({
+        data: viewingSlots.map((slot: { date: string; timeSlot: string }) => ({
+          property_id: newProperty.id,
+          available_date: new Date(slot.date),
+          time_slot: slot.timeSlot,
+          is_booked: false
+        })),
+        skipDuplicates: true
       });
     }
 
