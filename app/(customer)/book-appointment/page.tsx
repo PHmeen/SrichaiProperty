@@ -22,8 +22,39 @@ function BookAppointmentForm() {
   const [submitting, setSubmitting] = useState(false);
   const [holidays, setHolidays] = useState<string[]>([]);
 
+  // วันเวลาที่นายหน้าเปิดว่างจริงสำหรับ "บ้านหลังนี้โดยเฉพาะ" (ดึงจาก property_viewing_slots)
+  const [viewingSlots, setViewingSlots] = useState<{ date: string; timeSlot: string; isBooked: boolean }[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(true);
+
   const { properties } = useApp();
   const property = properties.find(p => String(p.id) === String(propertyId)) || properties[0];
+
+  // ดึงวันว่างจริงของบ้านหลังนี้ทันทีที่รู้ว่ากำลังจองบ้านหลังไหน
+  useEffect(() => {
+    if (!property?.id) return;
+    let active = true;
+    setSlotsLoading(true);
+    fetch(`/api/properties/viewing-slots?propertyId=${property.id}`)
+      .then(res => res.json())
+      .then(data => {
+        if (active && data.success && Array.isArray(data.slots)) {
+          setViewingSlots(data.slots);
+        }
+      })
+      .catch(err => console.error('Failed to fetch viewing slots:', err))
+      .finally(() => { if (active) setSlotsLoading(false); });
+    return () => { active = false; };
+  }, [property?.id]);
+
+  // รายชื่อวันที่ (YYYY-MM-DD) ที่มีอย่างน้อย 1 รอบเวลาเปิดว่างและยังไม่มีคนจอง
+  const availableDates = Array.from(
+    new Set(viewingSlots.filter(s => !s.isBooked).map(s => s.date))
+  );
+
+  // รอบเวลาของ "วันที่ที่กำลังเลือกอยู่" เท่านั้น
+  const slotsForSelectedDate = viewingSlots.filter(s => s.date === selectedDateStr);
+  const morningSlot = slotsForSelectedDate.find(s => s.timeSlot === 'morning');
+  const afternoonSlot = slotsForSelectedDate.find(s => s.timeSlot === 'afternoon');
 
   // ทุกครั้งที่ลูกค้าเปลี่ยนวันที่ ให้ล้างรอบเวลาที่เคยเลือกไว้ทิ้ง (บังคับเลือกใหม่เสมอ)
   useEffect(() => {
@@ -82,7 +113,7 @@ function BookAppointmentForm() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          propertyId: Number(property.id),
+          propertyId: (property.id),
           date: selectedDateStr,
           timeSlot: selectedTimeSlot,
           note: note
@@ -145,7 +176,14 @@ function BookAppointmentForm() {
                   selectedDateStr={selectedDateStr}
                   setSelectedDateStr={setSelectedDateStr}
                   holidays={holidays}
+                  availableDates={availableDates}
                 />
+
+                {!slotsLoading && availableDates.length === 0 && (
+                  <p className="text-[11px] font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-center">
+                    ⚠️ นายหน้ายังไม่ได้เปิดวันว่างสำหรับบ้านหลังนี้ กรุณาติดต่อนายหน้าโดยตรง
+                  </p>
+                )}
               </div>
 
               <div className="space-y-3">
@@ -162,34 +200,56 @@ function BookAppointmentForm() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <button
                     type="button"
+                    disabled={!morningSlot || morningSlot.isBooked}
                     onClick={() => setSelectedTimeSlot(prev => prev.includes('รอบเช้า') ? '' : 'รอบเช้า (09:00 - 12:00 น.)')}
-                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex justify-between items-center ${
-                      selectedTimeSlot.includes('รอบเช้า')
-                        ? 'border-blue-600 bg-blue-50 text-blue-700 ring-2 ring-blue-600/10'
-                        : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-600'
+                    className={`p-4 rounded-2xl border text-left transition-all flex justify-between items-center ${
+                      !morningSlot || morningSlot.isBooked
+                        ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed'
+                        : selectedTimeSlot.includes('รอบเช้า')
+                          ? 'border-blue-600 bg-blue-50 text-blue-700 ring-2 ring-blue-600/10 cursor-pointer'
+                          : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-600 cursor-pointer'
                     }`}
                   >
                     <div>
                       <h4 className="font-extrabold text-xs">รอบเช้า</h4>
                       <p className="text-[10px] font-bold text-slate-400 mt-0.5">09:00 - 12:00</p>
                     </div>
-                    <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[8px] font-bold">✓ ว่างให้จอง</span>
+                    {!selectedDateStr ? (
+                      <span className="bg-slate-100 text-slate-400 px-2 py-0.5 rounded text-[8px] font-bold">เลือกวันก่อน</span>
+                    ) : morningSlot?.isBooked ? (
+                      <span className="bg-red-50 text-red-500 px-2 py-0.5 rounded text-[8px] font-bold">มีคนจองแล้ว</span>
+                    ) : morningSlot ? (
+                      <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[8px] font-bold">✓ ว่างให้จอง</span>
+                    ) : (
+                      <span className="bg-slate-100 text-slate-400 px-2 py-0.5 rounded text-[8px] font-bold">ไม่เปิดว่าง</span>
+                    )}
                   </button>
 
                   <button
                     type="button"
+                    disabled={!afternoonSlot || afternoonSlot.isBooked}
                     onClick={() => setSelectedTimeSlot(prev => prev.includes('รอบบ่าย') ? '' : 'รอบบ่าย (13:00 - 17:00 น.)')}
-                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex justify-between items-center ${
-                      selectedTimeSlot.includes('รอบบ่าย')
-                        ? 'border-blue-600 bg-blue-50 text-blue-700 ring-2 ring-blue-600/10'
-                        : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-600'
+                    className={`p-4 rounded-2xl border text-left transition-all flex justify-between items-center ${
+                      !afternoonSlot || afternoonSlot.isBooked
+                        ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed'
+                        : selectedTimeSlot.includes('รอบบ่าย')
+                          ? 'border-blue-600 bg-blue-50 text-blue-700 ring-2 ring-blue-600/10 cursor-pointer'
+                          : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-600 cursor-pointer'
                     }`}
                   >
                     <div>
                       <h4 className="font-extrabold text-xs">รอบบ่าย</h4>
                       <p className="text-[10px] font-bold text-slate-400 mt-0.5">13:00 - 17:00</p>
                     </div>
-                    <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[8px] font-bold">✓ ว่างให้จอง</span>
+                    {!selectedDateStr ? (
+                      <span className="bg-slate-100 text-slate-400 px-2 py-0.5 rounded text-[8px] font-bold">เลือกวันก่อน</span>
+                    ) : afternoonSlot?.isBooked ? (
+                      <span className="bg-red-50 text-red-500 px-2 py-0.5 rounded text-[8px] font-bold">มีคนจองแล้ว</span>
+                    ) : afternoonSlot ? (
+                      <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[8px] font-bold">✓ ว่างให้จอง</span>
+                    ) : (
+                      <span className="bg-slate-100 text-slate-400 px-2 py-0.5 rounded text-[8px] font-bold">ไม่เปิดว่าง</span>
+                    )}
                   </button>
                 </div>
               </div>

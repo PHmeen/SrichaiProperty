@@ -10,6 +10,7 @@ interface BookingCalendarProps {
   selectedDateStr: string;
   setSelectedDateStr: (date: string) => void;
   holidays: string[];
+  availableDates: string[];
 }
 
 export default function BookingCalendar({
@@ -19,7 +20,8 @@ export default function BookingCalendar({
   setCurrentMonth,
   selectedDateStr,
   setSelectedDateStr,
-  holidays
+  holidays,
+  availableDates
 }: BookingCalendarProps) {
   // เดือนภาษาไทย
   const monthNamesTH = [
@@ -103,15 +105,15 @@ export default function BookingCalendar({
           const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
           const isHoliday = holidays.includes(dateStr);
-          
+          const isAvailable = availableDates.includes(dateStr);
+
           const cellDate = new Date(currentYear, currentMonth, dayNum);
           const todayStart = new Date();
           todayStart.setHours(0, 0, 0, 0);
           const isPast = cellDate < todayStart;
 
-          // วันธรรมดาไม่รับนัด (วันจันทร์-ศุกร์ที่ไม่ใช่วันหยุดพิเศษ) ห้ามจอง
-          const isWeekdayDisabled = !isWeekend && !isHoliday;
-          const isDisabled = isPast || isWeekdayDisabled;
+          // เปิดให้เลือกได้เฉพาะวันที่นายหน้าเปิดว่างจริงสำหรับบ้านหลังนี้เท่านั้น (ไม่ใช่ตัดสินจากวันธรรมดา/สุดสัปดาห์อีกต่อไป)
+          const isDisabled = isPast || !isAvailable;
 
           let dayClass = "w-8 h-8 flex items-center justify-center mx-auto rounded-full transition-all ";
           
@@ -124,7 +126,7 @@ export default function BookingCalendar({
           } else if (isWeekend) {
             dayClass += "border border-slate-200 text-slate-700 hover:border-blue-500 hover:bg-slate-50 cursor-pointer";
           } else {
-            dayClass += "text-slate-400 hover:bg-slate-50 hover:text-slate-700 cursor-pointer";
+            dayClass += "border border-emerald-300 text-emerald-700 hover:bg-emerald-50 cursor-pointer";
           }
 
           return (
@@ -144,11 +146,10 @@ export default function BookingCalendar({
 
       {/* อธิบายสถานะปฏิทิน */}
       <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 mt-6 pt-4 border-t border-slate-100 text-[9px] font-black text-slate-400">
-        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-slate-300"></span> ว่าง</span>
+        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-emerald-300"></span> นายหน้าเปิดว่าง</span>
         <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span> เลือก</span>
-        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> วันหยุดพิเศษ</span>
-        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-500"></span> คิวเต็มทั้งวัน</span>
-        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> ไม่รับนัดวันธรรมดา</span>
+        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-amber-500"></span> วันหยุดพิเศษ</span>
+        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-200"></span> ไม่เปิดว่าง</span>
       </div>
     </div>
   );
