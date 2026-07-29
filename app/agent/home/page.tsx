@@ -1,7 +1,6 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
+import PendingApprovalBanner from '@/components/agent/PendingApprovalBanner';
 
 interface AppointmentData {
   id: string;
@@ -101,24 +100,7 @@ export default function AgentHomePage() {
       <main className="max-w-6xl w-full mx-auto p-4 md:p-8 space-y-6 flex-1">
         
         {/* Pending Approval Warning Banner */}
-        {pendingApprovalCount > 0 && (
-          <section className="bg-amber-50 border-2 border-amber-300 rounded-3xl p-5 text-amber-950 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
-            <div className="flex items-center gap-4 text-left">
-              <div className="w-12 h-12 bg-amber-500 text-slate-950 rounded-2xl flex items-center justify-center font-black text-xl shrink-0">⏳</div>
-              <div>
-                <h4 className="font-extrabold text-sm md:text-base text-amber-900">
-                  คุณมีประกาศ {pendingApprovalCount} รายการที่อยู่ระหว่างรอแอดมินอนุมัติ
-                </h4>
-                <p className="text-amber-800/80 text-[11px] mt-0.5 font-medium">
-                  เมื่อแอดมินอนุมัติเรียบร้อย ประกาศจะแสดงผลในหน้าลูกค้าและเปิดให้จองคิวนัดหมายโดยอัตโนมัติทันที
-                </p>
-              </div>
-            </div>
-            <a href="/agent/dashboard" className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs shrink-0 cursor-pointer">
-              ดูรายการรออนุมัติ ({pendingApprovalCount})
-            </a>
-          </section>
-        )}
+        <PendingApprovalBanner pendingCount={pendingApprovalCount} />
 
         {/* Welcome Banner */}
         <section className="bg-gradient-to-r from-blue-700 to-blue-800 rounded-3xl p-6 md:p-8 text-white flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-lg shadow-blue-900/10">

@@ -1,9 +1,9 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
+import PendingApprovalBanner from '@/components/agent/PendingApprovalBanner';
+import UpgradeProModal from '@/components/agent/UpgradeProModal';
 
 interface PropertyData {
   id: string;
@@ -20,8 +20,6 @@ export default function AgentDashboardPage() {
   const { data: session, status } = useSession();
   const [filterType, setFilterType] = useState('all');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [slipUrl, setSlipUrl] = useState('');
-  const [submittingPayment, setSubmittingPayment] = useState(false);
   const [dbData, setDbData] = useState<{
     properties: PropertyData[];
     totalPortfolioValue: string;
@@ -31,39 +29,18 @@ export default function AgentDashboardPage() {
     totalCount: number;
   } | null>(null);
 
-  useEffect(() => {
+  const fetchDashboard = () => {
     if (status === 'authenticated') {
       fetch('/api/agent/portal?type=dashboard')
         .then(res => res.json())
         .then(data => setDbData(data))
         .catch(err => console.error('Error fetching dashboard:', err));
     }
-  }, [status]);
-
-  const handleCheckout = async () => {
-    if (!slipUrl) return alert('กรุณาแนบลิงก์รูปภาพสลิปการโอนเงิน');
-    setSubmittingPayment(true);
-    try {
-      const res = await fetch('/api/packages/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slipUrl, packageId: 1, amount: 599 })
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert('ส่งหลักฐานการชำระเงินเรียบร้อยแล้ว! ทีมงานจะตรวจสอบและอนุมัติแพ็กเกจ PRO ภายใน 1-2 ชม.');
-        setShowUpgradeModal(false);
-        setSlipUrl('');
-      } else {
-        alert('เกิดข้อผิดพลาด: ' + data.error);
-      }
-    } catch (err) {
-      console.error(err);
-      alert('ส่งสลิปชำระเงินล้มเหลว');
-    } finally {
-      setSubmittingPayment(false);
-    }
   };
+
+  useEffect(() => {
+    fetchDashboard();
+  }, [status]);
 
   if (status === 'loading') {
     return (
@@ -106,24 +83,10 @@ export default function AgentDashboardPage() {
       <main className="max-w-6xl w-full mx-auto p-4 md:p-8 space-y-6 flex-1">
         
         {/* Pending Approval Warning Banner */}
-        {pendingApprovalCount > 0 && (
-          <section className="bg-amber-50 border-2 border-amber-300 rounded-3xl p-5 text-amber-950 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
-            <div className="flex items-center gap-4 text-left">
-              <div className="w-12 h-12 bg-amber-500 text-slate-950 rounded-2xl flex items-center justify-center font-black text-xl shrink-0">⏳</div>
-              <div>
-                <h4 className="font-extrabold text-sm md:text-base text-amber-900">
-                  คุณมีประกาศ {pendingApprovalCount} รายการที่อยู่ระหว่างรอแอดมินอนุมัติ
-                </h4>
-                <p className="text-amber-800/80 text-[11px] mt-0.5 font-medium">
-                  เมื่อแอดมินอนุมัติเรียบร้อย ประกาศจะแสดงผลในหน้าลูกค้าและเปิดให้จองคิวนัดหมายโดยอัตโนมัติทันที
-                </p>
-              </div>
-            </div>
-            <button onClick={() => setFilterType('pending')} className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs shrink-0 cursor-pointer">
-              ดูรายการรออนุมัติ ({pendingApprovalCount})
-            </button>
-          </section>
-        )}
+        <PendingApprovalBanner
+          pendingCount={pendingApprovalCount}
+          onViewPending={() => setFilterType('pending')}
+        />
 
         {/* Top Gold Promo Banner */}
         <section className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 rounded-3xl p-5 text-white border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -262,57 +225,11 @@ export default function AgentDashboardPage() {
       </main>
 
       {/* Modal ชำระเงินแพ็กเกจ PRO */}
-      {showUpgradeModal && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-left">
-            <div className="flex justify-between items-center border-b pb-3">
-              <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
-                <span>👑</span> สมัครสมาชิก Verified PRO
-              </h3>
-              <button onClick={() => setShowUpgradeModal(false)} className="text-slate-400 hover:text-slate-600 font-bold">✕</button>
-            </div>
-
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center space-y-1">
-              <span className="text-[10px] font-black text-amber-700 uppercase">ค่าบริการแพ็กเกจ</span>
-              <p className="text-2xl font-black text-slate-900">฿ 599 <span className="text-xs font-normal text-slate-500">/ 30 วัน</span></p>
-              <p className="text-[10px] text-slate-500 font-medium">สิทธิ์ลงประกาศไม่จำกัด + โควต้าดันโพสต์ฟรี 30 วัน</p>
-            </div>
-
-            <div className="space-y-2 border-t pt-3">
-              <h4 className="font-extrabold text-xs text-slate-800">1. ชำระเงินผ่าน PromptPay / ธนาคาร</h4>
-              <div className="bg-slate-900 text-white rounded-2xl p-4 text-center space-y-2">
-                <p className="text-xs font-bold text-amber-400">สแกน QR Code ชำระเงิน</p>
-                <div className="w-40 h-40 bg-white mx-auto rounded-xl flex items-center justify-center p-2 shadow-inner">
-                  <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=PROMPTPAY_599_SRICHAI" alt="PromptPay QR" className="w-full h-full object-contain" />
-                </div>
-                <p className="text-[10px] text-slate-300 font-medium">บจก. ศรีชัย พร็อพเพอร์ตี้ (ธ.กสิกรไทย 012-3-45678-9)</p>
-              </div>
-            </div>
-
-            <div className="space-y-2 border-t pt-3">
-              <h4 className="font-extrabold text-xs text-slate-800">2. แนบลิงก์รูปภาพสลิปโอนเงิน</h4>
-              <input
-                type="text"
-                value={slipUrl}
-                onChange={e => setSlipUrl(e.target.value)}
-                placeholder="ระบุ URL รูปภาพสลิปการโอนเงิน (เช่น https://...)"
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:bg-white font-medium"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button onClick={() => setShowUpgradeModal(false)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold text-xs">ยกเลิก</button>
-              <button
-                onClick={handleCheckout}
-                disabled={submittingPayment}
-                className="px-6 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs transition shadow-md cursor-pointer"
-              >
-                {submittingPayment ? 'กำลังส่งข้อมูล...' : 'ส่งสลิปชำระเงิน ➔'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <UpgradeProModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        onSuccess={fetchDashboard}
+      />
     </div>
   );
 }
