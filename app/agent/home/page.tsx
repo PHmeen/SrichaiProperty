@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import PendingApprovalBanner from '@/components/agent/PendingApprovalBanner';
