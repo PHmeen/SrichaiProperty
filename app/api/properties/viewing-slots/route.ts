@@ -51,7 +51,7 @@ export async function GET(req: Request) {
     agentSlots.forEach((s) => {
       if (!s.time_slot) return;
       const d = new Date(s.available_date);
-      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const dateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
       const key = `${dateStr}_${s.time_slot}`;
       slotsMap.set(key, {
         id: s.id,
@@ -65,7 +65,7 @@ export async function GET(req: Request) {
     propertySlots.forEach((s) => {
       if (!s.time_slot) return;
       const d = new Date(s.available_date);
-      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const dateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
       const key = `${dateStr}_${s.time_slot}`;
       const existing = slotsMap.get(key);
       slotsMap.set(key, {

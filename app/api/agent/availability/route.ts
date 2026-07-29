@@ -51,9 +51,9 @@ export async function GET(req: Request) {
 
     const formatted = availabilities.map((a) => {
       const d = new Date(a.available_date);
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const dd = String(d.getDate()).padStart(2, "0");
+      const yyyy = d.getUTCFullYear();
+      const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+      const dd = String(d.getUTCDate()).padStart(2, "0");
       return {
         id: a.id,
         date: `${yyyy}-${mm}-${dd}`,

@@ -65,10 +65,13 @@ export async function GET() {
       // แมปช่วงเวลา
       const timeSlotLabel = apt.time_slot === 'morning' ? 'ช่วงเช้า (09:00 - 12:00 น.)' : 'ช่วงบ่าย (13:00 - 16:00 น.)';
 
+      const d = new Date(apt.appointment_date);
+      const dateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+
       return {
         id: apt.id,
         propertyId: apt.property_id || "",
-        date: apt.appointment_date.toISOString().split('T')[0],
+        date: dateStr,
         timeSlot: timeSlotLabel,
         note: apt.note || "",
         status: mappedStatus,
