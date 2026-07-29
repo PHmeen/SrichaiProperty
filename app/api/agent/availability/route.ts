@@ -49,12 +49,18 @@ export async function GET(req: Request) {
       orderBy: [{ available_date: "asc" }, { time_slot: "asc" }],
     });
 
-    const formatted = availabilities.map((a) => ({
-      id: a.id,
-      date: a.available_date.toISOString().split("T")[0],
-      timeSlot: a.time_slot,
-      isBooked: a.is_booked,
-    }));
+    const formatted = availabilities.map((a) => {
+      const d = new Date(a.available_date);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      return {
+        id: a.id,
+        date: `${yyyy}-${mm}-${dd}`,
+        timeSlot: a.time_slot,
+        isBooked: a.is_booked,
+      };
+    });
 
     return NextResponse.json({ success: true, availabilities: formatted });
   } catch (error) {
