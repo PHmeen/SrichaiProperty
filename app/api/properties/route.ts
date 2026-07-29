@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/authOptions";
 import { db } from "@/lib/db";
 
 export async function GET() {
@@ -102,8 +104,15 @@ export async function POST(request: Request) {
       );
     }
 
-    // หา agent_id จาก body หรือดึงนายหน้าคนแรกใน DB มาผูกมัด
+    // หา agent_id จาก session นายหน้าที่ล็อกอินอยู่เป็นหลัก
     let validAgentId = agentId;
+    const session = await getServerSession(authOptions);
+    if (session?.user?.email) {
+      const currentUser = await db.users.findUnique({ where: { email: session.user.email } });
+      if (currentUser) {
+        validAgentId = currentUser.id;
+      }
+    }
     if (!validAgentId) {
       const firstAgent = await db.users.findFirst({ where: { role_id: "agent" } });
       validAgentId = firstAgent?.id || "admin";
