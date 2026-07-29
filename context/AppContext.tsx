@@ -17,6 +17,7 @@ interface AppContextType {
   toggleFavorite: (id: string | number) => void;
   addAppointment: (appointment: Omit<Appointment, 'id' | 'status' | 'propertyName' | 'propertyPrice' | 'propertyImage' | 'propertyType' | 'agentName' | 'agentImage'>) => void;
   cancelAppointment: (id: string | number) => void;
+  editAppointmentDate: (id: string | number, date: string, timeSlot: string) => Promise<{ success: boolean; error?: string }>;
   sendChatMessage: (sessionId: number, text: string) => void;
   updateProfile: (profileData: Partial<Profile>) => void;
 }
@@ -162,6 +163,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     saveToLocal('srichai_appointments', updated);
   };
 
+  // ฟังก์ชัน: ลูกค้าแก้วัน/รอบที่จอง (ทำได้เฉพาะตอนนัดหมายยัง pending) แล้วดึงข้อมูลล่าสุดจาก DB มาอัปเดต
+  const editAppointmentDate = async (
+    id: string | number,
+    date: string,
+    timeSlot: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await fetch('/api/appointments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, date, timeSlot })
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        const latestRes = await fetch('/api/appointments');
+        const latestData = await latestRes.json();
+        if (Array.isArray(latestData)) {
+          setAppointments(latestData);
+          saveToLocal('srichai_appointments', latestData);
+        }
+        return { success: true };
+      }
+
+      return { success: false, error: data.error || 'เกิดข้อผิดพลาดในการแก้ไขนัดหมาย' };
+    } catch {
+      return { success: false, error: 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์' };
+    }
+  };
+
   // ฟังก์ชัน: พิมพ์ส่งข้อความแชทไปหานายหน้าผู้ดูแล
   const sendChatMessage = (sessionId: number, text: string) => {
     const timeStr = new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
@@ -200,6 +231,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       toggleFavorite,
       addAppointment,
       cancelAppointment,
+      editAppointmentDate,
       sendChatMessage,
       updateProfile
     }}>
