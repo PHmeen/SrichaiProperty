@@ -162,6 +162,19 @@ export async function POST(request: Request) {
         },
         data: { is_booked: true }
       });
+
+      // ส่งการแจ้งเตือนถึงนายหน้าเจ้าของทรัพย์
+      const customerName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "ลูกค้า";
+      const timeLabel = dbTimeSlot === "morning" ? "ช่วงเช้า" : "ช่วงบ่าย";
+      await db.notifications.create({
+        data: {
+          user_id: property.agent_id,
+          title: "🏠 มีคำขอนัดหมายดูบ้านใหม่",
+          content: `${customerName} ได้ส่งคำขอนัดหมายดู "${property.title}" วันที่ ${date} (${timeLabel})`,
+          type: "appointment",
+          is_read: false
+        }
+      }).catch(err => console.error("Notification trigger error:", err));
     }
 
     return NextResponse.json({ success: true, data: newAppointment });

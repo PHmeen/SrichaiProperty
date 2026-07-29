@@ -194,6 +194,21 @@ export async function PATCH(request: Request) {
       data: { status }
     });
 
+    if (updatedProperty.agent_id) {
+      const isApproved = status === "approved";
+      await db.notifications.create({
+        data: {
+          user_id: updatedProperty.agent_id,
+          title: isApproved ? "✅ ประกาศของคุณได้รับการอนุมัติแล้ว" : "❌ ประกาศของคุณไม่ผ่านการอนุมัติ",
+          content: isApproved
+            ? `ประกาศ "${updatedProperty.title}" ผ่านการตรวจสอบและแสดงบนเว็บไซต์เรียบร้อยแล้ว`
+            : `ประกาศ "${updatedProperty.title}" ไม่ผ่านการอนุมัติจากทีมงาน กรุณาตรวจสอบข้อมูลอีกครั้ง`,
+          type: "property",
+          is_read: false
+        }
+      }).catch(err => console.error("Notification error:", err));
+    }
+
     return NextResponse.json({ success: true, data: updatedProperty });
   } catch (error) {
     const err = error as Error;

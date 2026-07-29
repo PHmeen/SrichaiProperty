@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import NotificationBell from "@/components/common/NotificationBell";
 
 export default function Navbar() {
   const { data: session } = useSession();
@@ -79,12 +80,22 @@ export default function Navbar() {
             >
               ประวัติการนัดหมาย
             </Link>
+            <Link
+              href="/saved-properties"
+              className={`px-3 py-2 rounded-xl text-xs xl:text-sm font-bold transition-all ${
+                isActive("/saved-properties") ? "text-blue-700 bg-blue-50/80" : "text-slate-600 hover:text-blue-600 hover:bg-slate-50"
+              }`}
+            >
+              ❤️ รายการโปรด
+            </Link>
           </div>
 
           {/* Desktop Right User Controls */}
           <div className="hidden lg:flex items-center space-x-3">
             {session ? (
               <div className="flex items-center gap-2.5">
+                <NotificationBell />
+
                 {userRole === 'admin' && (
                   <Link
                     href="/admin/dashboard"

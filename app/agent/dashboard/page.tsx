@@ -19,6 +19,9 @@ interface PropertyData {
 export default function AgentDashboardPage() {
   const { data: session, status } = useSession();
   const [filterType, setFilterType] = useState('all');
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [slipUrl, setSlipUrl] = useState('');
+  const [submittingPayment, setSubmittingPayment] = useState(false);
   const [dbData, setDbData] = useState<{
     properties: PropertyData[];
     totalPortfolioValue: string;
@@ -36,6 +39,31 @@ export default function AgentDashboardPage() {
         .catch(err => console.error('Error fetching dashboard:', err));
     }
   }, [status]);
+
+  const handleCheckout = async () => {
+    if (!slipUrl) return alert('กรุณาแนบลิงก์รูปภาพสลิปการโอนเงิน');
+    setSubmittingPayment(true);
+    try {
+      const res = await fetch('/api/packages/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slipUrl, packageId: 1, amount: 599 })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('ส่งหลักฐานการชำระเงินเรียบร้อยแล้ว! ทีมงานจะตรวจสอบและอนุมัติแพ็กเกจ PRO ภายใน 1-2 ชม.');
+        setShowUpgradeModal(false);
+        setSlipUrl('');
+      } else {
+        alert('เกิดข้อผิดพลาด: ' + data.error);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('ส่งสลิปชำระเงินล้มเหลว');
+    } finally {
+      setSubmittingPayment(false);
+    }
+  };
 
   if (status === 'loading') {
     return (
@@ -106,7 +134,9 @@ export default function AgentDashboardPage() {
               <p className="text-slate-400 text-[10px] md:text-xs">อัปเกรดวันนี้เพื่อลงประกาศได้ไม่จำกัดจำนวน และรับสิทธิพิเศษการดันโพสต์ฟรี!</p>
             </div>
           </div>
-          <button className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs shrink-0">อัปเกรด (599.- / เดือน)</button>
+          <button onClick={() => setShowUpgradeModal(true)} className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs shrink-0 cursor-pointer shadow-lg">
+            อัปเกรด (599.- / เดือน)
+          </button>
         </section>
 
         {/* Page Title & Add Button */}
@@ -221,7 +251,9 @@ export default function AgentDashboardPage() {
               <p className="text-slate-500 text-[10px] leading-relaxed">
                 คุณได้รับการยืนยันตัวตนในฐานะพาร์ทเนอร์นายหน้าอย่างถูกต้อง สามารถเปลี่ยนแพ็กเกจเพิ่มสิทธิพิเศษด้านการบูสต์ได้ทุกเมื่อ
               </p>
-              <button className="w-full py-3 bg-[#0f172a] hover:bg-[#1e293b] text-white font-extrabold rounded-xl text-xs transition">อัปเกรดเป็น Verified PRO</button>
+              <button onClick={() => setShowUpgradeModal(true)} className="w-full py-3 bg-[#0f172a] hover:bg-[#1e293b] text-white font-extrabold rounded-xl text-xs transition cursor-pointer">
+                อัปเกรดเป็น Verified PRO
+              </button>
             </div>
           </div>
 
@@ -229,6 +261,58 @@ export default function AgentDashboardPage() {
 
       </main>
 
+      {/* Modal ชำระเงินแพ็กเกจ PRO */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-left">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
+                <span>👑</span> สมัครสมาชิก Verified PRO
+              </h3>
+              <button onClick={() => setShowUpgradeModal(false)} className="text-slate-400 hover:text-slate-600 font-bold">✕</button>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center space-y-1">
+              <span className="text-[10px] font-black text-amber-700 uppercase">ค่าบริการแพ็กเกจ</span>
+              <p className="text-2xl font-black text-slate-900">฿ 599 <span className="text-xs font-normal text-slate-500">/ 30 วัน</span></p>
+              <p className="text-[10px] text-slate-500 font-medium">สิทธิ์ลงประกาศไม่จำกัด + โควต้าดันโพสต์ฟรี 30 วัน</p>
+            </div>
+
+            <div className="space-y-2 border-t pt-3">
+              <h4 className="font-extrabold text-xs text-slate-800">1. ชำระเงินผ่าน PromptPay / ธนาคาร</h4>
+              <div className="bg-slate-900 text-white rounded-2xl p-4 text-center space-y-2">
+                <p className="text-xs font-bold text-amber-400">สแกน QR Code ชำระเงิน</p>
+                <div className="w-40 h-40 bg-white mx-auto rounded-xl flex items-center justify-center p-2 shadow-inner">
+                  <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=PROMPTPAY_599_SRICHAI" alt="PromptPay QR" className="w-full h-full object-contain" />
+                </div>
+                <p className="text-[10px] text-slate-300 font-medium">บจก. ศรีชัย พร็อพเพอร์ตี้ (ธ.กสิกรไทย 012-3-45678-9)</p>
+              </div>
+            </div>
+
+            <div className="space-y-2 border-t pt-3">
+              <h4 className="font-extrabold text-xs text-slate-800">2. แนบลิงก์รูปภาพสลิปโอนเงิน</h4>
+              <input
+                type="text"
+                value={slipUrl}
+                onChange={e => setSlipUrl(e.target.value)}
+                placeholder="ระบุ URL รูปภาพสลิปการโอนเงิน (เช่น https://...)"
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:bg-white font-medium"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setShowUpgradeModal(false)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold text-xs">ยกเลิก</button>
+              <button
+                onClick={handleCheckout}
+                disabled={submittingPayment}
+                className="px-6 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs transition shadow-md cursor-pointer"
+              >
+                {submittingPayment ? 'กำลังส่งข้อมูล...' : 'ส่งสลิปชำระเงิน ➔'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

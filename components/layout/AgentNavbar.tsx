@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSession, signOut } from 'next-auth/react';
+import NotificationBell from '@/components/common/NotificationBell';
 
 export default function AgentNavbar() {
   const { data: session } = useSession();
@@ -44,8 +45,9 @@ export default function AgentNavbar() {
 
           <div className="h-4 w-px bg-slate-800 hidden sm:block" />
 
-          {/* Profile & Logout */}
+          {/* Notifications & Profile */}
           <div className="flex items-center gap-3">
+            <NotificationBell />
             <div className="flex items-center gap-2">
               <Image 
                 src={userImage} 
