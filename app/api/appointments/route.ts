@@ -140,7 +140,7 @@ export async function POST(request: Request) {
       }
     });
 
-    // ปิดวันว่างของบ้านหลังนี้ (mark ว่าถูกจองแล้ว) กันไม่ให้ลูกค้าคนอื่นจองซ้ำช่วงเวลาเดียวกัน
+    // ปิดวันว่างของบ้านหลังนี้และวันว่างของนายหน้า (mark ว่าถูกจองแล้ว)
     await db.property_viewing_slots.updateMany({
       where: {
         property_id: property.id,
@@ -149,6 +149,17 @@ export async function POST(request: Request) {
       },
       data: { is_booked: true }
     });
+
+    if (property.agent_id) {
+      await db.agent_availabilities.updateMany({
+        where: {
+          agent_id: property.agent_id,
+          available_date: new Date(date),
+          time_slot: dbTimeSlot
+        },
+        data: { is_booked: true }
+      });
+    }
 
     return NextResponse.json({ success: true, data: newAppointment });
   } catch (error) {

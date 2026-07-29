@@ -25,17 +25,60 @@ export async function GET(req: Request) {
       );
     }
 
-    const slots = await db.property_viewing_slots.findMany({
-      where: { property_id: propertyId },
-      orderBy: [{ available_date: "asc" }, { time_slot: "asc" }]
+    // 1. หาข้อมูลทรัพย์เพื่อเอา agent_id ผู้ดูแลทรัพย์
+    const property = await db.properties.findUnique({
+      where: { id: propertyId },
+      select: { agent_id: true }
     });
 
-    const formatted = slots.map((s: { id: string; available_date: Date; time_slot: string; is_booked: boolean | null }) => ({
-      id: s.id,
-      date: s.available_date.toISOString().split("T")[0],
-      timeSlot: s.time_slot,
-      isBooked: s.is_booked
-    }));
+    // 2. ดึงวันว่างเฉพาะบ้าน (property_viewing_slots)
+    const propertySlots = await db.property_viewing_slots.findMany({
+      where: { property_id: propertyId }
+    });
+
+    // 3. ดึงวันว่างส่วนตัวของนายหน้าผู้ดูแลทรัพย์ (agent_availabilities)
+    let agentSlots: Array<{ id: string; available_date: Date; time_slot: string | null; is_booked: boolean | null }> = [];
+    if (property?.agent_id) {
+      agentSlots = await db.agent_availabilities.findMany({
+        where: { agent_id: property.agent_id }
+      });
+    }
+
+    // 4. รวมข้อมูลวันว่างทั้ง 2 ส่วน (Map ด้วย date + timeSlot)
+    const slotsMap = new Map<string, { id: string; date: string; timeSlot: string; isBooked: boolean }>();
+
+    // ใส่วันว่างส่วนตัวของนายหน้าก่อน
+    agentSlots.forEach((s) => {
+      if (!s.time_slot) return;
+      const dateStr = s.available_date.toISOString().split("T")[0];
+      const key = `${dateStr}_${s.time_slot}`;
+      slotsMap.set(key, {
+        id: s.id,
+        date: dateStr,
+        timeSlot: s.time_slot,
+        isBooked: Boolean(s.is_booked)
+      });
+    });
+
+    // ใส่วันว่างเฉพาะบ้าน (ถ้ามี จะทับหรือรวมเข้ามา)
+    propertySlots.forEach((s) => {
+      if (!s.time_slot) return;
+      const dateStr = s.available_date.toISOString().split("T")[0];
+      const key = `${dateStr}_${s.time_slot}`;
+      const existing = slotsMap.get(key);
+      slotsMap.set(key, {
+        id: s.id,
+        date: dateStr,
+        timeSlot: s.time_slot,
+        // ถ้าถูกจองที่ตารางใดตารางหนึ่ง ให้ถือว่าถูกจองแล้ว (isBooked = true)
+        isBooked: existing ? existing.isBooked || Boolean(s.is_booked) : Boolean(s.is_booked)
+      });
+    });
+
+    const formatted = Array.from(slotsMap.values()).sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return a.timeSlot.localeCompare(b.timeSlot);
+    });
 
     return NextResponse.json({ success: true, slots: formatted });
   } catch (error) {
