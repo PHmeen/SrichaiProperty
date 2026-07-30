@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
+import Link from 'next/link';
 import PendingApprovalBanner from '@/components/agent/PendingApprovalBanner';
 
 interface AppointmentData {
@@ -122,6 +123,47 @@ export default function AgentHomePage() {
               className="w-full bg-white/10 rounded-2xl px-4 py-2 text-white placeholder-white/60 font-semibold text-xs border border-white/20 outline-none"
             />
           </div>
+        </section>
+
+        {/* Quick Actions - ปุ่มลัดไปหน้าที่ใช้บ่อย */}
+        <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Link
+            href="/agent/dashboard"
+            className="group bg-white hover:bg-amber-50 rounded-2xl p-4 border-2 border-slate-100 hover:border-amber-400 shadow-sm hover:shadow-md transition-all duration-150 active:scale-[0.98] flex items-center gap-3"
+          >
+            <span className="w-11 h-11 rounded-xl bg-amber-100 group-hover:bg-amber-500 text-xl flex items-center justify-center shrink-0 transition">🏘️</span>
+            <div className="min-w-0">
+              <p className="font-black text-slate-900 text-xs">จัดการบ้านของฉัน</p>
+              <p className="text-[10px] text-slate-400 font-bold">ดู แก้ไข และลบประกาศทั้งหมด</p>
+            </div>
+          </Link>
+
+          <Link
+            href="/agent/appointments"
+            className="group bg-white hover:bg-blue-50 rounded-2xl p-4 border-2 border-slate-100 hover:border-blue-400 shadow-sm hover:shadow-md transition-all duration-150 active:scale-[0.98] flex items-center gap-3 relative"
+          >
+            <span className="w-11 h-11 rounded-xl bg-blue-100 group-hover:bg-blue-500 text-xl flex items-center justify-center shrink-0 transition">📋</span>
+            <div className="min-w-0">
+              <p className="font-black text-slate-900 text-xs">จัดการคิวนัดหมาย</p>
+              <p className="text-[10px] text-slate-400 font-bold">ยืนยัน / ปฏิเสธคำขอเข้าชมบ้าน</p>
+            </div>
+            {(dbData?.pendingAptsCount || 0) > 0 && (
+              <span className="absolute top-3 right-3 bg-red-500 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow">
+                {dbData?.pendingAptsCount}
+              </span>
+            )}
+          </Link>
+
+          <Link
+            href="/agent/add-property"
+            className="group bg-white hover:bg-emerald-50 rounded-2xl p-4 border-2 border-slate-100 hover:border-emerald-400 shadow-sm hover:shadow-md transition-all duration-150 active:scale-[0.98] flex items-center gap-3"
+          >
+            <span className="w-11 h-11 rounded-xl bg-emerald-100 group-hover:bg-emerald-500 text-xl flex items-center justify-center shrink-0 transition">➕</span>
+            <div className="min-w-0">
+              <p className="font-black text-slate-900 text-xs">ลงประกาศใหม่</p>
+              <p className="text-[10px] text-slate-400 font-bold">เพิ่มบ้านพร้อมวันว่างเข้าชม</p>
+            </div>
+          </Link>
         </section>
 
         {/* Stats Grid */}

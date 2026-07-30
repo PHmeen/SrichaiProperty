@@ -89,10 +89,33 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    // === ตรวจสอบว่าใครเป็นคนลงประกาศ (ต้องเป็นนายหน้าที่ล็อกอินอยู่จริงเท่านั้น) ===
+    // หมายเหตุ: เดิมโค้ดตรงนี้ไปดึง "นายหน้าคนแรกใน DB" มาผูกให้เมื่อไม่มี agentId ส่งมา
+    // ทำให้บ้านที่นายหน้าคนอื่นลงประกาศ ไปโผล่ในบัญชีของนายหน้าคนแรกทั้งหมด
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "กรุณาเข้าสู่ระบบก่อนลงประกาศ" },
+        { status: 401 }
+      );
+    }
+
+    const agent = await db.users.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!agent || agent.role_id !== "agent") {
+      return NextResponse.json(
+        { error: "อนุญาตให้ลงประกาศได้เฉพาะบัญชีนายหน้าเท่านั้น" },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const {
       title, price, type_id, type, location, description,
-      bedrooms, bathrooms, area_sqm, areaSqm, agentId,
+      bedrooms, bathrooms, area_sqm, areaSqm,
       province_id, amphure_id, district_id, latitude, longitude, images,
       viewingSlots
     } = body;
@@ -104,19 +127,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // หา agent_id จาก session นายหน้าที่ล็อกอินอยู่เป็นหลัก
-    let validAgentId = agentId;
-    const session = await getServerSession(authOptions);
-    if (session?.user?.email) {
-      const currentUser = await db.users.findUnique({ where: { email: session.user.email } });
-      if (currentUser) {
-        validAgentId = currentUser.id;
-      }
-    }
-    if (!validAgentId) {
-      const firstAgent = await db.users.findFirst({ where: { role_id: "agent" } });
-      validAgentId = firstAgent?.id || "admin";
-    }
+    // ผูกประกาศกับนายหน้าที่ล็อกอินอยู่เสมอ (ไม่รับค่า agentId จาก body อีกต่อไป)
+    // หมายเหตุ: ตัดการ fallback ไปหา "นายหน้าคนแรกใน DB" ออกทั้งหมด เพราะเป็นต้นเหตุของบั๊กเดิม
+    // ที่ทำให้บ้านของทุกนายหน้าไปกองอยู่ที่บัญชีเดียวกัน
+    const validAgentId = agent.id;
 
     const resolvedTypeId = type_id ? parseInt(type_id) : (type === "house" ? 1 : type === "townhome" ? 2 : 3);
     const resolvedArea = parseFloat(area_sqm || areaSqm || 100);

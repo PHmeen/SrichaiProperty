@@ -209,68 +209,23 @@ export default function PropertyDetailPage() {
                   </div>
                   <div className="flex justify-between border-b border-slate-100 pb-2">
                     <span className="text-slate-400 font-medium">ลักษณะเด่น</span>
-                    <span className="font-bold text-slate-700">{property.tag || "ขายด่วน (Premium)"}</span>
-                  </div>
-                  <div className="flex justify-between border-b border-slate-100 pb-2">
-                    <span className="text-slate-400 font-medium">ปีที่สร้างเสร็จ</span>
-                    <span className="font-bold text-slate-700">พ.ศ. 2568</span>
-                  </div>
-                  <div className="flex justify-between border-b border-slate-100 pb-2">
-                    <span className="text-slate-400 font-medium">จำนวนชั้น</span>
-                    <span className="font-bold text-slate-700">2 ชั้น</span>
-                  </div>
-                  <div className="flex justify-between col-span-2 pt-1">
-                    <span className="text-slate-400 font-medium">ค่าส่วนกลางโครงการ</span>
-                    <span className="font-bold text-slate-700">{property.type === 'คอนโดมิเนียม' ? '฿45,000 / ปี' : '฿25,000 / ปี'}</span>
+                    <span className="font-bold text-slate-700">{property.tag || "ทรัพย์ทั่วไป"}</span>
                   </div>
                 </div>
               </div>
+
+              {/*
+                หมายเหตุ: เดิมส่วนนี้เคยมีข้อมูลเขียนตายตัว (ปีที่สร้าง, จำนวนชั้น, ค่าส่วนกลาง,
+                รายการจุดเด่นบ้าน, สิ่งอำนวยความสะดวก, สถานที่ใกล้เคียง) ที่ไม่ได้ดึงจากฐานข้อมูลจริงเลย
+                ขึ้นเหมือนกันทุกบ้านไม่ว่านายหน้าจะกรอกอะไรมา จึงตัดออกเพื่อไม่ให้แสดงข้อมูลเท็จ
+                ถ้าต้องการฟีเจอร์เหล่านี้จริง ต้องเพิ่มฟิลด์ในฐานข้อมูล + ฟอร์มลงประกาศให้นายหน้ากรอกเองก่อน
+              */}
 
               <div className="space-y-3 pt-2 border-t border-slate-100">
                 <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">รายละเอียดอสังหาริมทรัพย์</h3>
-                <p className="text-slate-600 leading-relaxed text-xs">
-                  {property.description || "อสังหาริมทรัพย์คุณภาพตกแต่งสวยงามพร้อมเข้าอยู่ โครงสร้างมั่นคงแข็งแรง ออกแบบสไตล์โมเดิร์น เพดานสูงโปร่งสบายและแสงสว่างส่องทั่วถึง ทำเลทองเดินทางสะดวกสบายใกล้สิ่งอำนวยความสะดวกมากมาย มีระบบรักษาความปลอดภัยหนาแน่นตลอด 24 ชั่วโมง เหมาะสำหรับการอยู่อาศัยเป็นครอบครัว"}
+                <p className="text-slate-600 leading-relaxed text-xs whitespace-pre-line">
+                  {property.description || "นายหน้ายังไม่ได้เพิ่มรายละเอียดเพิ่มเติมสำหรับประกาศนี้"}
                 </p>
-                <ul className="list-disc list-inside text-slate-600 text-xs space-y-1.5 pt-2">
-                  <li>ห้องนอนใหญ่กว้างขวาง ตกแต่งบิวต์อินตู้เสื้อผ้าและตู้โชว์เรียบร้อย</li>
-                  <li>แถมฟรี! เครื่องปรับอากาศ 4 เครื่อง, เครื่องทำน้ำอุ่น 3 เครื่อง, ปั๊มน้ำพร้อมแท็งก์น้ำ</li>
-                  <li>ระบบความปลอดภัย กล้อง CCTV พร้อมเครื่องสัญญาณกันขโมยรอบทิศทาง</li>
-                  <li>ถนนหน้าบ้านกว้าง 12 เมตร บรรยากาศเงียบสงบ สภาพแวดล้อมดีน่าอยู่คุณภาพ</li>
-                </ul>
-              </div>
-
-              <div className="space-y-3 pt-4 border-t border-slate-100">
-                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">สิ่งอำนวยความสะดวกในโครงการ</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs text-slate-600 font-bold">
-                  <div className="bg-slate-50 border border-slate-200/50 p-2.5 rounded-xl flex items-center gap-2">👮 รปภ. 24 ชม.</div>
-                  <div className="bg-slate-50 border border-slate-200/50 p-2.5 rounded-xl flex items-center gap-2">📹 กล้อง CCTV</div>
-                  <div className="bg-slate-50 border border-slate-200/50 p-2.5 rounded-xl flex items-center gap-2">🏊 สระว่ายน้ำ</div>
-                  <div className="bg-slate-50 border border-slate-200/50 p-2.5 rounded-xl flex items-center gap-2">🏋️ ฟิตเนส</div>
-                  <div className="bg-slate-50 border border-slate-200/50 p-2.5 rounded-xl flex items-center gap-2">🌳 สวนสาธารณะ</div>
-                  <div className="bg-slate-50 border border-slate-200/50 p-2.5 rounded-xl flex items-center gap-2">🔑 ประตู Key Card</div>
-                </div>
-              </div>
-
-              <div className="space-y-3 pt-4 border-t border-slate-100">
-                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">สถานที่ใกล้เคียง</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div className="border border-slate-200 p-3 rounded-xl flex justify-between items-center font-bold text-slate-700">
-                    <span>🎓 มหาวิทยาลัยสงขลานครินทร์</span>
-                    <span className="text-blue-600">1.5 กม.</span>
-                  </div>
-                  <div className="border border-slate-200 p-3 rounded-xl flex justify-between items-center font-bold text-slate-700">
-                    <span>🏥 โรงพยาบาลสงขลานครินทร์</span>
-                    <span className="text-blue-600">1.8 กม.</span>
-                  </div>
-                  <div className="border border-slate-200 p-3 rounded-xl flex justify-between items-center font-bold text-slate-700">
-                    <span>🛍️ ห้างเซ็นทรัล หาดใหญ่</span>
-                    <span className="text-blue-600">2.2 กม.</span>
-                  </div>
-                  <div className="border border-slate-200 p-3 rounded-xl flex justify-between items-center font-bold text-slate-700">
-                    <span>✈️ ท่าอากาศยานนานาชาติหาดใหญ่</span>
-                    <span className="text-blue-600">12.5 กม.</span>
-                  </div>
-                </div>
               </div>
 
               <div className="space-y-3 pt-4 border-t border-slate-100">

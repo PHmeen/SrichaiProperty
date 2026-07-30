@@ -277,6 +277,8 @@ model appointments {
   time_slot                             String?     @db.VarChar(20) // ช่วงเวลานัดหมาย
   status                                String?     @default("pending") @db.VarChar(20) // สถานะนัดหมาย (pending, confirmed, cancelled, completed)
   note                                  String?     // ข้อความ/โน้ตเพิ่มเติมจากลูกค้า
+  original_date                         DateTime?   @db.Date // วันที่ลูกค้าจองไว้ครั้งแรก (ใช้แสดงขีดฆ่าให้นายหน้าเห็นเมื่อมีการแก้ไข)
+  original_time_slot                    String?     @db.VarChar(20) // ช่วงเวลาที่ลูกค้าจองไว้ครั้งแรก
   created_at                            DateTime    @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   users_appointments_agent_idTousers    users?      @relation("appointments_agent_idTousers", fields: [agent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   users_appointments_customer_idTousers users?      @relation("appointments_customer_idTousers", fields: [customer_id], references: [id], onDelete: Cascade, onUpdate: NoAction)

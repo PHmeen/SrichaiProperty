@@ -11,4 +11,5 @@ export interface Appointment {
   propertyType: string;
   agentName: string;
   agentImage: string;
+  rawTimeSlot?: string; // ค่า 'morning' | 'afternoon' จริงจาก DB (ใช้ตอนส่ง PATCH แก้วัน/รอบ)
 }

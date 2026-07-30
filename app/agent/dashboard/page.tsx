@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -21,6 +21,7 @@ interface PropertyData {
 export default function AgentDashboardPage() {
   const { data: session, status } = useSession();
   const [filterType, setFilterType] = useState('all');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [dbData, setDbData] = useState<{
     properties: PropertyData[];
@@ -31,18 +32,36 @@ export default function AgentDashboardPage() {
     totalCount: number;
   } | null>(null);
 
-  const fetchDashboard = () => {
-    if (status === 'authenticated') {
-      fetch('/api/agent/portal?type=dashboard')
-        .then(res => res.json())
-        .then(data => setDbData(data))
-        .catch(err => console.error('Error fetching dashboard:', err));
-    }
-  };
+  const loadDashboard = useCallback(() => {
+    fetch('/api/agent/portal?type=dashboard')
+      .then(res => res.json())
+      .then(data => setDbData(data))
+      .catch(err => console.error('Error fetching dashboard:', err));
+  }, []);
 
   useEffect(() => {
-    fetchDashboard();
-  }, [status]);
+    if (status === 'authenticated') {
+      loadDashboard();
+    }
+  }, [status, loadDashboard]);
+
+  const handleDelete = async (propertyId: string) => {
+    if (!confirm('ยืนยันลบประกาศนี้หรือไม่? การลบไม่สามารถย้อนกลับได้')) return;
+    setDeletingId(propertyId);
+    try {
+      const res = await fetch(`/api/properties/${propertyId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        loadDashboard();
+      } else {
+        alert(data.error || 'ลบประกาศไม่สำเร็จ');
+      }
+    } catch {
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   if (status === 'loading') {
     return (
@@ -193,8 +212,14 @@ export default function AgentDashboardPage() {
                           </td>
                           <td className="py-4 px-1 text-right">
                             <div className="flex items-center justify-end gap-3 text-xs font-bold text-slate-600">
-                              <button className="hover:text-blue-600 transition">📝 แก้ไข</button>
-                              <button className="hover:text-red-500 transition">🗑️ ลบ</button>
+                              <Link href={`/agent/edit-property/${p.id}`} className="hover:text-blue-600 transition">📝 แก้ไข</Link>
+                              <button
+                                onClick={() => handleDelete(p.id)}
+                                disabled={deletingId === p.id}
+                                className="hover:text-red-500 transition disabled:opacity-50"
+                              >
+                                {deletingId === p.id ? 'กำลังลบ...' : '🗑️ ลบ'}
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -230,7 +255,7 @@ export default function AgentDashboardPage() {
       <UpgradeProModal
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
-        onSuccess={fetchDashboard}
+        onSuccess={loadDashboard}
       />
     </div>
   );

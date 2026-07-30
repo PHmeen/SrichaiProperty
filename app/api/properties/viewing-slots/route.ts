@@ -25,62 +25,30 @@ export async function GET(req: Request) {
       );
     }
 
-    // 1. หาข้อมูลทรัพย์เพื่อเอา agent_id ผู้ดูแลทรัพย์
-    const property = await db.properties.findUnique({
-      where: { id: propertyId },
-      select: { agent_id: true }
-    });
-
-    // 2. ดึงวันว่างเฉพาะบ้าน (property_viewing_slots)
+    // ดึงวันว่างเฉพาะบ้านหลังนี้เท่านั้น (property_viewing_slots)
+    // หมายเหตุ: เดิมโค้ดตรงนี้เคยดึง "วันว่างส่วนตัวของนายหน้า" จากตาราง agent_availabilities
+    // มาผสมด้วย โดยจับคู่กันแค่ วันที่+ช่วงเวลา (ไม่ผูกกับ property_id)
+    // ทำให้วันว่าง/สถานะจองของบ้านหลังหนึ่ง "หลุด" ไปติดกับบ้านอีกหลังของนายหน้าคนเดียวกัน
+    // (บ้านที่เพิ่งสร้างใหม่ ไม่เคยมีใครจอง กลับขึ้นว่า "ถูกจองแล้ว" เพราะบ้านหลังอื่นของนายหน้าคนเดิมถูกจอง)
+    // ตามแผนเดิมที่ตกลงไว้ว่าจะเลิกใช้ระบบ agent_availabilities ทั้งหมด จึงตัดส่วนนี้ออก
+    // เหลือใช้แค่ property_viewing_slots ซึ่งผูกกับ property_id ตรงตัวเท่านั้น
     const propertySlots = await db.property_viewing_slots.findMany({
-      where: { property_id: propertyId }
+      where: { property_id: propertyId },
+      orderBy: [{ available_date: "asc" }, { time_slot: "asc" }]
     });
 
-    // 3. ดึงวันว่างส่วนตัวของนายหน้าผู้ดูแลทรัพย์ (agent_availabilities)
-    let agentSlots: Array<{ id: string; available_date: Date; time_slot: string | null; is_booked: boolean | null }> = [];
-    if (property?.agent_id) {
-      agentSlots = await db.agent_availabilities.findMany({
-        where: { agent_id: property.agent_id }
+    const formatted = propertySlots
+      .filter((s) => s.time_slot)
+      .map((s) => {
+        const d = new Date(s.available_date);
+        const dateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+        return {
+          id: s.id,
+          date: dateStr,
+          timeSlot: s.time_slot as string,
+          isBooked: Boolean(s.is_booked)
+        };
       });
-    }
-
-    // 4. รวมข้อมูลวันว่างทั้ง 2 ส่วน (Map ด้วย date + timeSlot)
-    const slotsMap = new Map<string, { id: string; date: string; timeSlot: string; isBooked: boolean }>();
-
-    // ใส่วันว่างส่วนตัวของนายหน้าก่อน
-    agentSlots.forEach((s) => {
-      if (!s.time_slot) return;
-      const d = new Date(s.available_date);
-      const dateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
-      const key = `${dateStr}_${s.time_slot}`;
-      slotsMap.set(key, {
-        id: s.id,
-        date: dateStr,
-        timeSlot: s.time_slot,
-        isBooked: Boolean(s.is_booked)
-      });
-    });
-
-    // ใส่วันว่างเฉพาะบ้าน (ถ้ามี จะทับหรือรวมเข้ามา)
-    propertySlots.forEach((s) => {
-      if (!s.time_slot) return;
-      const d = new Date(s.available_date);
-      const dateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
-      const key = `${dateStr}_${s.time_slot}`;
-      const existing = slotsMap.get(key);
-      slotsMap.set(key, {
-        id: s.id,
-        date: dateStr,
-        timeSlot: s.time_slot,
-        // ถ้าถูกจองที่ตารางใดตารางหนึ่ง ให้ถือว่าถูกจองแล้ว (isBooked = true)
-        isBooked: existing ? existing.isBooked || Boolean(s.is_booked) : Boolean(s.is_booked)
-      });
-    });
-
-    const formatted = Array.from(slotsMap.values()).sort((a, b) => {
-      if (a.date !== b.date) return a.date.localeCompare(b.date);
-      return a.timeSlot.localeCompare(b.timeSlot);
-    });
 
     return NextResponse.json({ success: true, slots: formatted });
   } catch (error) {
