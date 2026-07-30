@@ -80,6 +80,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           }
         })
         .catch(err => console.error("Error fetching appointments:", err));
+
+      fetch('/api/user/saved-properties')
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && Array.isArray(data.savedProperties)) {
+            const ids = data.savedProperties.map((s: { id: string }) => s.id);
+            setFavorites(ids);
+            saveToLocal('srichai_favorites', ids);
+          }
+        })
+        .catch(err => console.error("Error fetching saved properties:", err));
     }
   }, [session]);
 
@@ -99,11 +110,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const toggleFavorite = (id: string | number) => {
-    const updated = favorites.includes(id) 
-      ? favorites.filter(favId => favId !== id)
+    const strId = String(id);
+    const isFav = favorites.some(favId => String(favId) === strId);
+    const updated = isFav 
+      ? favorites.filter(favId => String(favId) !== strId)
       : [...favorites, id];
+      
     setFavorites(updated);
     saveToLocal('srichai_favorites', updated);
+
+    if (session?.user) {
+      if (isFav) {
+        fetch(`/api/user/saved-properties?propertyId=${encodeURIComponent(strId)}`, {
+          method: 'DELETE'
+        }).catch(err => console.error("Error removing favorite DB:", err));
+      } else {
+        fetch('/api/user/saved-properties', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ propertyId: strId })
+        }).catch(err => console.error("Error saving favorite DB:", err));
+      }
+    }
   };
 
   const addAppointment = (appt: Omit<Appointment, 'id' | 'status' | 'propertyName' | 'propertyPrice' | 'propertyImage' | 'propertyType' | 'agentName' | 'agentImage'>) => {

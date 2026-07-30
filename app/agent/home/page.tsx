@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
+import PendingApprovalBanner from '@/components/agent/PendingApprovalBanner';
 
 interface AppointmentData {
   id: string;
@@ -24,6 +25,7 @@ export default function AgentHomePage() {
   const [dbData, setDbData] = useState<{
     propertiesCount: number;
     pendingAptsCount: number;
+    pendingApprovalCount?: number;
     appointments: AppointmentData[];
   } | null>(null);
 
@@ -92,12 +94,17 @@ export default function AgentHomePage() {
     return true;
   });
 
+  const pendingApprovalCount = dbData?.pendingApprovalCount || 0;
+
   return (
     <div className="pt-16 min-h-screen text-slate-800 font-sans antialiased text-xs md:text-sm flex flex-col">
 
       {/* 2. Main Content Container */}
       <main className="max-w-6xl w-full mx-auto p-4 md:p-8 space-y-6 flex-1">
         
+        {/* Pending Approval Warning Banner */}
+        <PendingApprovalBanner pendingCount={pendingApprovalCount} />
+
         {/* Welcome Banner */}
         <section className="bg-gradient-to-r from-blue-700 to-blue-800 rounded-3xl p-6 md:p-8 text-white flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-lg shadow-blue-900/10">
           <div className="space-y-2">

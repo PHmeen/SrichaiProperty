@@ -34,6 +34,12 @@ export async function GET(request: Request) {
         where: { agent_id: agent.id, status: 'pending' }
       });
 
+      const pendingProperties = await db.properties.findMany({
+        where: { agent_id: agent.id, status: 'pending' },
+        select: { id: true, title: true, price: true, created_at: true },
+        orderBy: { created_at: 'desc' }
+      });
+
       const appointments = await db.appointments.findMany({
         where: { agent_id: agent.id },
         include: {
@@ -65,6 +71,13 @@ export async function GET(request: Request) {
       return NextResponse.json({
         propertiesCount,
         pendingAptsCount,
+        pendingApprovalCount: pendingProperties.length,
+        pendingApprovalProperties: pendingProperties.map(p => ({
+          id: p.id,
+          title: p.title,
+          price: '฿' + Number(p.price).toLocaleString(),
+          createdAt: p.created_at
+        })),
         appointments: formattedApts
       });
     }
@@ -100,14 +113,19 @@ export async function GET(request: Request) {
         title: p.title,
         price: '฿' + Number(p.price).toLocaleString(),
         type: p.property_types?.name || 'บ้านเดี่ยว',
-        status: p.status === 'approved' ? 'approved' : 'pending',
+        status: p.status, // approved, pending, rejected
         image: p.property_images[0]?.image_url || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-        views: Math.floor(Math.random() * 800) + 150, // จำลองยอดวิวแบบสุ่มเป็นตัวเลขสถิติประกอบ
-        appointments: Math.floor(Math.random() * 3)
+        views: Math.floor(Math.random() * 800) + 150,
+        appointments: Math.floor(Math.random() * 3),
+        createdAt: p.created_at
       }));
+
+      const pendingProperties = formattedProperties.filter(p => p.status === 'pending');
 
       return NextResponse.json({
         properties: formattedProperties,
+        pendingApprovalCount: pendingProperties.length,
+        pendingApprovalProperties: pendingProperties,
         totalPortfolioValue: (totalPortfolioValue / 1000000).toFixed(1) + ' ลบ.',
         pendingAptsCount,
         totalCount: properties.length

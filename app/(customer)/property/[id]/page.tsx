@@ -101,7 +101,14 @@ export default function PropertyDetailPage() {
               onClick={() => toggleFavorite(property.id)} 
               className="flex items-center gap-1.5 px-3 py-2 hover:bg-slate-100/80 text-slate-700 border border-slate-200 rounded-xl font-bold transition-all cursor-pointer active:scale-95 text-[11px]"
             >
-              <span className={isSaved ? "text-red-500" : "text-slate-400"}>❤️</span> {isSaved ? "บันทึกแล้ว" : "บันทึก"}
+              <svg 
+                className={`w-4 h-4 ${isSaved ? 'text-rose-500 fill-rose-500' : 'text-slate-400 fill-none'}`} 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+              <span>{isSaved ? "บันทึกแล้ว" : "บันทึก"}</span>
             </button>
           </div>
         </div>

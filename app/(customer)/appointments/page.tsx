@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { useApp } from '@/context/AppContext';
+import ReviewModal from '@/components/customer/ReviewModal';
 
 interface EditableSlot {
   date: string;
@@ -94,6 +95,12 @@ export default function AppointmentsPage() {
     return apt.status === activeTab;
   });
 
+  const [reviewModalApt, setReviewModalApt] = useState<{ id: string; agentName: string; propertyName: string } | null>(null);
+
+  const handleOpenReview = (id: string, agentName: string, propertyName: string) => {
+    setReviewModalApt({ id, agentName, propertyName });
+  };
+
   return (
     <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm flex flex-col">
       <div className="pt-8 pb-6 bg-white border-b border-slate-200">
@@ -182,6 +189,14 @@ export default function AppointmentsPage() {
                         className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg font-bold text-xs transition cursor-pointer"
                       >
                         แก้ไขวัน/รอบ
+                      </button>
+                    )}
+                    {apt.status === 'past' && (
+                      <button 
+                        onClick={() => handleOpenReview(String(apt.id), apt.agentName, apt.propertyName)}
+                        className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-lg font-black text-xs transition cursor-pointer flex items-center gap-1"
+                      >
+                        ⭐ ให้คะแนนการบริการ
                       </button>
                     )}
                     {(apt.status === 'upcoming' || apt.status === 'pending') && (
@@ -285,6 +300,17 @@ export default function AppointmentsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal รีวิวนายหน้า */}
+      {reviewModalApt && (
+        <ReviewModal
+          isOpen={Boolean(reviewModalApt)}
+          appointmentId={reviewModalApt.id}
+          agentName={reviewModalApt.agentName}
+          propertyName={reviewModalApt.propertyName}
+          onClose={() => setReviewModalApt(null)}
+        />
       )}
     </div>
   );

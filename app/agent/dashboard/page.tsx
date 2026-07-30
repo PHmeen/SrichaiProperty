@@ -4,6 +4,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
+import PendingApprovalBanner from '@/components/agent/PendingApprovalBanner';
+import UpgradeProModal from '@/components/agent/UpgradeProModal';
 
 interface PropertyData {
   id: string;
@@ -20,10 +22,13 @@ export default function AgentDashboardPage() {
   const { data: session, status } = useSession();
   const [filterType, setFilterType] = useState('all');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [dbData, setDbData] = useState<{
     properties: PropertyData[];
     totalPortfolioValue: string;
     pendingAptsCount: number;
+    pendingApprovalCount?: number;
+    pendingApprovalProperties?: PropertyData[];
     totalCount: number;
   } | null>(null);
 
@@ -90,12 +95,20 @@ export default function AgentDashboardPage() {
     return true;
   });
 
+  const pendingApprovalCount = dbData?.pendingApprovalCount || 0;
+
   return (
     <div className="pt-16 min-h-screen text-slate-800 font-sans antialiased text-xs md:text-sm flex flex-col">
 
       {/* 2. Main Content Container */}
       <main className="max-w-6xl w-full mx-auto p-4 md:p-8 space-y-6 flex-1">
         
+        {/* Pending Approval Warning Banner */}
+        <PendingApprovalBanner
+          pendingCount={pendingApprovalCount}
+          onViewPending={() => setFilterType('pending')}
+        />
+
         {/* Top Gold Promo Banner */}
         <section className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 rounded-3xl p-5 text-white border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4 text-left">
@@ -105,7 +118,9 @@ export default function AgentDashboardPage() {
               <p className="text-slate-400 text-[10px] md:text-xs">อัปเกรดวันนี้เพื่อลงประกาศได้ไม่จำกัดจำนวน และรับสิทธิพิเศษการดันโพสต์ฟรี!</p>
             </div>
           </div>
-          <button className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs shrink-0">อัปเกรด (599.- / เดือน)</button>
+          <button onClick={() => setShowUpgradeModal(true)} className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs shrink-0 cursor-pointer shadow-lg">
+            อัปเกรด (599.- / เดือน)
+          </button>
         </section>
 
         {/* Page Title & Add Button */}
@@ -226,7 +241,9 @@ export default function AgentDashboardPage() {
               <p className="text-slate-500 text-[10px] leading-relaxed">
                 คุณได้รับการยืนยันตัวตนในฐานะพาร์ทเนอร์นายหน้าอย่างถูกต้อง สามารถเปลี่ยนแพ็กเกจเพิ่มสิทธิพิเศษด้านการบูสต์ได้ทุกเมื่อ
               </p>
-              <button className="w-full py-3 bg-[#0f172a] hover:bg-[#1e293b] text-white font-extrabold rounded-xl text-xs transition">อัปเกรดเป็น Verified PRO</button>
+              <button onClick={() => setShowUpgradeModal(true)} className="w-full py-3 bg-[#0f172a] hover:bg-[#1e293b] text-white font-extrabold rounded-xl text-xs transition cursor-pointer">
+                อัปเกรดเป็น Verified PRO
+              </button>
             </div>
           </div>
 
@@ -234,6 +251,12 @@ export default function AgentDashboardPage() {
 
       </main>
 
+      {/* Modal ชำระเงินแพ็กเกจ PRO */}
+      <UpgradeProModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        onSuccess={loadDashboard}
+      />
     </div>
   );
 }

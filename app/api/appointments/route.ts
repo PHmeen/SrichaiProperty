@@ -123,10 +123,13 @@ export async function GET(request: Request) {
       // แมปช่วงเวลา
       const timeSlotLabel = apt.time_slot === 'morning' ? 'ช่วงเช้า (09:00 - 12:00 น.)' : 'ช่วงบ่าย (13:00 - 16:00 น.)';
 
+      const d = new Date(apt.appointment_date);
+      const dateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+
       return {
         id: apt.id,
         propertyId: apt.property_id || "",
-        date: apt.appointment_date.toISOString().split('T')[0],
+        date: dateStr,
         timeSlot: timeSlotLabel,
         note: apt.note || "",
         status: mappedStatus,
@@ -200,7 +203,7 @@ export async function POST(request: Request) {
       }
     });
 
-    // ปิดวันว่างของบ้านหลังนี้ (mark ว่าถูกจองแล้ว) กันไม่ให้ลูกค้าคนอื่นจองซ้ำช่วงเวลาเดียวกัน
+    // ปิดวันว่างของบ้านหลังนี้และวันว่างของนายหน้า (mark ว่าถูกจองแล้ว)
     await db.property_viewing_slots.updateMany({
       where: {
         property_id: property.id,
@@ -209,6 +212,30 @@ export async function POST(request: Request) {
       },
       data: { is_booked: true }
     });
+
+    if (property.agent_id) {
+      await db.agent_availabilities.updateMany({
+        where: {
+          agent_id: property.agent_id,
+          available_date: new Date(date),
+          time_slot: dbTimeSlot
+        },
+        data: { is_booked: true }
+      });
+
+      // ส่งการแจ้งเตือนถึงนายหน้าเจ้าของทรัพย์
+      const customerName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "ลูกค้า";
+      const timeLabel = dbTimeSlot === "morning" ? "ช่วงเช้า" : "ช่วงบ่าย";
+      await db.notifications.create({
+        data: {
+          user_id: property.agent_id,
+          title: "🏠 มีคำขอนัดหมายดูบ้านใหม่",
+          content: `${customerName} ได้ส่งคำขอนัดหมายดู "${property.title}" วันที่ ${date} (${timeLabel})`,
+          type: "appointment",
+          is_read: false
+        }
+      }).catch(err => console.error("Notification trigger error:", err));
+    }
 
     return NextResponse.json({ success: true, data: newAppointment });
   } catch (error) {
