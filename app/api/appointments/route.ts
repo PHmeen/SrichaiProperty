@@ -203,7 +203,11 @@ export async function POST(request: Request) {
       }
     });
 
-    // ปิดวันว่างของบ้านหลังนี้และวันว่างของนายหน้า (mark ว่าถูกจองแล้ว)
+    // ปิดวันว่างของบ้านหลังนี้ (mark ว่าถูกจองแล้ว)
+    // หมายเหตุ: เดิมโค้ดตรงนี้เคยอัปเดตตาราง agent_availabilities (วันว่างส่วนตัวของนายหน้า) ด้วย
+    // แต่ agent_availabilities ผูกกับ agent_id เท่านั้น ไม่ผูกกับ property_id ทำให้การจองบ้านหลังหนึ่ง
+    // ไปทำให้บ้านอีกหลังของนายหน้าคนเดียวกันโดนมาร์กว่า "ถูกจองแล้ว" ไปด้วยทั้งที่ไม่เกี่ยวกัน
+    // ตามแผนที่เลิกใช้ระบบ agent_availabilities แล้ว จึงตัดส่วนนี้ออก เหลือแค่ property_viewing_slots
     await db.property_viewing_slots.updateMany({
       where: {
         property_id: property.id,
@@ -214,15 +218,6 @@ export async function POST(request: Request) {
     });
 
     if (property.agent_id) {
-      await db.agent_availabilities.updateMany({
-        where: {
-          agent_id: property.agent_id,
-          available_date: new Date(date),
-          time_slot: dbTimeSlot
-        },
-        data: { is_booked: true }
-      });
-
       // ส่งการแจ้งเตือนถึงนายหน้าเจ้าของทรัพย์
       const customerName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "ลูกค้า";
       const timeLabel = dbTimeSlot === "morning" ? "ช่วงเช้า" : "ช่วงบ่าย";

@@ -69,7 +69,17 @@ export default function AppointmentsPage() {
   };
 
   // จัดกลุ่มวันว่างตามวันที่ เพื่อแสดงเป็นรายการเลือกในโมดัล
-  const datesGroup = Array.from(new Set(slotsForEdit.map(s => s.date))).sort();
+  // - ตัดวันที่ผ่านมาแล้วออก (กันข้อมูลเก่าตกค้างโผล่มาให้เลือก) ยกเว้นวันที่จองอยู่ตอนนี้ (ต้องเห็นไว้เทียบ)
+  // - เรียงให้ "วันที่ลูกค้าจองอยู่ตอนนี้" ขึ้นเป็นอันดับแรกเสมอ ตามด้วยวันอื่นๆ เรียงจากใกล้ไปไกล
+  const todayKeyForEdit = new Date().toISOString().split('T')[0];
+  const datesGroup = Array.from(new Set(slotsForEdit.map(s => s.date)))
+    .filter(d => d >= todayKeyForEdit || d === editingAppointment?.date)
+    .sort((a, b) => {
+      const currentDate = editingAppointment?.date;
+      if (a === currentDate) return -1;
+      if (b === currentDate) return 1;
+      return a.localeCompare(b);
+    });
 
   const upcomingCount = appointments.filter(
     apt => apt.status === 'upcoming' || apt.status === 'pending'
