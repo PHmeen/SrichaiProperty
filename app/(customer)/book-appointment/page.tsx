@@ -26,7 +26,7 @@ function BookAppointmentForm() {
   const [viewingSlots, setViewingSlots] = useState<{ date: string; timeSlot: string; isBooked: boolean }[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(true);
 
-  const { properties } = useApp();
+  const { properties, refreshAppointments } = useApp();
   const property = properties.find(p => String(p.id) === String(propertyId)) || properties[0];
 
   // ดึงวันว่างจริงของบ้านหลังนี้ทันทีที่รู้ว่ากำลังจองบ้านหลังไหน
@@ -126,6 +126,7 @@ function BookAppointmentForm() {
       }
 
       alert(`ส่งขอจองนัดหมายสำหรับอสังหาฯ ${property.title} เรียบร้อยแล้ว!`);
+      await refreshAppointments();
       router.push('/appointments');
     } catch (err: unknown) {
       const error = err as Error;

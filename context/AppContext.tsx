@@ -18,6 +18,7 @@ interface AppContextType {
   addAppointment: (appointment: Omit<Appointment, 'id' | 'status' | 'propertyName' | 'propertyPrice' | 'propertyImage' | 'propertyType' | 'agentName' | 'agentImage'>) => void;
   cancelAppointment: (id: string | number) => void;
   editAppointmentDate: (id: string | number, date: string, timeSlot: string) => Promise<{ success: boolean; error?: string }>;
+  refreshAppointments: () => Promise<void>;
   sendChatMessage: (sessionId: number, text: string) => void;
   updateProfile: (profileData: Partial<Profile>) => void;
 }
@@ -53,10 +54,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
   
-  const [appointments, setAppointments] = useState<Appointment[]>(() => getLocal('srichai_appointments', []));
-  const [favorites, setFavorites] = useState<(string | number)[]>(() => getLocal('srichai_favorites', []));
-  const [chatSessions, setChatSessions] = useState<ChatSession[]>(() => getLocal('srichai_chats', defaultChatSessions));
+  // หมายเหตุ: เดิมโค้ด 3 บรรทัดนี้อ่าน localStorage ตรงๆ ใน useState initializer
+  // ซึ่งทำงานตอน "initial render" ด้วย — ฝั่ง server ไม่มี localStorage เลยได้ค่า fallback ว่างๆ เสมอ
+  // แต่ฝั่ง client รอบแรกที่ hydrate จะอ่านค่าจริงจาก localStorage ทันที ทำให้ HTML รอบแรกของทั้งสองฝั่งไม่ตรงกัน
+  // (React หา mismatch ตรงนี้ -> ขึ้น error "Hydration failed")
+  // แก้โดยให้ state เริ่มต้นเป็นค่าว่างเหมือนกันทั้ง server และ client ก่อนเสมอ
+  // แล้วค่อยอ่านจาก localStorage ทีหลังใน useEffect (รันหลัง mount เท่านั้น ไม่กระทบ HTML รอบแรก)
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [favorites, setFavorites] = useState<(string | number)[]>([]);
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>(defaultChatSessions);
   const [properties, setProperties] = useState<Property[]>([]);
+
+  // โหลดค่าที่เคยบันทึกไว้ใน localStorage ทันทีหลัง mount (client-only)
+  useEffect(() => {
+    setAppointments(getLocal('srichai_appointments', []));
+    setFavorites(getLocal('srichai_favorites', []));
+    setChatSessions(getLocal('srichai_chats', defaultChatSessions));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     fetch('/api/properties')
@@ -182,6 +197,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     .catch(err => console.error("Error creating appointment in database:", err));
   };
 
+  // ฟังก์ชัน: ดึงนัดหมายล่าสุดจาก server มาอัปเดต context ทันที
+  // ใช้ตอนหน้าจอง (book-appointment) สร้างนัดหมายใหม่เสร็จแล้ว router.push ไปหน้าประวัติ
+  // เพราะ AppProvider อยู่ระดับ root layout ไม่ได้ remount ตอนเปลี่ยนหน้า
+  // useEffect ที่ดึงข้อมูลตอน mount ทีแรกจะไม่รันซ้ำให้อัตโนมัติ ต้องเรียกฟังก์ชันนี้เองหลังจองสำเร็จ
+  const refreshAppointments = async () => {
+    try {
+      const res = await fetch('/api/appointments');
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setAppointments(data);
+        saveToLocal('srichai_appointments', data);
+      }
+    } catch (err) {
+      console.error("Error refreshing appointments:", err);
+    }
+  };
+
   // ฟังก์ชัน: ยกเลิกคำขอนัดหมายชมสถานที่
   const cancelAppointment = (id: string | number) => {
     const updated = appointments.map(appt => 
@@ -260,6 +292,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addAppointment,
       cancelAppointment,
       editAppointmentDate,
+      refreshAppointments,
       sendChatMessage,
       updateProfile
     }}>
