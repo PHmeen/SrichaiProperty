@@ -16,7 +16,7 @@ interface AppContextType {
   addProperty: (property: Omit<Property, 'id'>) => void;
   toggleFavorite: (id: string | number) => void;
   addAppointment: (appointment: Omit<Appointment, 'id' | 'status' | 'propertyName' | 'propertyPrice' | 'propertyImage' | 'propertyType' | 'agentName' | 'agentImage'>) => void;
-  cancelAppointment: (id: string | number) => void;
+  cancelAppointment: (id: string | number) => Promise<{ success: boolean; error?: string }>;
   editAppointmentDate: (id: string | number, date: string, timeSlot: string) => Promise<{ success: boolean; error?: string }>;
   refreshAppointments: () => Promise<void>;
   sendChatMessage: (sessionId: number, text: string) => void;
@@ -215,12 +215,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ฟังก์ชัน: ยกเลิกคำขอนัดหมายชมสถานที่
-  const cancelAppointment = (id: string | number) => {
-    const updated = appointments.map(appt => 
-      appt.id === id ? { ...appt, status: 'cancelled' as const } : appt
-    );
-    setAppointments(updated);
-    saveToLocal('srichai_appointments', updated);
+  // หมายเหตุ: เดิมฟังก์ชันนี้แก้แค่ React state ในเบราว์เซอร์เฉยๆ ไม่เคยเรียก API เลย
+  // ทำให้วันว่างของบ้านหลังนั้นไม่เคยถูกปลดล็อกคืน และพอรีเฟรชหน้าเว็บ นัดหมายที่ยกเลิกไปแล้วจะโผล่กลับมา
+  // (เพราะ DB ยังไม่เคยถูกอัปเดตจริง) จึงเปลี่ยนให้เรียก PATCH แล้วดึงข้อมูลล่าสุดจาก server มาแทน
+  const cancelAppointment = async (id: string | number): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await fetch('/api/appointments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action: 'cancel' })
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        await refreshAppointments();
+        return { success: true };
+      }
+
+      return { success: false, error: data.error || 'เกิดข้อผิดพลาดในการยกเลิกนัดหมาย' };
+    } catch {
+      return { success: false, error: 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์' };
+    }
   };
 
   // ฟังก์ชัน: ลูกค้าแก้วัน/รอบที่จอง (ทำได้เฉพาะตอนนัดหมายยัง pending) แล้วดึงข้อมูลล่าสุดจาก DB มาอัปเดต

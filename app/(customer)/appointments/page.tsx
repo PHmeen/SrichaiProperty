@@ -23,6 +23,7 @@ export default function AppointmentsPage() {
   const [selectedNewSlot, setSelectedNewSlot] = useState<'morning' | 'afternoon' | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState('');
+  const [cancellingId, setCancellingId] = useState<string | number | null>(null);
 
   const editingAppointment = appointments.find(a => a.id === editingId) || null;
 
@@ -211,14 +212,19 @@ export default function AppointmentsPage() {
                     )}
                     {(apt.status === 'upcoming' || apt.status === 'pending') && (
                       <button 
-                        onClick={() => {
-                          if (confirm('คุณแน่ใจหรือไม่ว่าต้องการยกเลิกนัดหมายนี้?')) {
-                            cancelAppointment(apt.id);
+                        disabled={cancellingId === apt.id}
+                        onClick={async () => {
+                          if (!confirm('คุณแน่ใจหรือไม่ว่าต้องการยกเลิกนัดหมายนี้?')) return;
+                          setCancellingId(apt.id);
+                          const result = await cancelAppointment(apt.id);
+                          setCancellingId(null);
+                          if (!result.success) {
+                            alert(result.error || 'ยกเลิกนัดหมายไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
                           }
                         }}
-                        className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg font-bold text-xs transition cursor-pointer"
+                        className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg font-bold text-xs transition cursor-pointer disabled:opacity-50 disabled:cursor-wait"
                       >
-                        ยกเลิกนัด
+                        {cancellingId === apt.id ? 'กำลังยกเลิก...' : 'ยกเลิกนัด'}
                       </button>
                     )}
                   </div>

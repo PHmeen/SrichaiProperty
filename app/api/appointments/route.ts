@@ -117,7 +117,7 @@ export async function GET(request: Request) {
       let mappedStatus: 'upcoming' | 'past' | 'cancelled' | 'pending' = 'pending';
       if (apt.status === 'approved') mappedStatus = 'upcoming';
       else if (apt.status === 'completed' || apt.status === 'no-show') mappedStatus = 'past';
-      else if (apt.status === 'rejected') mappedStatus = 'cancelled';
+      else if (apt.status === 'rejected' || apt.status === 'cancelled') mappedStatus = 'cancelled';
       else mappedStatus = 'pending';
 
       // แมปช่วงเวลา
@@ -303,6 +303,42 @@ export async function PATCH(request: Request) {
 
       // ถ้าปฏิเสธ: ปลดล็อกวันว่างเดิมคืน เผื่อมีลูกค้าคนอื่นมาจองแทน
       if (action === "reject" && appointment.property_id) {
+        await db.property_viewing_slots.updateMany({
+          where: {
+            property_id: appointment.property_id,
+            available_date: appointment.appointment_date,
+            time_slot: appointment.time_slot ?? undefined
+          },
+          data: { is_booked: false }
+        });
+      }
+
+      return NextResponse.json({ success: true, data: updated });
+    }
+
+    // -----------------------------------------------------------------
+    // (ค) ฝั่งลูกค้า: ยกเลิกนัดหมายของตัวเอง
+    // หมายเหตุ: เดิมปุ่ม "ยกเลิกนัด" ฝั่งลูกค้าแก้แค่ React state ในเบราว์เซอร์เฉยๆ
+    // ไม่เคยเรียก API เลย ทำให้ (1) วันว่างของบ้านหลังนั้นไม่เคยถูกปลดล็อกคืน
+    // และ (2) พอรีเฟรชหน้าเว็บ ระบบไปดึงสถานะจริงจาก DB มา (ซึ่งยังไม่เคยเปลี่ยน)
+    // นัดหมายที่ยกเลิกไปแล้วเลยโผล่กลับมาเหมือนเดิม จึงเพิ่ม action นี้ให้บันทึกลง DB จริง
+    // -----------------------------------------------------------------
+    if (action === "cancel") {
+      if (appointment.customer_id !== user.id) {
+        return NextResponse.json({ error: "คุณไม่มีสิทธิ์ยกเลิกนัดหมายนี้" }, { status: 403 });
+      }
+
+      if (appointment.status !== "pending" && appointment.status !== "approved") {
+        return NextResponse.json({ error: "นัดหมายนี้ไม่สามารถยกเลิกได้แล้ว" }, { status: 400 });
+      }
+
+      const updated = await db.appointments.update({
+        where: { id },
+        data: { status: "cancelled" }
+      });
+
+      // ปลดล็อกวันว่างเดิมคืน เผื่อมีลูกค้าคนอื่นมาจองแทน
+      if (appointment.property_id) {
         await db.property_viewing_slots.updateMany({
           where: {
             property_id: appointment.property_id,
