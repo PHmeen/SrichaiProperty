@@ -11,13 +11,13 @@ export default function PremiumListings({ properties }: PremiumListingsProps) {
 
   return (
     <section className="py-10 bg-slate-50 border-t border-slate-200">
-      <div className="max-w-5xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-6">
-          <h2 className="text-xl font-extrabold text-slate-900 mb-1">⭐ อสังหาริมทรัพย์พรีเมียมแนะนำ</h2>
-          <p className="text-slate-500 text-xs">คัดสรรเฉพาะบ้านและคอนโดหรูทำเลทองจากนายหน้าที่สมัครแพ็กเกจโฆษณา</p>
+          <h2 className="text-lg sm:text-2xl font-extrabold text-slate-900 mb-1">⭐ อสังหาริมทรัพย์พรีเมียมแนะนำ</h2>
+          <p className="text-slate-500 text-xs font-medium">คัดสรรเฉพาะบ้านและคอนโดหรูทำเลทองจากนายหน้าที่สมัครแพ็กเกจโฆษณา</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5 lg:gap-6">
           {properties.map((prop) => (
             <Link 
               key={prop.id}

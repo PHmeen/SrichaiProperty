@@ -14,22 +14,22 @@ export default function HeroSection() {
   const canSell = userRole === 'agent' || userRole === 'admin';
 
   return (
-    <header className="relative pt-24 pb-16 lg:pt-32 lg:pb-20 overflow-hidden flex items-center justify-center min-h-[55vh]">
+    <header className="relative pt-20 pb-12 lg:pt-28 lg:pb-16 overflow-hidden flex items-center justify-center min-h-[50vh]">
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-[10000ms] hover:scale-105" 
         style={{ backgroundImage: "url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80')" }}
       />
       <div className="absolute inset-0 bg-slate-900/60 mix-blend-multiply" />
       
-      <div className="relative z-10 w-full max-w-5xl mx-auto px-4 flex flex-col items-center text-center">
-        <h1 className="text-3xl md:text-5xl font-extrabold text-white mb-4 leading-tight tracking-tight drop-shadow-md">
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center">
+        <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-white mb-3 sm:mb-4 leading-tight tracking-tight drop-shadow-md">
           ค้นพบพื้นที่ความสุข<br />ที่คุณเรียกว่า <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-300">&quot;บ้าน&quot;</span>
         </h1>
-        <p className="text-sm md:text-base text-slate-200 mb-8 max-w-xl font-light drop-shadow">
+        <p className="text-xs sm:text-sm md:text-base text-slate-200 mb-6 sm:mb-8 max-w-xl font-light drop-shadow">
           Srichai Property Agents ศูนย์รวมอสังหาริมทรัพย์คุณภาพ พร้อมระบบจองนัดหมายเข้าชมและแชทกับนายหน้าโดยตรง
         </p>
 
-        <div className="w-full max-w-3xl bg-white border border-slate-200 shadow-sm rounded-2xl p-4">
+        <div className="w-full max-w-4xl bg-white border border-slate-200 shadow-lg rounded-2xl p-3 sm:p-5">
           <div className="flex space-x-1 mb-4 bg-slate-100 p-1 rounded-lg w-fit border border-slate-200">
             <button 
               onClick={() => setActiveTab("buy")} 

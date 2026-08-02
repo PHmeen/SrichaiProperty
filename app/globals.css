@@ -12,13 +12,49 @@
 }
 
 html {
-  font-size: 18px; /* ปรับขนาดสเกลเว็บหลักทุกหน้าให้ใหญ่ขึ้นแบบมาตรฐานสากล */
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   font-family: var(--font-sans);
   background-color: var(--background);
   color: var(--foreground);
+  overflow-x: hidden;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Global responsive layout container rule */
+.container-responsive {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .container-responsive {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-responsive {
+    padding-left: 2rem;
+    padding-right: 2rem;
+    max-width: 1280px;
+  }
+}
+
+@media (min-width: 1536px) {
+  .container-responsive {
+    max-width: 1440px;
+  }
 }
 
 /* Glassmorphism panel for premium UI feel */
@@ -29,6 +65,14 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
+/* Glassmorphism dark mode panel */
+.glass-panel-dark {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 /* Pulse dot or other micro interactions */
 .btn-hover-glow {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -36,6 +80,22 @@ body {
 .btn-hover-glow:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 25px -5px rgba(29, 78, 216, 0.4);
+}
+
+/* Custom smooth scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 

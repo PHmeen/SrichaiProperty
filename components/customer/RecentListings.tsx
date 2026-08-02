@@ -13,10 +13,10 @@ interface RecentListingsProps {
 export default function RecentListings({ properties, favorites, toggleFavorite }: RecentListingsProps) {
   return (
     <section className="py-10 bg-slate-50 border-t border-slate-200">
-      <div className="max-w-5xl mx-auto px-4">
-        <div className="flex flex-col md:flex-row justify-between items-end mb-6 gap-2">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 gap-3">
           <div>
-            <h2 className="text-xl font-extrabold text-slate-900 mb-1">ประกาศแนะนำล่าสุด</h2>
+            <h2 className="text-lg sm:text-2xl font-extrabold text-slate-900 mb-1">ประกาศแนะนำล่าสุด</h2>
             <p className="text-slate-500 text-xs font-medium">อสังหาริมทรัพย์คุณภาพคัดสรรโดยนายหน้ามืออาชีพ</p>
           </div>
           <Link 
@@ -27,7 +27,7 @@ export default function RecentListings({ properties, favorites, toggleFavorite }
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
           {properties.map((prop) => {
             const isFav = favorites.includes(prop.id);
             return (

@@ -163,9 +163,9 @@ export default function AppointmentsPage() {
               return (
                 <div 
                   key={apt.id} 
-                  className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 hover:shadow-md transition relative overflow-hidden"
+                  className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm flex flex-col lg:flex-row gap-4 hover:shadow-md transition relative overflow-hidden"
                 >
-                  <div className="flex gap-4 items-center w-full md:w-1/3">
+                  <div className="flex gap-3 sm:gap-4 items-center w-full lg:w-1/3">
                     <div className="w-16 h-20 bg-slate-50 rounded-xl border border-slate-100 flex flex-col items-center justify-center flex-shrink-0 shadow-inner">
                       <span className="text-[10px] font-bold text-red-500 uppercase">{monthStr}</span>
                       <span className="text-2xl font-extrabold text-slate-900 leading-none my-0.5">{dayStr}</span>

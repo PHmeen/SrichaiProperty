@@ -31,8 +31,10 @@ export default function Navbar() {
   const hasValidImage = rawImage && typeof rawImage === 'string' && rawImage.trim() !== '' && rawImage !== 'null' && rawImage !== 'undefined' && (rawImage.startsWith('http') || rawImage.startsWith('/'));
   const avatarUrl = hasValidImage ? rawImage : getInitialsAvatar(userFullName);
 
+  const isUserAdmin = userRole === 'admin';
+
   return (
-    <nav className="fixed w-full z-50 top-0 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm transition-all duration-300">
+    <nav className={`fixed w-full z-50 transition-all duration-300 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm ${isUserAdmin ? 'top-8' : 'top-0'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           
@@ -99,15 +101,6 @@ export default function Navbar() {
             {session ? (
               <div className="flex items-center gap-2.5">
                 <NotificationBell />
-
-                {userRole === 'admin' && (
-                  <Link
-                    href="/admin/dashboard"
-                    className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-3 py-2 rounded-xl text-xs shadow-sm hover:shadow transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap active:scale-95"
-                  >
-                    <span>⚡</span> แดชบอร์ดแอดมิน
-                  </Link>
-                )}
 
                 <div className="h-6 w-px bg-slate-200 mx-1" />
 

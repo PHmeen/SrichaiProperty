@@ -11,13 +11,13 @@ const locations = [
 export default function PopularLocations() {
   return (
     <section className="py-10 bg-white">
-      <div className="max-w-5xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-6">
-          <h2 className="text-xl font-extrabold text-slate-900 mb-1">ทำเลยอดนิยม</h2>
-          <p className="text-slate-500 text-xs">ค้นหาอสังหาริมทรัพย์ในพื้นที่ยอดฮิต</p>
+          <h2 className="text-lg sm:text-2xl font-extrabold text-slate-900 mb-1">ทำเลยอดนิยม</h2>
+          <p className="text-slate-500 text-xs font-medium">ค้นหาอสังหาริมทรัพย์ในพื้นที่ยอดฮิต</p>
         </div>
         
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           {locations.map((loc, i) => (
             <Link 
               key={i} 
