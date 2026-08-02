@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /**
  * page.tsx (Agent Appointments Manager) - ระบบจัดการคิวนัดหมาย
@@ -83,8 +83,20 @@ export default function AgentAppointmentsPage() {
   }, []);
 
   useEffect(() => {
-    if (sessionStatus === 'authenticated') loadAppointments();
-  }, [sessionStatus, loadAppointments]);
+    let isSubscribed = true;
+    if (sessionStatus === 'authenticated') {
+      fetch('/api/appointments?view=agent')
+        .then(res => res.json())
+        .then(data => {
+          if (isSubscribed && Array.isArray(data)) setAppointments(data);
+        })
+        .catch(err => console.error('Error loading agent appointments:', err))
+        .finally(() => {
+          if (isSubscribed) setLoading(false);
+        });
+    }
+    return () => { isSubscribed = false; };
+  }, [sessionStatus]);
 
   const handleAction = async (id: string, action: 'confirm' | 'reject' | 'complete') => {
     const confirmMsg = action === 'confirm'
@@ -422,9 +434,28 @@ export default function AgentAppointmentsPage() {
                             )}
                           </button>
                           <div className="flex gap-1.5 w-full">
-                            <Link href="/agent/chat" className="flex-1 text-center px-3 py-2 bg-white border border-slate-200 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-700 text-slate-700 font-bold rounded-lg text-[10px] transition-all duration-150 active:scale-95">
+                            <button 
+                              onClick={async () => {
+                                try {
+                                  const res = await fetch('/api/chat/sessions', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ propertyId: apt.propertyId })
+                                  });
+                                  const data = await res.json();
+                                  if (data.success) {
+                                    window.location.href = `/agent/chat`;
+                                  } else {
+                                    window.location.href = '/agent/chat';
+                                  }
+                                } catch {
+                                  window.location.href = '/agent/chat';
+                                }
+                              }}
+                              className="flex-1 text-center px-3 py-2 bg-white border border-slate-200 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-700 text-slate-700 font-bold rounded-lg text-[10px] transition-all duration-150 active:scale-95 cursor-pointer"
+                            >
                               แชทคุย
-                            </Link>
+                            </button>
                             <button
                               disabled={busyId === apt.id}
                               onClick={() => handleAction(apt.id, 'reject')}
@@ -438,9 +469,28 @@ export default function AgentAppointmentsPage() {
 
                       {apt.status === 'approved' && (
                         <>
-                          <Link href="/agent/chat" className="w-full text-center px-3 py-2 bg-white border border-slate-200 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-700 text-slate-700 font-bold rounded-lg text-[10px] transition-all duration-150 active:scale-95">
+                          <button 
+                            onClick={async () => {
+                              try {
+                                const res = await fetch('/api/chat/sessions', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ propertyId: apt.propertyId })
+                                });
+                                const data = await res.json();
+                                if (data.success) {
+                                  window.location.href = `/agent/chat`;
+                                } else {
+                                  window.location.href = '/agent/chat';
+                                }
+                              } catch {
+                                window.location.href = '/agent/chat';
+                              }
+                            }}
+                            className="w-full text-center px-3 py-2 bg-white border border-slate-200 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-700 text-slate-700 font-bold rounded-lg text-[10px] transition-all duration-150 active:scale-95 cursor-pointer"
+                          >
                             แชทคุย
-                          </Link>
+                          </button>
                           <button
                             disabled={busyId === apt.id}
                             onClick={() => handleAction(apt.id, 'complete')}

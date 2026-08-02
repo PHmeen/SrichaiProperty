@@ -30,6 +30,7 @@ export default function PropertyDetailPage() {
 
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [startingChat, setStartingChat] = useState(false);
 
   const numericPrice = property ? (parseInt(property.price.replace(/[^\d]/g, '')) || 0) : 0;
   const [loanAmount, setLoanAmount] = useState(numericPrice);
@@ -75,6 +76,31 @@ export default function PropertyDetailPage() {
     const initials = name.trim().split(/\s+/).map(n => n[0]).slice(0, 2).join("").toUpperCase() || "?";
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#1d4ed8"/><text x="50" y="55" font-family="sans-serif" font-weight="bold" font-size="35" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${initials}</text></svg>`;
     return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  };
+
+  const handleStartChat = async () => {
+    if (!property) return;
+    setStartingChat(true);
+    try {
+      const res = await fetch('/api/chat/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          propertyId: property.id,
+          agentId: property.agent_id
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.sessionId) {
+        window.location.href = `/chat?sessionId=${data.sessionId}`;
+      } else {
+        alert(data.error || 'ไม่สามารถเปิดห้องแชทได้');
+      }
+    } catch {
+      alert('เกิดข้อผิดพลาดในการเปิดห้องแชท');
+    } finally {
+      setStartingChat(false);
+    }
   };
 
   return (
@@ -348,12 +374,13 @@ export default function PropertyDetailPage() {
                 >
                   📅 นัดหมายเข้าชมสถานที่จริง
                 </Link>
-                <Link 
-                  href={`/chat?propertyId=${property.id}`}
-                  className="w-full bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-extrabold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 text-xs active:scale-[0.99] cursor-pointer"
+                <button 
+                  onClick={handleStartChat}
+                  disabled={startingChat}
+                  className="w-full bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-extrabold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 text-xs active:scale-[0.99] cursor-pointer disabled:opacity-50"
                 >
-                  💬 แชทสอบถามรายละเอียด
-                </Link>
+                  {startingChat ? '⏳ กำลังเปิดห้องแชท...' : '💬 แชทสอบถามรายละเอียด'}
+                </button>
               </div>
 
             </div>

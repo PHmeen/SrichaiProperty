@@ -190,8 +190,27 @@ export default function AppointmentsPage() {
                   </div>
 
                   <div className="flex items-center justify-end gap-2 border-t md:border-t-0 pt-3 md:pt-0">
-                    <button className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-xs transition cursor-pointer">
-                      ดูรายละเอียด
+                    <button 
+                      onClick={async () => {
+                        try {
+                          const res = await fetch('/api/chat/sessions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ propertyId: apt.propertyId })
+                          });
+                          const data = await res.json();
+                          if (data.success && data.sessionId) {
+                            window.location.href = `/chat?sessionId=${data.sessionId}`;
+                          } else {
+                            window.location.href = '/chat';
+                          }
+                        } catch {
+                          window.location.href = '/chat';
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg font-bold text-xs transition cursor-pointer"
+                    >
+                      💬 แชทกับนายหน้า
                     </button>
                     {apt.status === 'pending' && (
                       <button

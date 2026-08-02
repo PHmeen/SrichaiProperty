@@ -20,6 +20,7 @@ export interface Property {
   province_id?: number | null;
   amphure_id?: number | null;
   district_id?: number | null;
+  agent_id?: string | null;
   provinceName?: string;
   amphureName?: string;
   districtName?: string;

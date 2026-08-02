@@ -71,6 +71,7 @@ export async function GET() {
         province_id: p.province_id,
         amphure_id: p.amphure_id,
         district_id: p.district_id,
+        agent_id: p.agent_id,
         provinceName: p.provinces?.name_th || "",
         amphureName: p.amphures?.name_th || "",
         districtName: p.districts?.name_th || ""
