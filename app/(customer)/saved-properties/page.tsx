@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 
+import { useApp } from '@/context/AppContext';
+
 interface SavedProperty {
   id: string;
   title: string;
@@ -19,6 +21,7 @@ interface SavedProperty {
 }
 
 export default function SavedPropertiesPage() {
+  const { toggleFavorite } = useApp();
   const [items, setItems] = useState<SavedProperty[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -43,13 +46,8 @@ export default function SavedPropertiesPage() {
 
   const handleRemove = async (propertyId: string) => {
     try {
-      const res = await fetch(`/api/user/saved-properties?propertyId=${propertyId}`, {
-        method: 'DELETE'
-      });
-      const data = await res.json();
-      if (data.success) {
-        setItems(prev => prev.filter(i => i.id !== propertyId));
-      }
+      toggleFavorite(propertyId);
+      setItems(prev => prev.filter(i => i.id !== propertyId));
     } catch (err) {
       console.error(err);
     }
