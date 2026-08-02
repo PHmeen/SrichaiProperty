@@ -58,9 +58,6 @@ export default function AgentNavbar() {
           <Link href="/agent/appointments" className={navLinkClass('/agent/appointments')}>
             📋 <span className="hidden md:inline">จัดการคิวนัดหมาย</span>
           </Link>
-
-
-
           {/* ปุ่มลงประกาศใหม่ (CTA หลัก) */}
           <Link
             href="/agent/add-property"

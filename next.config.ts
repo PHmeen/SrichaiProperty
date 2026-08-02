@@ -25,6 +25,14 @@ const nextConfig: NextConfig = {
         hostname: '*.googleusercontent.com',
       },
       {
+        protocol: 'https',
+        hostname: 'platform-lookaside.fbsbx.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.fbsbx.com',
+      },
+      {
         protocol: 'http',
         hostname: 'localhost',
       },

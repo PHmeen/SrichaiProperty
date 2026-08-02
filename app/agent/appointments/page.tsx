@@ -85,17 +85,26 @@ export default function AgentAppointmentsPage() {
   useEffect(() => {
     let isSubscribed = true;
     if (sessionStatus === 'authenticated') {
-      fetch('/api/appointments?view=agent')
-        .then(res => res.json())
-        .then(data => {
-          if (isSubscribed && Array.isArray(data)) setAppointments(data);
-        })
-        .catch(err => console.error('Error loading agent appointments:', err))
-        .finally(() => {
-          if (isSubscribed) setLoading(false);
-        });
+      const fetchAppointments = () => {
+        fetch('/api/appointments?view=agent')
+          .then(res => res.json())
+          .then(data => {
+            if (isSubscribed && Array.isArray(data)) setAppointments(data);
+          })
+          .catch(err => console.error('Error loading agent appointments:', err))
+          .finally(() => {
+            if (isSubscribed) setLoading(false);
+          });
+      };
+
+      fetchAppointments();
+      const interval = setInterval(fetchAppointments, 3000); // ดึงข้อมูลคิวนัดหมายใหม่เบื้องหลังทุก 3 วินาที
+
+      return () => {
+        isSubscribed = false;
+        clearInterval(interval);
+      };
     }
-    return () => { isSubscribed = false; };
   }, [sessionStatus]);
 
   const handleAction = async (id: string, action: 'confirm' | 'reject' | 'complete') => {

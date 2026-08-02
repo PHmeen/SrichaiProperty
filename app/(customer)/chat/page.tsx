@@ -37,23 +37,30 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [mobileShowMessages, setMobileShowMessages] = useState(Boolean(initialSessionId));
 
-  // โหลดข้อมูลห้องแชทเมื่อผู้ใช้เข้าสู่ระบบแล้ว
+  // โหลดข้อมูลห้องแชทเมื่อผู้ใช้เข้าสู่ระบบแล้ว และดึงข้อมูลใหม่อัตโนมัติทุกๆ 3 วินาที (Auto-Polling)
   useEffect(() => {
     if (sessionStatus !== 'authenticated') return;
 
-    fetch('/api/chat/sessions')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && Array.isArray(data.sessions)) {
-          setSessions(data.sessions);
-          if (data.sessions.length > 0) {
-            const matched = data.sessions.find((s: ChatSession) => s.id === initialSessionId);
-            setSelectedSessionId(matched ? matched.id : data.sessions[0].id);
+    const fetchChatData = () => {
+      fetch('/api/chat/sessions')
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && Array.isArray(data.sessions)) {
+            setSessions(data.sessions);
+            if (data.sessions.length > 0) {
+              const matched = data.sessions.find((s: ChatSession) => s.id === initialSessionId);
+              setSelectedSessionId(prev => prev || (matched ? matched.id : data.sessions[0].id));
+            }
           }
-        }
-      })
-      .catch(err => console.error('โหลดข้อมูลแชทล้มเหลว:', err))
-      .finally(() => setLoading(false));
+        })
+        .catch(err => console.error('โหลดข้อมูลแชทล้มเหลว:', err))
+        .finally(() => setLoading(false));
+    };
+
+    fetchChatData();
+    const interval = setInterval(fetchChatData, 3000); // ดึงข้อมูลใหม่เบื้องหลังทุก 3 วินาที
+
+    return () => clearInterval(interval);
   }, [sessionStatus, initialSessionId]);
 
   // ฟังก์ชันส่งข้อความ

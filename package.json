@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:all": "concurrently -n \"NEXT,SOCKET,ROLES\" -c \"cyan,yellow,green\" \"next dev\" \"node socket-server.js\" \"node open-3-roles.js\"",
     "build": "next build",
     "start": "next start",
     "postinstall": "prisma generate",
@@ -14,6 +15,7 @@
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "bcryptjs": "^3.0.3",
+    "concurrently": "^10.0.4",
     "next": "16.2.11",
     "next-auth": "^4.24.14",
     "pg": "^8.22.0",
