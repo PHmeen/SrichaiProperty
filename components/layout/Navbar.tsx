@@ -80,14 +80,7 @@ export default function Navbar() {
             >
               ประวัติการนัดหมาย
             </Link>
-            <Link
-              href="/chat"
-              className={`px-3 py-2 rounded-xl text-xs xl:text-sm font-bold transition-all ${
-                isActive("/chat") ? "text-blue-700 bg-blue-50/80" : "text-slate-600 hover:text-blue-600 hover:bg-slate-50"
-              }`}
-            >
-              💬 แชท
-            </Link>
+
             <Link
               href="/saved-properties"
               className={`px-3 py-2 rounded-xl text-xs xl:text-sm font-bold transition-all flex items-center gap-1.5 ${

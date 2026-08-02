@@ -59,10 +59,7 @@ export default function AgentNavbar() {
             📋 <span className="hidden md:inline">จัดการคิวนัดหมาย</span>
           </Link>
 
-          <Link href="/agent/chat" className={`relative ${navLinkClass('/agent/chat')}`}>
-            💬 <span className="hidden md:inline">แชทลูกค้า</span>
-            <span className="ml-1 bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-extrabold">2</span>
-          </Link>
+
 
           {/* ปุ่มลงประกาศใหม่ (CTA หลัก) */}
           <Link
