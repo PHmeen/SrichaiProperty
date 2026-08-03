@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /**
  * page.tsx (Agent Edit Property) - หน้าแก้ไขประกาศอสังหาริมทรัพย์ของนายหน้า
@@ -7,7 +7,7 @@
  * บันทึกแล้วไม่ต้องรอแอดมินอนุมัติซ้ำ (ไม่แตะฟิลด์ status)
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import ImageUploader from '@/components/property/ImageUploader';
@@ -63,67 +63,69 @@ export default function AgentEditPropertyPage() {
   }, []);
 
   // โหลดข้อมูลบ้านหลังนี้ + วันว่างเดิม
-  const loadProperty = useCallback(async () => {
-    if (!propertyId) return;
-    setLoadingPage(true);
-    try {
-      const res = await fetch(`/api/properties/${propertyId}`);
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        setLoadError(data.error || 'ไม่สามารถโหลดข้อมูลประกาศได้');
-        return;
-      }
-
-      const p = data.property;
-
-      setF({
-        title: p.title || '',
-        typeId: String(p.type_id || '1'),
-        description: p.description || '',
-        price: p.price !== null && p.price !== undefined ? String(p.price) : '',
-        bedrooms: String(p.bedrooms ?? 0),
-        bathrooms: String(p.bathrooms ?? 0),
-        usableArea: p.area_sqm ? String(p.area_sqm) : '',
-        provinceId: p.province_id ? String(p.province_id) : '',
-        amphureId: p.amphure_id ? String(p.amphure_id) : '',
-        districtId: p.district_id ? String(p.district_id) : '',
-        location: p.location || ''
-      });
-
-      setPropertyStatus(p.status || '');
-      setUploadedImages(Array.isArray(p.images) ? p.images : []);
-
-      const loadedSlots: ViewingSlot[] = Array.isArray(data.slots)
-        ? data.slots.map((s: { date: string; timeSlot: string; isBooked: boolean }) => ({
-            date: s.date,
-            timeSlot: s.timeSlot === 'afternoon' ? 'afternoon' : 'morning',
-            isBooked: Boolean(s.isBooked)
-          }))
-        : [];
-      setViewingSlots(loadedSlots);
-
-      // โหลดอำเภอ/ตำบล ตามค่าที่บันทึกไว้เดิม เพื่อให้ dropdown แสดงค่าถูกต้อง
-      if (p.province_id) {
-        const ampRes = await fetch(`/api/locations?type=amphures&provinceId=${p.province_id}`);
-        const ampData = await ampRes.json();
-        if (Array.isArray(ampData)) setAmphures(ampData);
-      }
-      if (p.amphure_id) {
-        const disRes = await fetch(`/api/locations?type=districts&amphureId=${p.amphure_id}`);
-        const disData = await disRes.json();
-        if (Array.isArray(disData)) setDistricts(disData);
-      }
-    } catch {
-      setLoadError('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
-    } finally {
-      setLoadingPage(false);
-    }
-  }, [propertyId]);
-
   useEffect(() => {
-    loadProperty();
-  }, [loadProperty]);
+    if (!propertyId) return;
+    let active = true;
+    const fetchProperty = async () => {
+      try {
+        const res = await fetch(`/api/properties/${propertyId}`);
+        const data = await res.json();
+
+        if (!active) return;
+        if (!res.ok || !data.success) {
+          setLoadError(data.error || 'ไม่สามารถโหลดข้อมูลประกาศได้');
+          return;
+        }
+
+        const p = data.property;
+
+        setF({
+          title: p.title || '',
+          typeId: String(p.type_id || '1'),
+          description: p.description || '',
+          price: p.price !== null && p.price !== undefined ? String(p.price) : '',
+          bedrooms: String(p.bedrooms ?? 0),
+          bathrooms: String(p.bathrooms ?? 0),
+          usableArea: p.area_sqm ? String(p.area_sqm) : '',
+          provinceId: p.province_id ? String(p.province_id) : '',
+          amphureId: p.amphure_id ? String(p.amphure_id) : '',
+          districtId: p.district_id ? String(p.district_id) : '',
+          location: p.location || ''
+        });
+
+        setPropertyStatus(p.status || '');
+        setUploadedImages(Array.isArray(p.images) ? p.images : []);
+
+        const loadedSlots: ViewingSlot[] = Array.isArray(data.slots)
+          ? data.slots.map((s: { date: string; timeSlot: string; isBooked: boolean }) => ({
+              date: s.date,
+              timeSlot: s.timeSlot === 'afternoon' ? 'afternoon' : 'morning',
+              isBooked: Boolean(s.isBooked)
+            }))
+          : [];
+        setViewingSlots(loadedSlots);
+
+        // โหลดอำเภอ/ตำบล ตามค่าที่บันทึกไว้เดิม เพื่อให้ dropdown แสดงค่าถูกต้อง
+        if (p.province_id) {
+          const ampRes = await fetch(`/api/locations?type=amphures&provinceId=${p.province_id}`);
+          const ampData = await ampRes.json();
+          if (active && Array.isArray(ampData)) setAmphures(ampData);
+        }
+        if (p.amphure_id) {
+          const disRes = await fetch(`/api/locations?type=districts&amphureId=${p.amphure_id}`);
+          const disData = await disRes.json();
+          if (active && Array.isArray(disData)) setDistricts(disData);
+        }
+      } catch {
+        if (active) setLoadError('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+      } finally {
+        if (active) setLoadingPage(false);
+      }
+    };
+
+    fetchProperty();
+    return () => { active = false; };
+  }, [propertyId]);
 
   const handleProvince = (pId: string) => {
     setF(prev => ({ ...prev, provinceId: pId, amphureId: '', districtId: '' }));

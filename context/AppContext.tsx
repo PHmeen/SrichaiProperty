@@ -67,10 +67,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // โหลดค่าที่เคยบันทึกไว้ใน localStorage ทันทีหลัง mount (client-only)
   useEffect(() => {
-    setAppointments(getLocal('srichai_appointments', []));
-    setFavorites(getLocal('srichai_favorites', []));
-    setChatSessions(getLocal('srichai_chats', defaultChatSessions));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const timer = setTimeout(() => {
+      setAppointments(getLocal('srichai_appointments', []));
+      setFavorites(getLocal('srichai_favorites', []));
+      setChatSessions(getLocal('srichai_chats', defaultChatSessions));
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {

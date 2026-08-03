@@ -61,6 +61,7 @@ export default function UpgradeProModal({ isOpen, onClose, onSuccess }: UpgradeP
           <div className="bg-slate-900 text-white rounded-2xl p-4 text-center space-y-2">
             <p className="text-xs font-bold text-amber-400">สแกน QR Code ชำระเงิน</p>
             <div className="w-40 h-40 bg-white mx-auto rounded-xl flex items-center justify-center p-2 shadow-inner">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=PROMPTPAY_599_SRICHAI" alt="PromptPay QR" className="w-full h-full object-contain" />
             </div>
             <p className="text-[10px] text-slate-300 font-medium">บจก. ศรีชัย พร็อพเพอร์ตี้ (ธ.กสิกรไทย 012-3-45678-9)</p>

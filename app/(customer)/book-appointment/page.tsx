@@ -33,16 +33,20 @@ function BookAppointmentForm() {
   useEffect(() => {
     if (!property?.id) return;
     let active = true;
-    setSlotsLoading(true);
-    fetch(`/api/properties/viewing-slots?propertyId=${property.id}`)
-      .then(res => res.json())
-      .then(data => {
+    const fetchSlots = async () => {
+      try {
+        const res = await fetch(`/api/properties/viewing-slots?propertyId=${property.id}`);
+        const data = await res.json();
         if (active && data.success && Array.isArray(data.slots)) {
           setViewingSlots(data.slots);
         }
-      })
-      .catch(err => console.error('Failed to fetch viewing slots:', err))
-      .finally(() => { if (active) setSlotsLoading(false); });
+      } catch (err) {
+        console.error('Failed to fetch viewing slots:', err);
+      } finally {
+        if (active) setSlotsLoading(false);
+      }
+    };
+    fetchSlots();
     return () => { active = false; };
   }, [property?.id]);
 
@@ -56,10 +60,10 @@ function BookAppointmentForm() {
   const morningSlot = slotsForSelectedDate.find(s => s.timeSlot === 'morning');
   const afternoonSlot = slotsForSelectedDate.find(s => s.timeSlot === 'afternoon');
 
-  // ทุกครั้งที่ลูกค้าเปลี่ยนวันที่ ให้ล้างรอบเวลาที่เคยเลือกไว้ทิ้ง (บังคับเลือกใหม่เสมอ)
-  useEffect(() => {
+  const handleDateSelect = (date: string) => {
+    setSelectedDateStr(date);
     setSelectedTimeSlot('');
-  }, [selectedDateStr]);
+  };
 
   const monthNamesTH = [
     "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -175,7 +179,7 @@ function BookAppointmentForm() {
                   setCurrentYear={setCurrentYear}
                   setCurrentMonth={setCurrentMonth}
                   selectedDateStr={selectedDateStr}
-                  setSelectedDateStr={setSelectedDateStr}
+                  setSelectedDateStr={handleDateSelect}
                   holidays={holidays}
                   availableDates={availableDates}
                 />

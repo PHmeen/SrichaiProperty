@@ -80,7 +80,7 @@ export async function PUT(request: Request) {
     const userEmail = session.user.email;
 
     const body = await request.json();
-    const { firstName, lastName, phone, lineId, emailNotification, smsNotification, newPassword } = body;
+    const { firstName, lastName, phone, lineId, newPassword } = body;
 
     const updateData: {
       first_name?: string;

@@ -10,7 +10,7 @@ import { AgentContact as Contact, AgentChatMessage as Message } from '@/types';
 export type { Contact, Message };
 
 export default function AgentChatPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedContactId, setSelectedContactId] = useState('');
   const [newMessageText, setNewMessageText] = useState('');
@@ -86,9 +86,6 @@ export default function AgentChatPage() {
       </div>
     );
   }
-
-  const user = session?.user as { name?: string | null; email?: string | null; status?: string | null };
-  const userName = user?.name || 'สมชาย ใจดี';
 
   const activeContact = contacts.find(c => c.id === selectedContactId) || null;
 
