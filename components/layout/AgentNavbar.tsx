@@ -31,7 +31,7 @@ export default function AgentNavbar() {
   };
 
   return (
-    <nav className="fixed w-full z-50 top-0 bg-[#090D16] border-b border-slate-800 text-white shadow-lg h-16">
+   <nav className="w-full shrink-0 bg-[#090D16] border-b border-slate-800 text-white shadow-lg h-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
 
         {/* Brand Logo */}

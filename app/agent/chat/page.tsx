@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
-import Link from 'next/link';
 import { io, Socket } from 'socket.io-client';
 import ChatList from '@/components/agent/ChatList';
 import ChatRoom from '@/components/agent/ChatRoom';
@@ -159,50 +158,35 @@ export default function AgentChatPage() {
     c.propertyCode.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-800 font-sans antialiased text-xs md:text-sm flex flex-col">
-      
-      {/* Navbar */}
-      <nav className="sticky top-0 z-50 bg-white border-b border-slate-100 shadow-sm px-4 md:px-8 py-3 flex items-center justify-between">
-        <Link href="/agent/home" className="flex items-center gap-2 font-black text-slate-900 text-sm">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white text-lg">S</div>
-          SrichaiProperty Agent Portal
-        </Link>
-        <div className="flex items-center bg-slate-100/80 p-1 rounded-full border border-slate-200/50">
-          <Link href="/agent/home" className="px-4 py-1.5 rounded-full text-xs font-semibold text-slate-600 hover:text-slate-900">หน้าแรก</Link>
-          <Link href="/agent/dashboard" className="px-4 py-1.5 rounded-full text-xs font-semibold text-slate-600 hover:text-slate-900">แผงควบคุม</Link>
-          <Link href="/agent/chat" className="px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-900 shadow-sm flex items-center gap-1">
-            แชทลูกค้า <span className="w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-[9px] font-black">2</span>
-          </Link>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="font-extrabold text-slate-900">{userName}</span>
-        </div>
-      </nav>
+ 
+return (
+  <div className="h-full w-full p-4 md:p-6">
 
-      {/* Main Workspace Layout */}
-      <main className="max-w-6xl w-full mx-auto p-4 md:p-8 flex-1 flex flex-col md:flex-row gap-6 min-h-[calc(100vh-140px)]">
-        
-        <ChatList 
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          filteredContacts={filteredContacts}
-          selectedContactId={selectedContactId}
-          setSelectedContactId={setSelectedContactId}
-        />
+    <div className="h-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-6">
 
-        <ChatRoom 
-          activeContact={activeContact}
-          selectedContactId={selectedContactId}
-          isTypingState={isTypingState}
-          newMessageText={newMessageText}
-          setNewMessageText={setNewMessageText}
-          handleSendMessage={handleSendMessage}
-          sendQuickAction={sendQuickAction}
-        />
+      <ChatList
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        filteredContacts={filteredContacts}
+        selectedContactId={selectedContactId}
+        setSelectedContactId={setSelectedContactId}
+      />
 
-      </main>
+      <ChatRoom
+        activeContact={activeContact}
+        selectedContactId={selectedContactId}
+        isTypingState={isTypingState}
+        newMessageText={newMessageText}
+        setNewMessageText={setNewMessageText}
+        handleSendMessage={handleSendMessage}
+        sendQuickAction={sendQuickAction}
+      />
 
     </div>
-  );
+
+  </div>
+);
+
+
+
 }
