@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
@@ -25,7 +25,7 @@ interface ChatSession {
   messages: ChatMessage[];
 }
 
-export default function ChatPage() {
+function ChatContent() {
   const { status: sessionStatus } = useSession();
   const searchParams = useSearchParams();
   const initialSessionId = searchParams.get('sessionId');
@@ -214,6 +214,14 @@ export default function ChatPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center font-bold text-xs text-slate-500">🔄 กำลังโหลดระบบแชท...</div>}>
+      <ChatContent />
+    </Suspense>
   );
 }
 
