@@ -117,12 +117,18 @@ export default function BookingCalendar({
 
           let dayClass = "w-8 h-8 flex items-center justify-center mx-auto rounded-full transition-all ";
           
-          if (isDisabled) {
-            dayClass += "text-slate-200 cursor-not-allowed";
-          } else if (isSelected) {
+          if (isSelected) {
             dayClass += "bg-blue-600 text-white shadow-md active:scale-95 cursor-pointer";
           } else if (isHoliday) {
-            dayClass += "border border-amber-500 text-amber-500 hover:bg-amber-50 cursor-pointer";
+            // วันหยุดแสดงเป็นสีเหลืองเสมอ แม้จะไม่เปิดว่างหรือเป็นวันในอดีต
+            dayClass += "border border-amber-500 text-amber-500 bg-amber-50/50";
+            if (!isDisabled) {
+              dayClass += " hover:bg-amber-100 cursor-pointer";
+            } else {
+              dayClass += " cursor-not-allowed";
+            }
+          } else if (isDisabled) {
+            dayClass += "text-slate-200 cursor-not-allowed";
           } else if (isWeekend) {
             dayClass += "border border-slate-200 text-slate-700 hover:border-blue-500 hover:bg-slate-50 cursor-pointer";
           } else {

@@ -7,11 +7,11 @@ export default function AgentLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-[#f8fafc]">
+    <div className="h-screen flex flex-col bg-[#f8fafc]">
 
       <AgentNavbar />
 
-      <main className="flex-1 min-h-0 overflow-hidden">
+      <main className="flex-1 min-h-0 overflow-y-auto">
         {children}
       </main>
 
