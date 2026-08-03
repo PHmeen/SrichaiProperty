@@ -64,6 +64,15 @@ export const authOptions: NextAuthOptions = {
           throw new Error("บัญชีของคุณถูกระงับการใช้งาน");
         }
 
+        // บันทึกประวัติการเข้าสู่ระบบลงฐานข้อมูลจริง (login_histories)
+        await db.login_histories.create({
+          data: {
+            user_id: user.id,
+            ip_address: "127.0.0.1",
+            user_agent: "NextAuth Credentials"
+          }
+        }).catch(err => console.error("Error writing login history:", err));
+
         return {
           id: user.id,
           email: user.email,

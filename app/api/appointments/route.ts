@@ -69,9 +69,9 @@ export async function GET(request: Request) {
           propertyId: apt.property_id || "",
           propertyTitle: prop?.title || "ไม่พบข้อมูลอสังหาฯ",
           propertyImage: propImage,
-          originalDate: apt.original_date ? toDateKey(apt.original_date) : null,
-          originalTimeSlot: apt.original_time_slot || null,
-          wasEdited: Boolean(apt.original_date)
+          originalDate: (apt as Record<string, unknown>).original_date ? toDateKey((apt as Record<string, unknown>).original_date as Date) : null,
+          originalTimeSlot: ((apt as Record<string, unknown>).original_time_slot as string) || null,
+          wasEdited: Boolean((apt as Record<string, unknown>).original_date)
         };
       });
 
@@ -367,7 +367,7 @@ export async function PATCH(request: Request) {
         time_slot: timeSlot
       };
 
-      if (!appointment.original_date) {
+      if (!(appointment as Record<string, unknown>).original_date) {
         updateData.original_date = appointment.appointment_date;
         updateData.original_time_slot = appointment.time_slot || "morning";
       }

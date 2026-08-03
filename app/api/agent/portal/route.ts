@@ -68,10 +68,15 @@ export async function GET(request: Request) {
         };
       });
 
+      const isPro = agent.plan_type === 'pro' && (!agent.plan_expired_at || new Date(agent.plan_expired_at) > new Date());
+
       return NextResponse.json({
         propertiesCount,
         pendingAptsCount,
         pendingApprovalCount: pendingProperties.length,
+        planType: agent.plan_type || 'basic',
+        isPro,
+        planExpiredAt: agent.plan_expired_at,
         pendingApprovalProperties: pendingProperties.map(p => ({
           id: p.id,
           title: p.title,

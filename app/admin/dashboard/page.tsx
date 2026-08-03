@@ -39,14 +39,7 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
 
   // --- 1. Terminal Log State ---
-  const [logs, setLogs] = useState<string[]>([
-    '[12:45:02] INFO Admin_Root initiated secure session.',
-    '[12:40:15] SUCCESS Listing PRJ-9921 approved by Admin_John.',
-    '[12:35:50] SYSTEM Automated cron: Renewed 15 PRO listings.',
-    '[12:30:11] ALERT Multiple failed logins detected from IP 192.168.x.x',
-    '[12:15:22] DATA_MASK Agent AGT-889 updated profile. Sensitive fields locked by NUD policy.',
-    '[11:55:10] SUCCESS REBA Document approved for AGT-112.',
-  ]);
+  const [logs, setLogs] = useState<string[]>([]);
 
   const addLog = (newLog: string) => {
     setLogs(prev => [newLog, ...prev]);
@@ -65,6 +58,9 @@ export default function AdminDashboardPage() {
           setModerationItems(data.moderationItems);
           setNewAgents(data.newAgents);
           setReportsCount(data.reportsCount);
+          if (data.systemLogs && data.systemLogs.length > 0) {
+            setLogs(data.systemLogs);
+          }
         }
         setLoading(false);
       })
@@ -252,11 +248,14 @@ export default function AdminDashboardPage() {
             <div className="lg:col-span-4 space-y-6">
               
               {/* System Audit Logs Window */}
-              <div className="bg-[#0f172a] rounded-2xl border border-slate-800 shadow-xl overflow-hidden flex flex-col h-[280px]">
+              <div className="bg-[#0f172a] rounded-2xl border border-slate-800 shadow-xl overflow-hidden flex flex-col h-[340px]">
                 <div className="p-3.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
-                  <span className="text-white font-extrabold flex items-center gap-2">
-                    💻 System Audit Logs
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white font-extrabold text-xs">💻 System Audit Logs</span>
+                    <span className="bg-emerald-500/20 text-emerald-400 text-[9px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+                      LIVE DB ACTIVITY
+                    </span>
+                  </div>
                   <div className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
                     <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
@@ -265,21 +264,52 @@ export default function AdminDashboardPage() {
                 </div>
 
                 {/* Console Log content */}
-                <div className="flex-1 p-4 font-mono text-[9px] text-slate-300 space-y-1.5 overflow-y-auto leading-relaxed bg-[#0b0f19]">
+                <div className="flex-1 p-3 font-mono text-xs text-slate-200 space-y-2 overflow-y-auto bg-[#0b0f19] custom-scrollbar">
                   {logs.map((log, idx) => {
-                    let textClass = 'text-slate-400';
-                    if (log.includes('SUCCESS')) textClass = 'text-emerald-400';
-                    if (log.includes('ALERT')) textClass = 'text-red-400 font-bold';
-                    if (log.includes('SYSTEM')) textClass = 'text-blue-400';
+                    // Extract time [HH:mm:ss], tag, and detail content
+                    const match = log.match(/^\[(.*?)\]\s+([A-Z_]+)\s+(.*)$/);
+                    
+                    if (!match) {
+                      return (
+                        <div key={idx} className="text-slate-400 py-0.5">
+                          {log}
+                        </div>
+                      );
+                    }
+
+                    const [, time, tag, detail] = match;
+
+                    let tagStyle = 'bg-slate-800 text-slate-300 border-slate-700';
+                    if (tag === 'LOGIN') tagStyle = 'bg-sky-950 text-sky-300 border-sky-800/60 font-bold';
+                    if (tag === 'PAYMENT') tagStyle = 'bg-amber-950 text-amber-300 border-amber-800/60 font-bold';
+                    if (tag === 'PROPERTY') tagStyle = 'bg-emerald-950 text-emerald-300 border-emerald-800/60 font-bold';
+                    if (tag === 'SUCCESS' || tag === 'APPROVED') tagStyle = 'bg-emerald-900 text-emerald-200 border-emerald-700 font-black';
+                    if (tag === 'ALERT' || tag === 'REJECTED' || tag === 'FAIL') tagStyle = 'bg-rose-950 text-rose-300 border-rose-800/60 font-bold';
+                    if (tag === 'SYSTEM') tagStyle = 'bg-purple-950 text-purple-300 border-purple-800/60 font-bold';
+
                     return (
-                      <p key={idx} className={textClass}>
-                        {log}
-                      </p>
+                      <div key={idx} className="flex items-start gap-2.5 py-1 px-1.5 rounded hover:bg-slate-900/60 transition-colors border-b border-slate-900/40">
+                        {/* 1. Time */}
+                        <span className="text-[10px] font-semibold text-slate-500 shrink-0 pt-0.5 select-none">
+                          {time}
+                        </span>
+
+                        {/* 2. Badge Tag */}
+                        <span className={`px-1.5 py-0.5 text-[9px] rounded border shrink-0 uppercase tracking-wider ${tagStyle}`}>
+                          {tag}
+                        </span>
+
+                        {/* 3. Detail Content */}
+                        <span className="text-slate-200 text-xs font-normal leading-relaxed break-all">
+                          {detail}
+                        </span>
+                      </div>
                     );
                   })}
-                  <div className="flex items-center gap-1 pt-1.5">
-                    <span className="text-slate-500 font-bold">admin@srichai:~#</span>
-                    <span className="w-1.5 h-3 bg-slate-300 animate-pulse"></span>
+
+                  <div className="flex items-center gap-1.5 pt-2 px-1 text-xs">
+                    <span className="text-emerald-400 font-bold">admin@srichai:~#</span>
+                    <span className="w-2 h-3.5 bg-emerald-400 animate-pulse"></span>
                   </div>
                 </div>
               </div>

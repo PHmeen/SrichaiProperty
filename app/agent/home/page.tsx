@@ -26,6 +26,8 @@ export default function AgentHomePage() {
     propertiesCount: number;
     pendingAptsCount: number;
     pendingApprovalCount?: number;
+    isPro?: boolean;
+    planType?: string;
     appointments: AppointmentData[];
   } | null>(null);
 
@@ -181,8 +183,10 @@ export default function AgentHomePage() {
             <strong className="text-xl md:text-2xl font-black text-red-500 block mt-1">2 รายการ</strong>
           </div>
           <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
-            <span className="text-[10px] font-bold text-slate-400 block uppercase">โควต้าคงเหลือ</span>
-            <strong className="text-xl md:text-2xl font-black text-slate-800 block mt-1">1 / 3</strong>
+            <span className="text-[10px] font-bold text-slate-400 block uppercase">โควต้าลงประกาศ</span>
+            <strong className="text-xl md:text-2xl font-black text-amber-600 block mt-1">
+              {dbData?.isPro ? 'ไม่จำกัด 👑' : `${Math.max(0, 3 - (dbData?.propertiesCount || 0))} / 3`}
+            </strong>
           </div>
         </section>
 
@@ -235,10 +239,23 @@ export default function AgentHomePage() {
           <div className="space-y-6">
             <div className="bg-gradient-to-br from-[#1e293b] to-[#0f172a] rounded-3xl p-6 text-white border border-slate-800 shadow-xl space-y-4 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full -translate-y-6 translate-x-6 blur-xl" />
-              <span className="bg-amber-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded-full uppercase">VERIFIED PRO 👑</span>
-              <h3 className="text-base font-black tracking-tight">ขยายธุรกิจแบบไร้ขีดจำกัด</h3>
-              <p className="text-slate-400 text-[10px] leading-relaxed">ดันประกาศและฟีเจอร์พรีเมียมเฉพาะตัวแทนที่อัปเกรดเพื่อรับยอดเข้าชมและฐานลูกค้าที่กว้างขวางขึ้น</p>
-              <Link href="/agent/upgrade" className="w-full block py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs transition text-center active:scale-[0.98]">อัปเกรด (599.-/เดือน) →</Link>
+              <span className="bg-amber-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded-full uppercase">
+                {dbData?.isPro ? 'VERIFIED PRO ACTIVE 👑' : 'VERIFIED PRO 👑'}
+              </span>
+              <h3 className="text-base font-black tracking-tight">
+                {dbData?.isPro ? 'คุณใช้งานสมาชิก PRO อยู่แล้ว' : 'ขยายธุรกิจแบบไร้ขีดจำกัด'}
+              </h3>
+              <p className="text-slate-400 text-[10px] leading-relaxed">
+                {dbData?.isPro 
+                  ? 'คุณสามารถลงประกาศได้ไม่จำกัดจำนวน พร้อมสิทธิ์ดันประกาศฟรีทุกเดือน' 
+                  : 'ดันประกาศและฟีเจอร์พรีเมียมเฉพาะตัวแทนที่อัปเกรดเพื่อรับยอดเข้าชมและฐานลูกค้าที่กว้างขวางขึ้น'}
+              </p>
+              <Link 
+                href="/agent/upgrade" 
+                className="w-full block py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs transition text-center active:scale-[0.98]"
+              >
+                {dbData?.isPro ? 'ดูรายละเอียดแพ็กเกจ PRO' : 'อัปเกรด (599.-/เดือน) →'}
+              </Link>
             </div>
             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 space-y-3">
               <h4 className="font-extrabold text-slate-900 text-xs md:text-sm border-b pb-3">📚 ข่าวสาร & คลังความรู้</h4>
