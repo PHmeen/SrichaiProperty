@@ -71,7 +71,7 @@ export async function POST(req: Request) {
         data: {
           user_id: admin.id,
           title: "💳 แจ้งชำระเงิน PRO ใหม่",
-          content: `${agentName} (${user.email}) โอน ฿599 · TxID: ${transaction.id.substring(0, 8).toUpperCase()} · agentId: ${user.id}`,
+          content: `txId:${transaction.id} agentId:${user.id} name:${agentName} email:${user.email} amount:599`,
           type: "payment", is_read: false
         }
       })),

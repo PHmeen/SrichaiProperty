@@ -3,129 +3,96 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { db } from "@/lib/db";
 
-interface AdminSession {
-  user?: {
-    id?: string;
-    email?: string;
-    role?: string;
-  };
+async function isAdmin() {
+  const session = await getServerSession(authOptions);
+  return (session?.user as { role?: string })?.role === "admin";
 }
 
-// GET: ดึงรายการการชำระเงินรอตรวจสอบ
+function parseNoti(content: string) {
+  const get = (key: string) => content.match(new RegExp(`${key}:([\\w@.\\-]+)`))?.[1] ?? "";
+  return { txId: get("txId"), agentId: get("agentId"), name: get("name"), email: get("email") };
+}
+
+// GET: รายการชำระเงิน Verified PRO
 export async function GET(req: Request) {
-  try {
-    const session = (await getServerSession(authOptions)) as AdminSession | null;
-    if (!session || !session.user || session.user.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!await isAdmin()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { searchParams } = new URL(req.url);
-    const status = searchParams.get("status") || "pending";
+  const status = new URL(req.url).searchParams.get("status") || "pending";
 
-    const transactions = await db.payment_transactions.findMany({
-      where: { status },
-      include: {
-        listing_package_orders: {
-          include: {
-            properties: {
-              include: {
-                users: {
-                  select: { id: true, first_name: true, last_name: true, email: true }
-                }
-              }
-            }
-          }
-        }
-      },
+  const [transactions, notis] = await Promise.all([
+    db.payment_transactions.findMany({
+      where: status === "all" ? {} : { status },
       orderBy: { created_at: "desc" }
-    });
+    }),
+    db.notifications.findMany({
+      where: { type: "payment" },
+      select: { content: true }
+    })
+  ]);
 
-    const formatted = transactions.map((t) => {
-      const order = t.listing_package_orders;
-      const agent = order?.properties?.users;
-      return {
-        id: t.id,
-        orderId: t.order_id,
-        amount: Number(t.amount),
-        paymentMethod: t.payment_method || "PromptPay",
-        slipUrl: t.slip_url,
-        status: t.status,
-        createdAt: t.created_at,
-        agentId: agent?.id,
-        agentName: agent ? `${agent.first_name} ${agent.last_name}` : "นายหน้าในระบบ",
-        agentEmail: agent?.email
-      };
-    });
+  // สร้าง Map: txId -> agent info จาก notification
+  const agentMap = new Map(notis.map(n => {
+    const p = parseNoti(n.content);
+    return [p.txId, { agentId: p.agentId, agentName: p.name, agentEmail: p.email }];
+  }));
 
-    return NextResponse.json({ success: true, transactions: formatted });
-  } catch (error) {
-    const err = error as Error;
-    console.error("GET Admin Payments Error:", err);
-    return NextResponse.json({ error: "Internal Server Error: " + err.message }, { status: 500 });
-  }
+  const data = transactions.map(t => {
+    const agent = agentMap.get(t.id) ?? { agentId: null, agentName: "ไม่ระบุ", agentEmail: "-" };
+    return {
+      id: t.id,
+      orderId: t.order_id,
+      amount: Number(t.amount),
+      slipUrl: t.slip_url,
+      status: t.status,
+      createdAt: t.created_at,
+      ...agent
+    };
+  });
+
+  return NextResponse.json({ success: true, transactions: data });
 }
 
-// PATCH: อนุมัติหรือปฏิเสธสลิปการโอนเงิน
+// PATCH: อนุมัติ / ปฏิเสธสลิป
 export async function PATCH(req: Request) {
-  try {
-    const session = (await getServerSession(authOptions)) as AdminSession | null;
-    if (!session || !session.user || session.user.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!await isAdmin()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const body = await req.json();
-    const { transactionId, action, agentId } = body; // action: 'approve' | 'reject'
+  const { transactionId, action, agentId } = await req.json();
+  if (!transactionId || !action) return NextResponse.json({ error: "ข้อมูลไม่ครบ" }, { status: 400 });
 
-    if (!transactionId || !action) {
-      return NextResponse.json({ error: "กรุณาระบุ transactionId และ action" }, { status: 400 });
-    }
+  const isApprove = action === "approve";
 
-    const isApprove = action === "approve";
-    const statusStr = isApprove ? "approved" : "rejected";
+  const tx = await db.payment_transactions.update({
+    where: { id: transactionId },
+    data: { status: isApprove ? "approved" : "rejected" }
+  });
 
-    // 1. อัปเดตสถานะการชำระเงิน
-    const transaction = await db.payment_transactions.update({
-      where: { id: transactionId },
-      data: { status: statusStr }
+  if (tx.order_id) {
+    await db.listing_package_orders.update({
+      where: { id: tx.order_id },
+      data: { status: isApprove ? "paid" : "rejected" }
     });
+  }
 
-    // 2. อัปเดตคำสั่งซื้อ
-    if (transaction.order_id) {
-      await db.listing_package_orders.update({
-        where: { id: transaction.order_id },
-        data: { status: isApprove ? "paid" : "rejected" }
-      });
-    }
+  if (isApprove && agentId) {
+    const expDate = new Date();
+    expDate.setDate(expDate.getDate() + 30);
 
-    // 3. หากอนุมัติ ให้อัปเกรดนายหน้าเป็น PRO (plan_type = 'pro')
-    if (isApprove && agentId) {
-      const expDate = new Date();
-      expDate.setDate(expDate.getDate() + 30);
-
-      await db.users.update({
+    await Promise.all([
+      db.users.update({
         where: { id: agentId },
-        data: {
-          plan_type: "pro",
-          plan_expired_at: expDate
-        }
-      });
-
-      // แจ้งเตือนนายหน้า
-      await db.notifications.create({
+        data: { plan_type: "pro", plan_expired_at: expDate }
+      }),
+      db.notifications.create({
         data: {
           user_id: agentId,
-          title: "🎉 บัญชีของคุณอัปเกรดเป็น Verified PRO เรียบร้อยแล้ว!",
-          content: "การชำระเงินของคุณได้รับการตรวจสอบแล้ว คุณสามารถลงประกาศได้ไม่จำกัดและรับสิทธิพิเศษดันประกาศฟรี 30 วัน",
+          title: "🎉 บัญชีอัปเกรดเป็น Verified PRO แล้ว!",
+          content: "การชำระเงินของคุณได้รับการยืนยัน สามารถใช้สิทธิ์ PRO ได้ทันที 30 วัน",
           type: "package",
           is_read: false
         }
-      }).catch(err => console.error("Notification error:", err));
-    }
-
-    return NextResponse.json({ success: true, transaction });
-  } catch (error) {
-    const err = error as Error;
-    console.error("PATCH Admin Payments Error:", err);
-    return NextResponse.json({ error: "อัปเดตการชำระเงินล้มเหลว: " + err.message }, { status: 500 });
+      })
+    ]);
   }
+
+  return NextResponse.json({ success: true });
 }
