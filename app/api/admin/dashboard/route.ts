@@ -38,46 +38,26 @@ export async function GET() {
       pendingProperties,
       newAgents,
       totalReportsCount,
-      pendingKycCount
+      pendingKycCount,
+      pendingPaymentsCount
     ] = await Promise.all([
-      // ประกาศรอตรวจสอบ
       db.properties.count({ where: { status: "pending" } }),
-      // ประกาศออนไลน์
       db.properties.count({ where: { status: "approved" } }),
-      // นายหน้าทั้งหมด
       db.users.count({ where: { role_id: "agent" } }),
-      // นายหน้าผู้ใช้ระดับ PRO
       db.users.count({ where: { role_id: "agent", plan_type: "pro" } }),
-      // คิวตรวจสอบประกาศ (Listing Moderation)
       db.properties.findMany({
         where: { status: "pending" },
         include: {
-          users: {
-            select: {
-              first_name: true,
-              last_name: true,
-              plan_type: true,
-              is_verified: true
-            }
-          },
+          users: { select: { first_name: true, last_name: true, plan_type: true, is_verified: true } },
           property_types: true,
-          property_images: {
-            orderBy: { order_index: "asc" },
-            take: 1
-          }
+          property_images: { orderBy: { order_index: "asc" }, take: 1 }
         },
         orderBy: { created_at: "desc" }
       }),
-      // สมาชิกนายหน้าสมัครใหม่
-      db.users.findMany({
-        where: { role_id: "agent" },
-        orderBy: { created_at: "desc" },
-        take: 5
-      }),
-      // รายงานปัญหาปัญหา
+      db.users.findMany({ where: { role_id: "agent" }, orderBy: { created_at: "desc" }, take: 5 }),
       db.reports.count({ where: { status: "pending" } }),
-      // นายหน้ารอยืนยันตัวตน KYC
-      db.users.count({ where: { role_id: "agent", status: "pending" } })
+      db.users.count({ where: { role_id: "agent", status: "pending" } }),
+      db.payment_transactions.count({ where: { status: "pending" } })
     ]);
 
     // จัดระเบียบข้อมูลส่งคืนฝั่งหน้าบ้าน
@@ -117,7 +97,8 @@ export async function GET() {
       moderationItems: formattedModerationItems,
       newAgents: formattedNewAgents,
       reportsCount: totalReportsCount,
-      kycCount: pendingKycCount
+      kycCount: pendingKycCount,
+      paymentsCount: pendingPaymentsCount
     });
 
   } catch (error) {

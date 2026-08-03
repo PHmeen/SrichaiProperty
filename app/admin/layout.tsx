@@ -21,7 +21,7 @@ export default function AdminLayout({
       <AdminSidebar />
 
       {/* Main Panel Content Area */}
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0 min-h-screen overflow-x-hidden">
         {children}
       </main>
     </div>

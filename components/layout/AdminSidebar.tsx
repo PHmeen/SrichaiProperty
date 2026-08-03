@@ -11,7 +11,8 @@ export default function AdminSidebar() {
   const [counts, setCounts] = useState({
     pending: 0,
     kyc: 0,
-    reports: 0
+    reports: 0,
+    payments: 0
   });
 
   useEffect(() => {
@@ -22,7 +23,8 @@ export default function AdminSidebar() {
           setCounts({
             pending: data.pendingCount || 0,
             kyc: data.kycCount || 0,
-            reports: data.reportsCount || 0
+            reports: data.reportsCount || 0,
+            payments: data.paymentsCount || 0
           });
         }
       })
@@ -51,10 +53,10 @@ export default function AdminSidebar() {
       )}
 
       {/* Sidebar Navigation */}
-      <aside className={`w-64 bg-[#0f172a] text-slate-300 flex flex-col justify-between shrink-0 shadow-xl fixed lg:static inset-y-0 left-0 z-[95] transition-transform duration-300 ${
+      <aside className={`w-64 bg-[#0f172a] text-slate-300 flex flex-col justify-between shrink-0 shadow-xl fixed lg:sticky lg:top-0 lg:h-screen inset-y-0 left-0 z-[95] transition-transform duration-300 ${
         isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}>
-        <div className="p-5 space-y-6 overflow-y-auto">
+        <div className="p-5 space-y-6 overflow-y-auto flex-1 min-h-0">
           {/* Logo Header */}
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-black text-white text-base shadow-lg shadow-blue-500/20">
@@ -72,7 +74,7 @@ export default function AdminSidebar() {
           </div>
 
           <Link 
-            href="/home" 
+            href="/" 
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-blue-500/30 active:scale-[0.98]"
           >
             🌐 เปิดดูหน้าเว็บไซต์จริง ↗
@@ -136,6 +138,21 @@ export default function AdminSidebar() {
                 {counts.reports > 0 && (
                   <span className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-5 text-center">
                     {counts.reports}
+                  </span>
+                )}
+              </Link>
+
+              <Link 
+                href="/admin/payments" 
+                onClick={() => setIsMobileOpen(false)}
+                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg transition-colors text-left font-semibold ${
+                  isActive('/admin/payments') ? 'bg-slate-800 text-white font-bold' : 'hover:bg-slate-800 text-slate-300'
+                }`}
+              >
+                <span className="flex items-center gap-2">💳 รายการชำระเงิน (PRO)</span>
+                {counts.payments > 0 && (
+                  <span className="bg-amber-500 text-slate-950 text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-5 text-center">
+                    {counts.payments}
                   </span>
                 )}
               </Link>
