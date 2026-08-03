@@ -12,9 +12,12 @@ export async function GET() {
       include: {
         users: {
           select: {
+            id: true,
             first_name: true,
             last_name: true,
             email: true,
+            phone: true,
+            line_id: true,
             plan_type: true,
             plan_expired_at: true
           }
@@ -72,6 +75,8 @@ export async function GET() {
         amphure_id: p.amphure_id,
         district_id: p.district_id,
         agent_id: p.agent_id,
+        agentPhone: p.users?.phone || "081-234-5678",
+        lineId: p.users?.line_id || null,
         provinceName: p.provinces?.name_th || "",
         amphureName: p.amphures?.name_th || "",
         districtName: p.districts?.name_th || ""

@@ -13,6 +13,8 @@ export default function AgentFooter() {
         <div className="flex gap-4 font-bold text-slate-300">
           <Link href="/agent/home" className="hover:text-amber-400 transition">หน้าหลักนายหน้า</Link>
           <Link href="/agent/add-property" className="hover:text-amber-400 transition">ลงประกาศขายบ้าน</Link>
+          <Link href="/agent/privacy" className="hover:text-amber-400 transition text-amber-400/90">🔒 PDPA นายหน้า</Link>
+          <Link href="/agent/terms" className="hover:text-amber-400 transition text-amber-400/90">📜 ข้อกำหนดนายหน้า</Link>
           <Link href="/home" className="hover:text-amber-400 transition">🌐 หน้าเว็บไซต์หลัก</Link>
         </div>
       </div>

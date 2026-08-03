@@ -1,4 +1,4 @@
-﻿// === API จัดการอสังหาริมทรัพย์ "รายหลัง" (สำหรับหน้าแก้ไขประกาศของนายหน้า) ===
+// === API จัดการอสังหาริมทรัพย์ "รายหลัง" (สำหรับหน้าแก้ไขประกาศของนายหน้า) ===
 // GET    /api/properties/[id]  -> ดึงข้อมูลบ้าน 1 หลัง พร้อมรูปภาพและวันว่างทั้งหมด
 // PATCH  /api/properties/[id]  -> แก้ไขรายละเอียดบ้าน + รูปภาพ + วันว่าง (ไม่รีเซ็ตสถานะอนุมัติ)
 // DELETE /api/properties/[id]  -> ลบประกาศบ้านหลังนี้
@@ -73,6 +73,7 @@ export async function GET(
     const property = await db.properties.findUnique({
       where: { id },
       include: {
+        users: { select: { first_name: true, last_name: true, phone: true, line_id: true } },
         property_images: { orderBy: { order_index: "asc" } },
         property_viewing_slots: { orderBy: [{ available_date: "asc" }, { time_slot: "asc" }] }
       }
@@ -96,6 +97,9 @@ export async function GET(
       amphure_id: property.amphure_id,
       district_id: property.district_id,
       status: property.status,
+      agentName: property.users ? `${property.users.first_name} ${property.users.last_name}` : "ไม่ระบุตัวแทน",
+      agentPhone: property.users?.phone || "081-234-5678",
+      lineId: property.users?.line_id || null,
       images: property.property_images.map((img: ImageRow) => img.image_url)
     };
 

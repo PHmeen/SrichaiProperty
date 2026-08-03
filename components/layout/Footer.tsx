@@ -56,8 +56,17 @@ export default function Footer() {
         </div>
 
         {/* Copyright */}
-        <div className="border-t border-slate-800 pt-8 text-center text-sm text-slate-500">
+        <div className="border-t border-slate-800 pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
           <p>&copy; {new Date().getFullYear()} Srichai Property Agents. โครงงานระบบบริหารจัดการการซื้อขายอสังหาริมทรัพย์.</p>
+          <div className="flex items-center gap-4 font-medium">
+            <Link href="/privacy-policy" className="hover:text-blue-400 transition flex items-center gap-1">
+              🔒 นโยบายความเป็นส่วนตัว (PDPA)
+            </Link>
+            <span>•</span>
+            <Link href="/terms" className="hover:text-blue-400 transition flex items-center gap-1">
+              📜 ข้อกำหนดการใช้งาน (Terms)
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

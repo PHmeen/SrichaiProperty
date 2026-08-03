@@ -103,6 +103,16 @@ export default function PropertyDetailPage() {
     }
   };
 
+  const propRecord = property as unknown as Record<string, unknown>;
+  const rawLineId = String(propRecord.lineId || propRecord.line_id || '');
+  const agentPhone = String(propRecord.agentPhone || propRecord.phone || '081-234-5678');
+  
+  const lineUrl = rawLineId
+    ? `https://line.me/ti/p/~${rawLineId.replace('@', '')}`
+    : `https://line.me/R/msg/text/?${encodeURIComponent(`สวัสดีครับ สนใจอสังหาริมทรัพย์: ${property.title}`)}`;
+  
+  const phoneUrl = `tel:${agentPhone.replace(/[^\d+]/g, '')}`;
+
   return (
     <div className="font-sans bg-slate-50/50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm pb-24">
       <div className="pt-16"></div>
@@ -352,18 +362,18 @@ export default function PropertyDetailPage() {
 
               <div className="space-y-2">
                 <a 
-                  href="tel:0812345678"
+                  href={phoneUrl}
                   className="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 text-xs active:scale-[0.99] cursor-pointer"
                 >
-                  📞 081-234-5678
+                  📞 {agentPhone}
                 </a>
                 <a 
-                  href="https://line.me" 
+                  href={lineUrl} 
                   target="_blank" 
                   rel="noreferrer"
-                  className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 text-xs active:scale-[0.99] cursor-pointer"
+                  className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 text-xs active:scale-[0.99] cursor-pointer shadow-sm"
                 >
-                  💬 คุย LINE
+                  💬 คุย LINE นายหน้า
                 </a>
               </div>
 

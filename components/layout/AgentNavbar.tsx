@@ -58,6 +58,7 @@ export default function AgentNavbar() {
           <Link href="/agent/appointments" className={navLinkClass('/agent/appointments')}>
             📋 <span className="hidden md:inline">จัดการคิวนัดหมาย</span>
           </Link>
+
           {/* ปุ่มลงประกาศใหม่ (CTA หลัก) */}
           <Link
             href="/agent/add-property"
@@ -75,20 +76,24 @@ export default function AgentNavbar() {
           {/* Notifications, Profile & Logout */}
           <div className="flex items-center gap-3">
             <NotificationBell />
-            <div className="flex items-center gap-2">
+            <Link 
+              href="/agent/profile" 
+              title="จัดการโปรไฟล์ของฉัน"
+              className="flex items-center gap-2 hover:opacity-80 transition cursor-pointer group"
+            >
               <Image
                 src={userImage}
                 alt="Profile"
                 width={32}
                 height={32}
-                className="w-8 h-8 rounded-full border border-amber-500/40 object-cover"
+                className="w-8 h-8 rounded-full border border-amber-500/40 object-cover group-hover:border-amber-400 transition"
                 unoptimized
               />
               <div className="text-left hidden xl:block">
-                <p className="text-xs font-bold text-white leading-none">{userFullName}</p>
+                <p className="text-xs font-bold text-white leading-none group-hover:text-amber-400 transition">{userFullName}</p>
                 <p className="text-[9px] text-amber-400 font-bold uppercase mt-0.5">นายหน้าพรีเมียม</p>
               </div>
-            </div>
+            </Link>
 
             {/* ปุ่มออกจากระบบ - ขนาดใหญ่ขึ้นและใช้สีแดงให้เห็นชัด */}
             <button
