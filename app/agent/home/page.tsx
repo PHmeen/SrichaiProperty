@@ -233,11 +233,12 @@ export default function AgentHomePage() {
 
           {/* Right Column: Sidebar */}
           <div className="space-y-6">
-            <div className="bg-gradient-to-br from-[#1e293b] to-[#0f172a] rounded-3xl p-6 text-white border border-slate-800 shadow-xl space-y-4">
+            <div className="bg-gradient-to-br from-[#1e293b] to-[#0f172a] rounded-3xl p-6 text-white border border-slate-800 shadow-xl space-y-4 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full -translate-y-6 translate-x-6 blur-xl" />
               <span className="bg-amber-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded-full uppercase">VERIFIED PRO 👑</span>
               <h3 className="text-base font-black tracking-tight">ขยายธุรกิจแบบไร้ขีดจำกัด</h3>
               <p className="text-slate-400 text-[10px] leading-relaxed">ดันประกาศและฟีเจอร์พรีเมียมเฉพาะตัวแทนที่อัปเกรดเพื่อรับยอดเข้าชมและฐานลูกค้าที่กว้างขวางขึ้น</p>
-              <button className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs transition">ดูรายละเอียด (599.-/เดือน)</button>
+              <Link href="/agent/upgrade" className="w-full block py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs transition text-center active:scale-[0.98]">อัปเกรด (599.-/เดือน) →</Link>
             </div>
             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 space-y-3">
               <h4 className="font-extrabold text-slate-900 text-xs md:text-sm border-b pb-3">📚 ข่าวสาร & คลังความรู้</h4>
