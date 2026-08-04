@@ -28,6 +28,8 @@ export default function AgentHomePage() {
     pendingApprovalCount?: number;
     isPro?: boolean;
     planType?: string;
+    totalViews: number;
+    pendingChatCount: number;
     appointments: AppointmentData[];
   } | null>(null);
 
@@ -175,12 +177,12 @@ export default function AgentHomePage() {
             <strong className="text-xl md:text-2xl font-black text-slate-800 block mt-1">{dbData?.propertiesCount || 0} รายการ</strong>
           </div>
           <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
-            <span className="text-[10px] font-bold text-slate-400 block uppercase">ยอดวิวรวม (30 วัน)</span>
-            <strong className="text-xl md:text-2xl font-black text-slate-800 block mt-1">1.4K <span className="text-emerald-500 text-[11px]">↑ 12%</span></strong>
+            <span className="text-[10px] font-bold text-slate-400 block uppercase">ยอดวิวรวม</span>
+            <strong className="text-xl md:text-2xl font-black text-slate-800 block mt-1">{(dbData?.totalViews || 0).toLocaleString()}</strong>
           </div>
           <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
             <span className="text-[10px] font-bold text-slate-400 block uppercase">แชทที่รอตอบ</span>
-            <strong className="text-xl md:text-2xl font-black text-red-500 block mt-1">2 รายการ</strong>
+            <strong className={`text-xl md:text-2xl font-black block mt-1 ${(dbData?.pendingChatCount || 0) > 0 ? 'text-red-500' : 'text-slate-800'}`}>{dbData?.pendingChatCount || 0} รายการ</strong>
           </div>
           <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
             <span className="text-[10px] font-bold text-slate-400 block uppercase">โควต้าลงประกาศ</span>

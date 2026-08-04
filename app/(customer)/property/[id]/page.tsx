@@ -44,6 +44,12 @@ export default function PropertyDetailPage() {
     return () => clearTimeout(timer);
   }, [numericPrice]);
 
+  // นับยอดเข้าชมประกาศนี้ 1 ครั้งต่อการเปิดหน้า
+  useEffect(() => {
+    if (!id) return;
+    fetch(`/api/properties/${id}/view`, { method: 'POST' }).catch(() => {});
+  }, [id]);
+
   if (!property) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500 font-bold">

@@ -182,6 +182,9 @@ export default function AgentEditPropertyPage() {
     if (!f.title || !f.price || !f.location) {
       return alert('กรุณากรอกข้อมูลสำคัญ (*) ให้ครบถ้วน');
     }
+    if (Number(f.price) <= 0) return alert('กรุณากรอกราคาที่มากกว่า 0 บาท');
+    if (f.usableArea && Number(f.usableArea) < 0) return alert('พื้นที่ต้องไม่ติดลบ');
+    if (Number(f.bedrooms) < 0 || Number(f.bathrooms) < 0) return alert('จำนวนห้องต้องไม่ติดลบ');
 
     setSaving(true);
     try {
@@ -310,21 +313,21 @@ export default function AgentEditPropertyPage() {
 
             <div>
               <label className="block font-bold mb-1 text-slate-700">ราคา (บาท) <span className="text-red-500">*</span></label>
-              <input type="number" value={f.price} onChange={e => setF({ ...f, price: e.target.value })} className="w-full p-2.5 bg-slate-50 border rounded-xl font-bold text-xs" required />
+              <input type="number" min="1" step="1" value={f.price} onChange={e => setF({ ...f, price: e.target.value })} className="w-full p-2.5 bg-slate-50 border rounded-xl font-bold text-xs" required />
             </div>
 
             <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-xl border text-center">
               <div>
                 <label className="block text-[9px] font-bold text-slate-500 mb-1">🛏️ ห้องนอน</label>
-                <input type="number" value={f.bedrooms} onChange={e => setF({ ...f, bedrooms: e.target.value })} className="w-full bg-white border rounded-lg p-1.5 text-center font-bold text-xs" />
+                <input type="number" min="0" value={f.bedrooms} onChange={e => setF({ ...f, bedrooms: e.target.value })} className="w-full bg-white border rounded-lg p-1.5 text-center font-bold text-xs" />
               </div>
               <div>
                 <label className="block text-[9px] font-bold text-slate-500 mb-1">🚿 ห้องน้ำ</label>
-                <input type="number" value={f.bathrooms} onChange={e => setF({ ...f, bathrooms: e.target.value })} className="w-full bg-white border rounded-lg p-1.5 text-center font-bold text-xs" />
+                <input type="number" min="0" value={f.bathrooms} onChange={e => setF({ ...f, bathrooms: e.target.value })} className="w-full bg-white border rounded-lg p-1.5 text-center font-bold text-xs" />
               </div>
               <div>
                 <label className="block text-[9px] font-bold text-slate-500 mb-1">📐 พื้นที่ (ตร.ม.)</label>
-                <input type="number" value={f.usableArea} onChange={e => setF({ ...f, usableArea: e.target.value })} className="w-full bg-white border rounded-lg p-1.5 text-center font-bold text-xs" />
+                <input type="number" min="0" value={f.usableArea} onChange={e => setF({ ...f, usableArea: e.target.value })} className="w-full bg-white border rounded-lg p-1.5 text-center font-bold text-xs" />
               </div>
             </div>
           </div>

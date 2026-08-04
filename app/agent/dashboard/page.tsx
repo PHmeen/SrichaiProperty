@@ -30,6 +30,7 @@ export default function AgentDashboardPage() {
     pendingApprovalCount?: number;
     pendingApprovalProperties?: PropertyData[];
     totalCount: number;
+    totalViews: number;
   } | null>(null);
 
   const loadDashboard = useCallback(() => {
@@ -145,7 +146,7 @@ export default function AgentDashboardPage() {
           </div>
           <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
             <span className="text-[10px] font-bold text-slate-400 block uppercase">ยอดเข้าชมทั้งหมด</span>
-            <strong className="text-xl md:text-2xl font-black text-slate-800 block mt-1">1,452 <span className="text-emerald-500 text-[10px]">↑ 14%</span></strong>
+            <strong className="text-xl md:text-2xl font-black text-slate-800 block mt-1">{(dbData?.totalViews || 0).toLocaleString()}</strong>
           </div>
           <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
             <span className="text-[10px] font-bold text-slate-400 block uppercase">ลูกค้าเป้าหมาย (LEADS)</span>

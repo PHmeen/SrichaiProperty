@@ -150,6 +150,28 @@ export async function PATCH(
       );
     }
 
+    if (!(Number(price) > 0)) {
+      return NextResponse.json(
+        { error: "ราคาต้องเป็นตัวเลขมากกว่า 0" },
+        { status: 400 }
+      );
+    }
+
+    if (area_sqm !== undefined && area_sqm !== null && area_sqm !== "" && Number(area_sqm) < 0) {
+      return NextResponse.json(
+        { error: "พื้นที่ต้องไม่ติดลบ" },
+        { status: 400 }
+      );
+    }
+
+    if ((bedrooms !== undefined && bedrooms !== null && bedrooms !== "" && Number(bedrooms) < 0) ||
+        (bathrooms !== undefined && bathrooms !== null && bathrooms !== "" && Number(bathrooms) < 0)) {
+      return NextResponse.json(
+        { error: "จำนวนห้องต้องไม่ติดลบ" },
+        { status: 400 }
+      );
+    }
+
     // 1) อัปเดตรายละเอียดหลักของบ้าน
     const updated = await db.properties.update({
       where: { id },

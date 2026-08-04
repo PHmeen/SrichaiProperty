@@ -34,6 +34,21 @@ export async function GET(request: Request) {
         where: { agent_id: agent.id, status: 'pending' }
       });
 
+      const viewsAgg = await db.properties.aggregate({
+        where: { agent_id: agent.id },
+        _sum: { views_count: true }
+      });
+      const totalViews = viewsAgg._sum.views_count || 0;
+
+      // ห้องแชทที่ข้อความล่าสุดมาจากลูกค้า (ยังไม่มีการตอบกลับจากนายหน้า) ถือว่า "รอตอบ"
+      const chatSessionsForReply = await db.chat_sessions.findMany({
+        where: { agent_id: agent.id },
+        include: { messages: { orderBy: { created_at: 'desc' }, take: 1 } }
+      });
+      const pendingChatCount = chatSessionsForReply.filter(
+        s => s.messages[0] && s.messages[0].sender_id !== agent.id
+      ).length;
+
       const pendingProperties = await db.properties.findMany({
         where: { agent_id: agent.id, status: 'pending' },
         select: { id: true, title: true, price: true, created_at: true },
@@ -74,6 +89,8 @@ export async function GET(request: Request) {
         propertiesCount,
         pendingAptsCount,
         pendingApprovalCount: pendingProperties.length,
+        totalViews,
+        pendingChatCount,
         planType: agent.plan_type || 'basic',
         isPro,
         planExpiredAt: agent.plan_expired_at,
@@ -96,7 +113,8 @@ export async function GET(request: Request) {
           property_images: {
             orderBy: { order_index: 'asc' },
             take: 1
-          }
+          },
+          _count: { select: { appointments: true } }
         },
         orderBy: { created_at: 'desc' }
       });
@@ -105,12 +123,14 @@ export async function GET(request: Request) {
         where: { agent_id: agent.id, status: 'pending' }
       });
 
-      // คำนวณราคารวมพอร์ตโฟลิโอ
+      // คำนวณราคารวมพอร์ตโฟลิโอ และยอดเข้าชมรวมของทุกประกาศ
       let totalPortfolioValue = 0;
+      let totalViews = 0;
       properties.forEach(p => {
         if (p.status === 'approved') {
           totalPortfolioValue += Number(p.price);
         }
+        totalViews += p.views_count;
       });
 
       const formattedProperties = properties.map(p => ({
@@ -120,8 +140,8 @@ export async function GET(request: Request) {
         type: p.property_types?.name || 'บ้านเดี่ยว',
         status: p.status, // approved, pending, rejected
         image: p.property_images[0]?.image_url || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-        views: Math.floor(Math.random() * 800) + 150,
-        appointments: Math.floor(Math.random() * 3),
+        views: p.views_count,
+        appointments: p._count.appointments,
         createdAt: p.created_at
       }));
 
@@ -133,6 +153,7 @@ export async function GET(request: Request) {
         pendingApprovalProperties: pendingProperties,
         totalPortfolioValue: (totalPortfolioValue / 1000000).toFixed(1) + ' ลบ.',
         pendingAptsCount,
+        totalViews,
         totalCount: properties.length
       });
     }

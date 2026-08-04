@@ -118,6 +118,7 @@ model properties {
   bathrooms              Int?                     @default(0) // จำนวนห้องน้ำ
   area_sqm               Decimal?                 @db.Decimal(8, 2) // พื้นที่ (ตร.ม.)
   status                 String?                  @default("pending") @db.VarChar(20) // สถานะประกาศ (เช่น active, pending, sold)
+  views_count            Int                      @default(0) // จำนวนครั้งที่มีคนเปิดดูหน้ารายละเอียดประกาศนี้
   agent_id               String?                  @db.Uuid // นายหน้าดูแลประกาศ (เชื่อมกับ users)
   province_id            Int?                     // จังหวัด
   amphure_id             Int?                     // อำเภอ/เขต

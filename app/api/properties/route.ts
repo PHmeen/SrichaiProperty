@@ -136,6 +136,28 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!(Number(price) > 0)) {
+      return NextResponse.json(
+        { error: "ราคาต้องเป็นตัวเลขมากกว่า 0" },
+        { status: 400 }
+      );
+    }
+
+    const rawArea = area_sqm ?? areaSqm;
+    if (rawArea !== undefined && rawArea !== null && rawArea !== "" && Number(rawArea) < 0) {
+      return NextResponse.json(
+        { error: "พื้นที่ต้องไม่ติดลบ" },
+        { status: 400 }
+      );
+    }
+
+    if ((bedrooms !== undefined && Number(bedrooms) < 0) || (bathrooms !== undefined && Number(bathrooms) < 0)) {
+      return NextResponse.json(
+        { error: "จำนวนห้องต้องไม่ติดลบ" },
+        { status: 400 }
+      );
+    }
+
     // ผูกประกาศกับนายหน้าที่ล็อกอินอยู่เสมอ (ไม่รับค่า agentId จาก body อีกต่อไป)
     // หมายเหตุ: ตัดการ fallback ไปหา "นายหน้าคนแรกใน DB" ออกทั้งหมด เพราะเป็นต้นเหตุของบั๊กเดิม
     // ที่ทำให้บ้านของทุกนายหน้าไปกองอยู่ที่บัญชีเดียวกัน

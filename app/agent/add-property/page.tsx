@@ -82,6 +82,10 @@ export default function AgentAddPropertyPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!f.title || !f.price || !f.provinceId || !f.amphureId) return alert('กรุณากรอกข้อมูลสำคัญ (*) ให้ครบถ้วน');
+    if (Number(f.price) <= 0) return alert('กรุณากรอกราคาที่มากกว่า 0 บาท');
+    if (f.landArea && Number(f.landArea) < 0) return alert('ขนาดที่ดินต้องไม่ติดลบ');
+    if (f.usableArea && Number(f.usableArea) < 0) return alert('พื้นที่ใช้สอยต้องไม่ติดลบ');
+    if ([f.bedrooms, f.bathrooms, f.parking, f.floors].some(v => Number(v) < 0)) return alert('จำนวนห้อง/ที่จอดรถ/ชั้น ต้องไม่ติดลบ');
     if (!agreed1 || !agreed2) return alert('กรุณากดยินยอมเงื่อนไขการลงประกาศ');
 
     setLoading(true);
@@ -179,7 +183,7 @@ export default function AgentAddPropertyPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block font-bold mb-1 text-slate-700">ราคา (บาท) <span className="text-red-500">*</span></label>
-                <input type="number" value={f.price} onChange={e => setF({ ...f, price: e.target.value })} placeholder="฿ 0" className="w-full p-2.5 bg-slate-50 border rounded-xl font-bold text-xs" required />
+                <input type="number" min="1" step="1" value={f.price} onChange={e => setF({ ...f, price: e.target.value })} placeholder="฿ 0" className="w-full p-2.5 bg-slate-50 border rounded-xl font-bold text-xs" required />
               </div>
               <div>
                 <label className="block font-bold mb-1 text-slate-700">ค่าส่วนกลาง (บาท / เดือน)</label>
@@ -190,30 +194,30 @@ export default function AgentAddPropertyPage() {
             <div className="grid grid-cols-4 gap-2 bg-slate-50 p-3 rounded-xl border text-center">
               <div>
                 <label className="block text-[9px] font-bold text-slate-500 mb-1">🛏️ ห้องนอน</label>
-                <input type="number" value={f.bedrooms} onChange={e => setF({ ...f, bedrooms: e.target.value })} className="w-full bg-white border rounded-lg p-1.5 text-center font-bold text-xs" />
+                <input type="number" min="0" value={f.bedrooms} onChange={e => setF({ ...f, bedrooms: e.target.value })} className="w-full bg-white border rounded-lg p-1.5 text-center font-bold text-xs" />
               </div>
               <div>
                 <label className="block text-[9px] font-bold text-slate-500 mb-1">🚿 ห้องน้ำ</label>
-                <input type="number" value={f.bathrooms} onChange={e => setF({ ...f, bathrooms: e.target.value })} className="w-full bg-white border rounded-lg p-1.5 text-center font-bold text-xs" />
+                <input type="number" min="0" value={f.bathrooms} onChange={e => setF({ ...f, bathrooms: e.target.value })} className="w-full bg-white border rounded-lg p-1.5 text-center font-bold text-xs" />
               </div>
               <div>
                 <label className="block text-[9px] font-bold text-slate-500 mb-1">🚗 ที่จอดรถ</label>
-                <input type="number" value={f.parking} onChange={e => setF({ ...f, parking: e.target.value })} className="w-full bg-white border rounded-lg p-1.5 text-center font-bold text-xs" />
+                <input type="number" min="0" value={f.parking} onChange={e => setF({ ...f, parking: e.target.value })} className="w-full bg-white border rounded-lg p-1.5 text-center font-bold text-xs" />
               </div>
               <div>
                 <label className="block text-[9px] font-bold text-slate-500 mb-1">🏢 จำนวนชั้น</label>
-                <input type="number" value={f.floors} onChange={e => setF({ ...f, floors: e.target.value })} className="w-full bg-white border rounded-lg p-1.5 text-center font-bold text-xs" />
+                <input type="number" min="0" value={f.floors} onChange={e => setF({ ...f, floors: e.target.value })} className="w-full bg-white border rounded-lg p-1.5 text-center font-bold text-xs" />
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="block font-bold mb-1 text-slate-700">ขนาดที่ดิน (ตร.ว.)</label>
-                <input type="number" value={f.landArea} onChange={e => setF({ ...f, landArea: e.target.value })} placeholder="ระบุตัวเลข" className="w-full p-2.5 bg-slate-50 border rounded-xl font-medium text-xs" />
+                <input type="number" min="0" value={f.landArea} onChange={e => setF({ ...f, landArea: e.target.value })} placeholder="ระบุตัวเลข" className="w-full p-2.5 bg-slate-50 border rounded-xl font-medium text-xs" />
               </div>
               <div>
                 <label className="block font-bold mb-1 text-slate-700">พื้นที่ใช้สอย (ตร.ม.)</label>
-                <input type="number" value={f.usableArea} onChange={e => setF({ ...f, usableArea: e.target.value })} placeholder="ระบุตัวเลข" className="w-full p-2.5 bg-slate-50 border rounded-xl font-medium text-xs" />
+                <input type="number" min="0" value={f.usableArea} onChange={e => setF({ ...f, usableArea: e.target.value })} placeholder="ระบุตัวเลข" className="w-full p-2.5 bg-slate-50 border rounded-xl font-medium text-xs" />
               </div>
               <div>
                 <label className="block font-bold mb-1 text-slate-700">สิทธิ์การถือครอง <span className="text-red-500">*</span></label>
