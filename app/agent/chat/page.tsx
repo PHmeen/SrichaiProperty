@@ -50,21 +50,15 @@ export default function AgentChatPage() {
       socket.emit('join-room', selectedContactId);
     });
 
-    socket.on('receive-message', (message: Message) => {
-      setContacts(prev => prev.map(c => {
-        if (c.id === selectedContactId) {
-          if (c.messages.some(m => m.id === message.id || (m.content === message.content && m.time === message.time))) {
-            return c;
+    socket.on('receive-message', () => {
+      fetch('/api/agent/portal?type=chat')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setContacts(data);
           }
-          return {
-            ...c,
-            lastMessageSnippet: message.content,
-            lastMessageTime: message.time,
-            messages: [...c.messages, message]
-          };
-        }
-        return c;
-      }));
+        })
+        .catch(console.error);
     });
 
     socket.on('client-typing', (data: { isTyping: boolean }) => {

@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
+import { io, Socket } from 'socket.io-client';
 
 interface ChatMessage {
   id: string | number;
@@ -37,31 +38,52 @@ function ChatContent() {
   const [sending, setSending] = useState(false);
   const [mobileShowMessages, setMobileShowMessages] = useState(Boolean(initialSessionId));
 
-  // โหลดข้อมูลห้องแชทเมื่อผู้ใช้เข้าสู่ระบบแล้ว และดึงข้อมูลใหม่อัตโนมัติทุกๆ 3 วินาที (Auto-Polling)
+  const socketRef = useRef<Socket | null>(null);
+
+  // โหลดข้อมูลห้องแชท
+  const fetchChatData = useCallback(() => {
+    fetch('/api/chat/sessions')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && Array.isArray(data.sessions)) {
+          setSessions(data.sessions);
+          if (data.sessions.length > 0) {
+            const matched = data.sessions.find((s: ChatSession) => s.id === initialSessionId);
+            setSelectedSessionId(prev => prev || (matched ? matched.id : data.sessions[0].id));
+          }
+        }
+      })
+      .catch(err => console.error('โหลดข้อมูลแชทล้มเหลว:', err))
+      .finally(() => setLoading(false));
+  }, [initialSessionId]);
+
   useEffect(() => {
     if (sessionStatus !== 'authenticated') return;
-
-    const fetchChatData = () => {
-      fetch('/api/chat/sessions')
-        .then(res => res.json())
-        .then(data => {
-          if (data.success && Array.isArray(data.sessions)) {
-            setSessions(data.sessions);
-            if (data.sessions.length > 0) {
-              const matched = data.sessions.find((s: ChatSession) => s.id === initialSessionId);
-              setSelectedSessionId(prev => prev || (matched ? matched.id : data.sessions[0].id));
-            }
-          }
-        })
-        .catch(err => console.error('โหลดข้อมูลแชทล้มเหลว:', err))
-        .finally(() => setLoading(false));
-    };
-
     fetchChatData();
-    const interval = setInterval(fetchChatData, 3000); // ดึงข้อมูลใหม่เบื้องหลังทุก 3 วินาที
+  }, [sessionStatus, fetchChatData]);
 
-    return () => clearInterval(interval);
-  }, [sessionStatus, initialSessionId]);
+  // เชื่อมต่อ Socket.io รับ-ส่งข้อความเรียลไทม์
+  useEffect(() => {
+    if (!selectedSessionId) return;
+
+    const socket = io('http://localhost:3001', {
+      transports: ['websocket'],
+      autoConnect: true
+    });
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      socket.emit('join-room', selectedSessionId);
+    });
+
+    socket.on('receive-message', () => {
+      fetchChatData();
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [selectedSessionId, fetchChatData]);
 
   // ฟังก์ชันส่งข้อความ
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -73,17 +95,21 @@ function ChatContent() {
     setSending(true);
 
     try {
-      await fetch('/api/chat/messages', {
+      const res = await fetch('/api/chat/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId: selectedSessionId, content: textToSend })
       });
 
-      // ดึงรายการข้อความล่าสุดมาอัปเดตหน้าจอ
-      const res = await fetch('/api/chat/sessions');
       const data = await res.json();
-      if (data.success && Array.isArray(data.sessions)) {
-        setSessions(data.sessions);
+      if (res.ok && data.success) {
+        if (socketRef.current?.connected) {
+          socketRef.current.emit('send-message', {
+            roomId: selectedSessionId,
+            message: data.message
+          });
+        }
+        fetchChatData();
       }
     } catch {
       alert('เกิดข้อผิดพลาดในการส่งข้อความ');
