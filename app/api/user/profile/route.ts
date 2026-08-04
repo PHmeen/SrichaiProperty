@@ -29,6 +29,8 @@ export async function GET() {
         role_id: true,
         is_verified: true,
         status: true,
+        plan_type: true,
+        plan_expired_at: true,
         created_at: true,
         login_histories: {
           take: 1,
@@ -46,6 +48,12 @@ export async function GET() {
       return NextResponse.json({ error: "ไม่พบข้อมูลผู้ใช้งาน" }, { status: 404 });
     }
 
+    const isPro = Boolean(
+      user.plan_type && 
+      user.plan_type !== "basic" && 
+      (!user.plan_expired_at || new Date(user.plan_expired_at) > new Date())
+    );
+
     return NextResponse.json({
       success: true,
       user: {
@@ -58,6 +66,9 @@ export async function GET() {
         profileImage: user.profile_image || "",
         role: user.role_id || "buyer",
         isVerified: user.is_verified || false,
+        planType: user.plan_type || "basic",
+        planExpiredAt: user.plan_expired_at || null,
+        isPro: isPro,
         lastLogin: user.login_histories[0] || null,
       },
     });

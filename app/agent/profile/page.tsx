@@ -17,18 +17,23 @@ export default function AgentProfilePage() {
   });
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/user/profile').then(r => r.json()),
-      fetch('/api/packages/checkout').then(r => r.json())
-    ]).then(([userData, pkgData]) => {
-      const u = userData?.user || {};
-      setForm(prev => ({
-        ...prev,
-        firstName: u.firstName || '', lastName: u.lastName || '', email: u.email || '',
-        phone: u.phone || '', lineId: u.lineId || '',
-        isPro: Boolean(pkgData?.isPro), planExpiredAt: pkgData?.planExpiredAt || null
-      }));
-    }).catch(() => {}).finally(() => setLoading(false));
+    fetch('/api/user/profile')
+      .then(r => r.json())
+      .then(data => {
+        const u = data?.user || {};
+        setForm(prev => ({
+          ...prev,
+          firstName: u.firstName || '',
+          lastName: u.lastName || '',
+          email: u.email || '',
+          phone: u.phone || '',
+          lineId: u.lineId || '',
+          isPro: Boolean(u.isPro),
+          planExpiredAt: u.planExpiredAt || null
+        }));
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
   const handleSave = async (e: React.FormEvent) => {

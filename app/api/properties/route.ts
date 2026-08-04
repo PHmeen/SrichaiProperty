@@ -57,7 +57,7 @@ export async function GET() {
         title: p.title,
         price: "฿" + Number(p.price).toLocaleString(),
         type: p.property_types?.name || "อสังหาริมทรัพย์",
-        tag: isPremium ? "ทรัพย์แนะนำ (พรีเมียม)" : "ทรัพย์ทั่วไป",
+        tag: isPremium ? "ทรัพย์พรีเมียม" : "ทรัพย์ทั่วไป",
         tagBg: isPremium ? "bg-amber-600" : "bg-blue-600",
         location: "📍 " + p.location,
         bedrooms: p.bedrooms || 0,
@@ -82,6 +82,9 @@ export async function GET() {
         districtName: p.districts?.name_th || ""
       };
     });
+
+    // เรียงลำดับให้ทรัพย์ของนายหน้าพรีเมียมขึ้นก่อนเสมอ (Priority Top Listing)
+    formattedProperties.sort((a, b) => (b.isPremium ? 1 : 0) - (a.isPremium ? 1 : 0));
 
     return NextResponse.json(formattedProperties);
   } catch (error) {

@@ -140,6 +140,29 @@ export const propertiesRawData = [
     nearbies: [{ id: 3, distance: 2000 }, { id: 6, distance: 1800 }]
   },
   {
+    title: "วิลล่าหรูพรีเมียม สไตล์พูลวิลล่า - คอหงส์ หาดใหญ่ (ทรัพย์พรีเมียม)",
+    price: 12900000,
+    type_id: 1,
+    location: "ถ.กาญจนวณิชย์ (คอหงส์), หาดใหญ่, สงขลา",
+    province_id: 70,
+    amphure_id: 9011,
+    district_id: 901103,
+    latitude: 7.021111,
+    longitude: 100.485555,
+    description: "วิลล่าส่วนตัวระดับพรีเมียม พร้อมสระว่ายน้ำส่วนระบบเกลือ ตกแต่งหรูหรา 4 ห้องนอน 5 ห้องน้ำ นายหน้าพรีเมียมคุณพาทิศ หนูดำ ดูแลโดยตรง",
+    bedrooms: 4,
+    bathrooms: 5,
+    area_sqm: 450,
+    status: "approved",
+    agentEmail: "meen1@gmail.com",
+    images: [
+      "https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80"
+    ],
+    amenities: [1, 2, 3, 4, 5, 6, 8, 10],
+    nearbies: [{ id: 1, distance: 800 }, { id: 2, distance: 1000 }]
+  },
+  {
     title: "ทาวน์โฮม 3 ชั้น ดีไซน์โมเดิร์นลอฟท์ - ทำเลเมืองสงขลา ใกล้หาดชลาทัศน์",
     price: 3850000,
     type_id: 2,

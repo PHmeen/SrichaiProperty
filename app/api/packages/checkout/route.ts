@@ -17,7 +17,11 @@ export async function GET() {
   const user = await getUser(session.user.email);
   if (!user) return NextResponse.json({ error: "ไม่พบผู้ใช้" }, { status: 404 });
 
-  const isPro = user.plan_type === "pro" && (!user.plan_expired_at || user.plan_expired_at > new Date());
+  const isPro = Boolean(
+    user.plan_type && 
+    user.plan_type !== "basic" && 
+    (!user.plan_expired_at || new Date(user.plan_expired_at) > new Date())
+  );
   return NextResponse.json({ planType: user.plan_type ?? "basic", planExpiredAt: user.plan_expired_at, isPro });
 }
 

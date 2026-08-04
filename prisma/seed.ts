@@ -68,6 +68,36 @@ async function main() {
   });
 
   const agent3 = await prisma.users.upsert({
+    where: { email: "meen1@gmail.com" },
+    update: { 
+      role_id: "agent", 
+      status: "approved", 
+      plan_type: "pro", 
+      plan_expired_at: new Date(Date.now() + 365 * 86400000),
+      first_name: "พาทิศ",
+      last_name: "หนูดำ",
+      phone: "0123456789",
+      line_id: "1234"
+    },
+    create: {
+      email: "meen1@gmail.com",
+      password_hash: passAgent,
+      first_name: "พาทิศ",
+      last_name: "หนูดำ",
+      phone: "0123456789",
+      line_id: "1234",
+      role_id: "agent",
+      status: "approved",
+      is_verified: true,
+      plan_type: "pro",
+      plan_expired_at: new Date(Date.now() + 365 * 86400000),
+      experience: "6 ปี",
+      specialty_zone: "หาดใหญ่ / คอหงส์",
+      kyc_doc: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80"
+    }
+  });
+
+  const agent4 = await prisma.users.upsert({
     where: { email: "theeradech.agent@srichaiproperty.com" },
     update: { role_id: "agent" },
     create: { email: "theeradech.agent@srichaiproperty.com", password_hash: passAgent, first_name: "ธีรเดช", last_name: "มั่งคั่ง", phone: "0834567890", role_id: "agent", status: "pending", is_verified: false, kyc_doc: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80" }
@@ -88,7 +118,9 @@ async function main() {
   const agentMap: Record<string, string> = {
     "somchai.agent@srichaiproperty.com": agent1.id,
     "wipha.agent@srichaiproperty.com": agent2.id,
-    "theeradech.agent@srichaiproperty.com": agent3.id,
+    "meen1@gmail.com": agent3.id,
+    "patit.agent@srichaiproperty.com": agent3.id,
+    "theeradech.agent@srichaiproperty.com": agent4.id,
   };
 
   // 3. Campaigns & Promotions

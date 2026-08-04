@@ -16,13 +16,15 @@ export default function PropertyCard({ prop, isFav, toggleFavorite }: PropertyCa
     `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1d4ed8&color=fff`;
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col group relative">
+    <div className={`bg-white rounded-xl border shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col group relative ${
+      prop.isPremium ? 'border-amber-400 ring-2 ring-amber-400/30 shadow-amber-100' : 'border-slate-200'
+    }`}>
       <button 
         onClick={(e) => {
           e.preventDefault();
           toggleFavorite(prop.id);
         }}
-        className="absolute top-3 right-3 z-10 w-8 h-8 bg-white rounded-full flex items-center justify-center transition border border-slate-100 cursor-pointer"
+        className="absolute top-3 right-3 z-10 w-8 h-8 bg-white rounded-full flex items-center justify-center transition border border-slate-100 cursor-pointer shadow-sm"
       >
         <svg 
           className={`w-4 h-4 ${isFav ? 'text-red-500' : 'text-slate-400'}`} 
@@ -34,28 +36,34 @@ export default function PropertyCard({ prop, isFav, toggleFavorite }: PropertyCa
         </svg>
       </button>
 
-      <div className="absolute top-3 left-3 z-10 flex gap-1.5">
-        <span className="bg-orange-500 text-white px-2 py-0.5 rounded text-[9px] font-semibold tracking-wide">
-          {prop.tag || 'แนะนำ'}
-        </span>
-        <span className="bg-slate-800 text-white px-2 py-0.5 rounded text-[9px] font-semibold tracking-wide">
+      <div className="absolute top-3 left-3 z-10 flex flex-wrap gap-1.5">
+        {prop.isPremium ? (
+          <span className="bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black px-2.5 py-0.5 rounded text-[10px] tracking-wide shadow flex items-center gap-1">
+            ⭐ พรีเมียมพิเศษ
+          </span>
+        ) : (
+          <span className="bg-blue-600 text-white px-2 py-0.5 rounded text-[9px] font-semibold tracking-wide">
+            {prop.tag || 'ทั่วไป'}
+          </span>
+        )}
+        <span className="bg-slate-900/80 backdrop-blur-sm text-white px-2 py-0.5 rounded text-[9px] font-semibold tracking-wide">
           {prop.type}
         </span>
       </div>
 
       <Link href={`/property/${prop.id}`} className="block flex-grow">
-        <div className="relative h-44 overflow-hidden bg-slate-100">
+        <div className="relative h-40 overflow-hidden bg-slate-100">
           <Image 
             src={prop.image} 
             alt={prop.title}
             width={320}
-            height={176}
+            height={160}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
           />
         </div>
 
         <div className="p-4 space-y-2">
-          <div className="text-lg font-bold text-blue-700 leading-none">
+          <div className="text-lg font-extrabold text-blue-700 leading-none">
             {prop.price}
           </div>
           
@@ -79,18 +87,24 @@ export default function PropertyCard({ prop, isFav, toggleFavorite }: PropertyCa
         </div>
       </Link>
 
-      <div className="px-4 pb-4 pt-3 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+      <div className={`px-4 pb-4 pt-3 border-t flex items-center justify-between ${
+        prop.isPremium ? 'bg-amber-50/40 border-amber-200/50' : 'bg-slate-50/50 border-slate-100'
+      }`}>
         <div className="flex items-center gap-2">
           <Image 
             src={prop.agentImage || getInitialsAvatar(prop.agentName)} 
             alt={prop.agentName}
             width={28}
             height={28}
-            className="w-7 h-7 rounded-full object-cover"
+            className={`w-7 h-7 rounded-full object-cover ${prop.isPremium ? 'ring-2 ring-amber-400' : ''}`}
           />
           <div>
             <div className="text-[10px] font-bold text-slate-700 leading-none">{prop.agentName}</div>
-            <div className="text-[8px] text-blue-600 font-medium mt-0.5 uppercase tracking-wider">Verified Agent</div>
+            <div className={`text-[8px] font-semibold mt-0.5 uppercase tracking-wider ${
+              prop.isPremium ? 'text-amber-600 font-extrabold' : 'text-blue-600 font-medium'
+            }`}>
+              {prop.isPremium ? '👑 Premium Agent' : 'Verified Agent'}
+            </div>
           </div>
         </div>
 

@@ -16,6 +16,20 @@ export default function UpgradePage() {
   const [isDragging, setIsDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isProUser, setIsProUser] = useState(false);
+  const [planExpiredAt, setPlanExpiredAt] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    fetch('/api/user/profile')
+      .then(r => r.json())
+      .then(data => {
+        if (data.user?.isPro) {
+          setIsProUser(true);
+          setPlanExpiredAt(data.user.planExpiredAt || null);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   const handleFileChange = (file: File | null) => {
     if (!file) return;
@@ -84,6 +98,54 @@ export default function UpgradePage() {
     return (
       <div className="flex items-center justify-center min-h-[80vh]">
         <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // ===== ALREADY PRO MEMBER SCREEN =====
+  if (isProUser) {
+    return (
+      <div className="pt-20 min-h-screen flex items-center justify-center p-4 bg-slate-50">
+        <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8 text-center space-y-6 border border-slate-100">
+          <div className="w-20 h-20 bg-gradient-to-tr from-amber-400 to-yellow-300 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-amber-200">
+            <span className="text-4xl">👑</span>
+          </div>
+          <div className="space-y-1">
+            <span className="bg-amber-100 text-amber-800 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider">
+              VERIFIED PRO ACTIVE
+            </span>
+            <h1 className="text-xl font-black text-slate-900 pt-2">คุณใช้งานสมาชิก PRO อยู่แล้ว</h1>
+            <p className="text-slate-500 text-xs leading-relaxed">
+              บัญชีของคุณได้รับสิทธิ์สมาชิกพรีเมียมเรียบร้อยแล้ว ไม่ต้องอัปเกรดซ้ำ
+            </p>
+          </div>
+
+          <div className="bg-amber-50/80 rounded-2xl p-4 border border-amber-200/60 text-left space-y-2">
+            <div className="flex justify-between items-center text-xs font-bold text-amber-900 border-b border-amber-200/50 pb-2">
+              <span>สถานะแพ็กเกจ</span>
+              <span className="bg-amber-500 text-slate-950 px-2 py-0.5 rounded text-[10px]">ใช้งานอยู่</span>
+            </div>
+            <p className="text-xs text-amber-900 font-semibold flex justify-between pt-1">
+              <span>วันหมดอายุสิทธิ์:</span>
+              <span className="font-extrabold">{planExpiredAt ? new Date(planExpiredAt).toLocaleDateString('th-TH') : 'ใช้งานต่อเนื่อง'}</span>
+            </p>
+          </div>
+
+          <div className="space-y-2 pt-2">
+            <Link
+              href="/agent/add-property"
+              className="w-full block py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs transition text-center shadow-md shadow-amber-200/60 active:scale-[0.98]"
+            >
+              ➕ ลงประกาศบ้านพรีเมียมทันที
+            </Link>
+            <Link
+              href="/agent/home"
+              className="w-full block py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition text-center"
+            >
+              กลับสู่หน้าหลัก
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
