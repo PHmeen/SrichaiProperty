@@ -69,9 +69,9 @@ export async function GET(request: Request) {
           propertyId: apt.property_id || "",
           propertyTitle: prop?.title || "ไม่พบข้อมูลอสังหาฯ",
           propertyImage: propImage,
-          originalDate: (apt as Record<string, unknown>).original_date ? toDateKey((apt as Record<string, unknown>).original_date as Date) : null,
-          originalTimeSlot: ((apt as Record<string, unknown>).original_time_slot as string) || null,
-          wasEdited: Boolean((apt as Record<string, unknown>).original_date)
+          originalDate: apt.original_date ? toDateKey(apt.original_date) : null,
+          originalTimeSlot: apt.original_time_slot || null,
+          wasEdited: Boolean(apt.original_date)
         };
       });
 
@@ -117,7 +117,7 @@ export async function GET(request: Request) {
       let mappedStatus: 'upcoming' | 'past' | 'cancelled' | 'pending' = 'pending';
       if (apt.status === 'approved') mappedStatus = 'upcoming';
       else if (apt.status === 'completed' || apt.status === 'no-show') mappedStatus = 'past';
-      else if (apt.status === 'rejected') mappedStatus = 'cancelled';
+      else if (apt.status === 'rejected' || apt.status === 'cancelled') mappedStatus = 'cancelled';
       else mappedStatus = 'pending';
 
       // แมปช่วงเวลา
@@ -183,6 +183,26 @@ export async function POST(request: Request) {
 
     if (!property) {
       return NextResponse.json({ error: "ไม่พบข้อมูลอสังหาริมทรัพย์นี้" }, { status: 404 });
+    }
+
+    // ห้ามลูกค้าคนเดียวกันจองบ้านหลังเดียวกันซ้ำ ถ้ายังมีนัดหมายเดิมที่ยัง "รอยืนยัน" หรือ "ยืนยันแล้ว" ค้างอยู่
+    // ต้องรอให้นายหน้ากด "ทำเครื่องหมายเสร็จสิ้น" (เข้าชมบ้านเสร็จแล้ว) หรือถูกปฏิเสธ/ยกเลิกไปก่อน ถึงจะจองใหม่ได้
+    const existingActiveAppointment = await db.appointments.findFirst({
+      where: {
+        customer_id: user.id,
+        property_id: propertyId,
+        status: { in: ["pending", "approved"] }
+      }
+    });
+
+    if (existingActiveAppointment) {
+      const statusLabel = existingActiveAppointment.status === "approved" ? "ยืนยันแล้ว รอเข้าชม" : "รอนายหน้ายืนยัน";
+      return NextResponse.json(
+        {
+          error: `คุณมีนัดหมายเข้าชมอสังหาริมทรัพย์นี้ค้างอยู่แล้ว (สถานะ: ${statusLabel}) กรุณารอให้การนัดหมายเดิมเสร็จสิ้น หรือยกเลิกนัดหมายเดิมก่อน จึงจะจองใหม่ได้`
+        },
+        { status: 409 }
+      );
     }
 
     // แปลงข้อความ timeSlot ของหน้าบ้านกลับไปเป็นค่า 'morning' หรือ 'afternoon' ตามเงื่อนไข DB
@@ -317,6 +337,42 @@ export async function PATCH(request: Request) {
     }
 
     // -----------------------------------------------------------------
+    // (ค) ฝั่งลูกค้า: ยกเลิกนัดหมายของตัวเอง
+    // หมายเหตุ: เดิมปุ่ม "ยกเลิกนัด" ฝั่งลูกค้าแก้แค่ React state ในเบราว์เซอร์เฉยๆ
+    // ไม่เคยเรียก API เลย ทำให้ (1) วันว่างของบ้านหลังนั้นไม่เคยถูกปลดล็อกคืน
+    // และ (2) พอรีเฟรชหน้าเว็บ ระบบไปดึงสถานะจริงจาก DB มา (ซึ่งยังไม่เคยเปลี่ยน)
+    // นัดหมายที่ยกเลิกไปแล้วเลยโผล่กลับมาเหมือนเดิม จึงเพิ่ม action นี้ให้บันทึกลง DB จริง
+    // -----------------------------------------------------------------
+    if (action === "cancel") {
+      if (appointment.customer_id !== user.id) {
+        return NextResponse.json({ error: "คุณไม่มีสิทธิ์ยกเลิกนัดหมายนี้" }, { status: 403 });
+      }
+
+      if (appointment.status !== "pending" && appointment.status !== "approved") {
+        return NextResponse.json({ error: "นัดหมายนี้ไม่สามารถยกเลิกได้แล้ว" }, { status: 400 });
+      }
+
+      const updated = await db.appointments.update({
+        where: { id },
+        data: { status: "cancelled" }
+      });
+
+      // ปลดล็อกวันว่างเดิมคืน เผื่อมีลูกค้าคนอื่นมาจองแทน
+      if (appointment.property_id) {
+        await db.property_viewing_slots.updateMany({
+          where: {
+            property_id: appointment.property_id,
+            available_date: appointment.appointment_date,
+            time_slot: appointment.time_slot ?? undefined
+          },
+          data: { is_booked: false }
+        });
+      }
+
+      return NextResponse.json({ success: true, data: updated });
+    }
+
+    // -----------------------------------------------------------------
     // (ข) ฝั่งลูกค้า: แก้วัน/รอบที่จอง (ทำได้เฉพาะตอนยัง pending)
     // -----------------------------------------------------------------
     if (date && timeSlot) {
@@ -367,7 +423,7 @@ export async function PATCH(request: Request) {
         time_slot: timeSlot
       };
 
-      if (!(appointment as Record<string, unknown>).original_date) {
+      if (!appointment.original_date) {
         updateData.original_date = appointment.appointment_date;
         updateData.original_time_slot = appointment.time_slot || "morning";
       }
