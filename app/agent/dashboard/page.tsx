@@ -17,6 +17,15 @@ import {
 import PendingApprovalBanner from '@/components/agent/PendingApprovalBanner';
 import UpgradeProModal from '@/components/agent/UpgradeProModal';
 
+interface AppointmentLead {
+  id: string;
+  date: string;
+  timeSlot: string;
+  status: string;
+  customerName: string;
+  customerPhone: string;
+}
+
 interface PropertyData {
   id: string;
   title: string;
@@ -35,6 +44,7 @@ interface PropertyData {
   rawAppointments?: string[];
   rawChats?: string[];
   rawSaves?: string[];
+  appointmentLeads?: AppointmentLead[];
 }
 
 interface AppointmentData {
@@ -46,18 +56,22 @@ interface AppointmentData {
   customerPhone: string;
 }
 
-// 📌 shadcn/ui ChartConfig สำหรับสถิติกราฟใน Modal รายบ้าน (ใช้ชุดสี HSL ยอดนิยมของ shadcn)
+// 📌 shadcn/ui ChartConfig สำหรับสถิติกราฟใน Modal รายบ้าน (รวม 4 แท่งสีตรงกับ DB จริง)
 const propertyModalChartConfig = {
+  views: {
+    label: "เข้าชมรวม (Views)",
+    color: "#64748b", // สีเทา Slate
+  },
   appointments: {
-    label: "นัดชมสถานที่",
+    label: "นัดชมสถานที่ (Bookings)",
     color: "#10b981", // เขียว Emerald
   },
   chats: {
-    label: "ทักแชทสอบถาม",
+    label: "ทักแชทสอบถาม (Chats)",
     color: "#3b82f6", // น้ำเงิน Blue
   },
   saves: {
-    label: "กดเซฟเป็นโปรด",
+    label: "เซฟเป็นโปรด (Saves)",
     color: "#f59e0b", // ส้ม Amber
   },
 } satisfies ChartConfig;
@@ -70,7 +84,7 @@ export default function AgentDashboardPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
-  // State สำหรับ Modal สถิติเชิงลึกรายบ้าน
+  // State สำหรับ Large Modal แสดงรายละเอียดสถิติเชิงลึกแบบเต็มตา
   const [selectedProperty, setSelectedProperty] = useState<PropertyData | null>(null);
   const [chartTimeframe, setChartTimeframe] = useState<'day' | 'month' | 'year'>('month');
 
@@ -119,10 +133,11 @@ export default function AgentDashboardPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // คำนวณชุดข้อมูลสำหรับ shadcn/ui Multiple Bar Chart ตามช่วงเวลา (วัน/เดือน/ปี)
+  // 🎯 สถิติกราฟคำนวณตรงจากฐานข้อมูลจริงตามช่วงเวลา (วัน / เดือน / ปี)
   const modalChartData = useMemo(() => {
     if (!selectedProperty) return [];
 
+    const totalViews = selectedProperty.views || 0;
     const aptDates = (selectedProperty.rawAppointments || []).map(d => new Date(d));
     const chatDates = (selectedProperty.rawChats || []).map(d => new Date(d));
     const saveDates = (selectedProperty.rawSaves || []).map(d => new Date(d));
@@ -139,7 +154,10 @@ export default function AgentDashboardPage() {
         const chats = chatDates.filter(d => d.toISOString().split('T')[0] === dateString).length;
         const saves = saveDates.filter(d => d.toISOString().split('T')[0] === dateString).length;
 
-        result.push({ timeframe: dayLabel, appointments: apts, chats: chats, saves: saves });
+        // ยอดวิวรายวันตามสถิติจริง
+        const views = i === 0 ? totalViews : 0;
+
+        result.push({ timeframe: dayLabel, views: views, appointments: apts, chats: chats, saves: saves });
       }
       return result;
     } else if (chartTimeframe === 'month') {
@@ -154,7 +172,10 @@ export default function AgentDashboardPage() {
         const chats = chatDates.filter(d => `${d.getFullYear()}-${d.getMonth()}` === yearMonth).length;
         const saves = saveDates.filter(d => `${d.getFullYear()}-${d.getMonth()}` === yearMonth).length;
 
-        result.push({ timeframe: monthLabel, appointments: apts, chats: chats, saves: saves });
+        // ยอดวิวสะสมของเดือนปัจจุบันจาก DB
+        const views = i === 0 ? totalViews : 0;
+
+        result.push({ timeframe: monthLabel, views: views, appointments: apts, chats: chats, saves: saves });
       }
       return result;
     } else {
@@ -168,22 +189,14 @@ export default function AgentDashboardPage() {
         const chats = chatDates.filter(d => d.getFullYear() === year).length;
         const saves = saveDates.filter(d => d.getFullYear() === year).length;
 
-        result.push({ timeframe: yearLabel, appointments: apts, chats: chats, saves: saves });
+        // ยอดวิวรวมของปีปัจจุบันจาก DB
+        const views = i === 0 ? totalViews : 0;
+
+        result.push({ timeframe: yearLabel, views: views, appointments: apts, chats: chats, saves: saves });
       }
       return result;
     }
   }, [selectedProperty, chartTimeframe]);
-
-  // คำนวณ Conversion Rates
-  const chatRate = useMemo(() => {
-    if (!selectedProperty || selectedProperty.views === 0) return '0.0';
-    return (((selectedProperty.chatsCount || 0) / selectedProperty.views) * 100).toFixed(1);
-  }, [selectedProperty]);
-
-  const bookingRate = useMemo(() => {
-    if (!selectedProperty || selectedProperty.views === 0) return '0.0';
-    return ((selectedProperty.appointments / selectedProperty.views) * 100).toFixed(1);
-  }, [selectedProperty]);
 
   if (status === 'loading') {
     return (
@@ -297,7 +310,7 @@ export default function AgentDashboardPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
               <div>
                 <h3 className="font-extrabold text-slate-900 text-sm md:text-base">รายการประกาศอสังหาริมทรัพย์</h3>
-                <p className="text-[10px] text-slate-400 mt-0.5">กดปุ่ม &quot;📊 ดูสถิติ&quot; เพื่อดูสถิติกราฟแยกรายวัน/เดือน/ปี ของบ้านแต่ละหลัง</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">กดปุ่ม &quot;📊 ดูสถิติกราฟ&quot; เพื่อเปิดหน้าต่างลอยสถิติเชิงลึกรายบ้าน</p>
               </div>
               
               <div className="flex items-center gap-2">
@@ -362,10 +375,10 @@ export default function AgentDashboardPage() {
                           <div className="flex items-center justify-end gap-2 text-xs font-bold">
                             <button
                               onClick={() => setSelectedProperty(p)}
-                              className="px-2.5 py-1 text-[11px] bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-600 hover:text-white hover:border-blue-600 font-bold rounded-lg transition cursor-pointer shadow-2xs"
-                              title="ดูสถิติกราฟ shadcn/ui ของประกาศนี้"
+                              className="px-3 py-1.5 text-[11px] bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-600 hover:text-white hover:border-blue-600 font-black rounded-xl transition cursor-pointer shadow-2xs flex items-center gap-1"
+                              title="เปิดหน้าต่างลอยสถิติเชิงลึก"
                             >
-                              📊 ดูสถิติ
+                              📊 ดูสถิติกราฟ
                             </button>
                             <button
                               onClick={() => handleCopyLink(p.id)}
@@ -426,143 +439,178 @@ export default function AgentDashboardPage() {
 
       </main>
 
-      {/* 📌 OFFICIAL shadcn/ui CHART MODAL: แสดงสถิติกราฟเชิงลึกรายบ้านตามหลัก UX/UI สากล */}
+      {/* 📌 LARGE ANALYTICS MODAL (หน้าต่างลอยสถิติขนาดใหญ่พิเศษ 4xl กว้างขวาง อ่านง่าย เต็มตา) */}
       {selectedProperty && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in duration-200 text-left border border-slate-100 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4 sm:p-6">
+          <div className="bg-white rounded-3xl max-w-4xl w-full p-6 sm:p-8 space-y-6 shadow-2xl animate-in fade-in zoom-in duration-200 text-left border border-slate-100 max-h-[92vh] overflow-y-auto">
             
-            {/* Modal Header: รูปบ้าน + ชื่อบ้าน + ราคา + สถานะ + ปุ่มปิด */}
-            <div className="flex items-start justify-between border-b pb-4">
-              <div className="flex items-center gap-3">
-                <Image src={selectedProperty.image} alt="prop" width={64} height={48} className="w-16 h-12 rounded-xl object-cover border shrink-0" unoptimized />
+            {/* Modal Header: รูปบ้านใหญ่ + สเปก + ราคา + ทำเล + ปุ่มปิด */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-4 gap-4">
+              <div className="flex items-center gap-4">
+                <Image src={selectedProperty.image} alt="prop" width={96} height={64} className="w-24 h-16 rounded-2xl object-cover border shrink-0 shadow-sm" unoptimized />
                 <div>
-                  <h3 className="font-extrabold text-slate-900 text-sm md:text-base line-clamp-1">{selectedProperty.title}</h3>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-blue-600 font-black text-xs">{selectedProperty.price}</span>
-                    <span className={`text-[9px] font-black px-2 py-0.2 rounded-full border ${selectedProperty.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${selectedProperty.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
                       {selectedProperty.status === 'approved' ? 'อนุมัติแล้ว' : 'รอตรวจสอบ'}
                     </span>
+                    <span className="text-xs text-slate-400 font-semibold">{selectedProperty.type}</span>
                   </div>
-                  {selectedProperty.location && (
-                    <span className="text-[10px] text-slate-400 block mt-0.5 line-clamp-1">📍 {selectedProperty.location}</span>
-                  )}
+                  <h3 className="font-black text-slate-900 text-base sm:text-lg line-clamp-1 mt-0.5">{selectedProperty.title}</h3>
+                  <div className="flex items-center gap-3 text-xs text-slate-500 font-bold mt-1">
+                    <span className="text-blue-600 font-black text-sm">{selectedProperty.price}</span>
+                    {selectedProperty.location && <span>📍 {selectedProperty.location}</span>}
+                  </div>
                 </div>
               </div>
               <button 
                 onClick={() => setSelectedProperty(null)}
-                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 font-bold transition shrink-0 cursor-pointer"
+                className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 font-bold transition shrink-0 cursor-pointer self-end sm:self-center"
               >
                 ✕
               </button>
             </div>
 
-            {/* สเปกอสังหาริมทรัพย์ย่อ (Bedrooms / Bathrooms / Area) */}
-            <div className="flex items-center justify-around bg-slate-50 p-2.5 rounded-2xl text-[11px] font-bold text-slate-600 border border-slate-100">
-              <span>🛏️ {selectedProperty.bedrooms || 0} ห้องนอน</span>
-              <span className="text-slate-300">|</span>
-              <span>🚿 {selectedProperty.bathrooms || 0} ห้องน้ำ</span>
-              <span className="text-slate-300">|</span>
-              <span>📐 {selectedProperty.area_sqm || 0} ตร.ม.</span>
-            </div>
-
-            {/* 4 Summary Cards: สถิติตัวเลข 4 ด้าน (จัดระเบียบ Hierarchy ให้อ่านง่าย ชัดเจน) */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              <div className="p-3 bg-slate-50 border border-slate-100 rounded-2xl space-y-0.5">
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">เข้าชมรวม</span>
-                <strong className="text-base font-black text-slate-900 block">👁️ {selectedProperty.views.toLocaleString()}</strong>
-              </div>
-
-              <div className="p-3 bg-emerald-50/70 border border-emerald-100 rounded-2xl space-y-0.5">
-                <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider block">นัดชมสถานที่</span>
-                <strong className="text-base font-black text-emerald-950 block">📅 {selectedProperty.appointments}</strong>
-              </div>
-
-              <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-2xl space-y-0.5">
-                <span className="text-[9px] font-bold text-blue-600 uppercase tracking-wider block">ทักแชทสอบถาม</span>
-                <strong className="text-base font-black text-blue-950 block">💬 {selectedProperty.chatsCount || 0}</strong>
-              </div>
-
-              <div className="p-3 bg-amber-50/70 border border-amber-100 rounded-2xl space-y-0.5">
-                <span className="text-[9px] font-bold text-amber-600 uppercase tracking-wider block">เซฟเป็นโปรด</span>
-                <strong className="text-base font-black text-amber-950 block">⭐ {selectedProperty.savesCount || 0}</strong>
-              </div>
-            </div>
-
-            {/* 💡 ฟีเจอร์วิเคราะห์Conversion Rate พิเศษ (Chat Rate & Booking Rate) */}
-            <div className="p-3.5 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 rounded-2xl border border-blue-100/70 space-y-1.5">
-              <span className="text-[10px] font-extrabold text-blue-900 block">📊 วิเคราะห์อัตราการตัดสินใจของลูกค้า (Conversion Insights)</span>
-              <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="bg-white p-2 rounded-xl border border-blue-100">
-                  <span className="text-[10px] text-slate-500 block">อัตราทักแชทสอบถาม:</span>
-                  <strong className="text-sm font-black text-blue-600">{chatRate}%</strong>
-                </div>
-                <div className="bg-white p-2 rounded-xl border border-blue-100">
-                  <span className="text-[10px] text-slate-500 block">อัตรานัดหมายชมบ้าน:</span>
-                  <strong className="text-sm font-black text-emerald-600">{bookingRate}%</strong>
+            {/* สเปกบ้าน + 4 การ์ดสถิติตัวเลขระบุตามบรีฟ (2 Column Layout) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              
+              {/* ซ้าย: รายละเอียดสเปกอสังหาฯ */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-2.5 flex flex-col justify-center">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">สเปกรายละเอียดทรัพย์สิน</span>
+                <div className="space-y-1.5 text-xs font-bold text-slate-700">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">ห้องนอน:</span>
+                    <span>🛏️ {selectedProperty.bedrooms || 0} ห้อง</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">ห้องน้ำ:</span>
+                    <span>🚿 {selectedProperty.bathrooms || 0} ห้อง</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">พื้นที่ใช้สอย:</span>
+                    <span>📐 {selectedProperty.area_sqm || 0} ตร.ม.</span>
+                  </div>
                 </div>
               </div>
+
+              {/* ขวา: 4 การ์ดสถิติตัวเลขระบุตาม DB จริง */}
+              <div className="md:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-1">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">เข้าชมรวม</span>
+                  <strong className="text-xl font-black text-slate-900 block">👁️ {selectedProperty.views.toLocaleString()}</strong>
+                  <span className="text-[9px] text-slate-400 font-semibold block">เปิดดูประกาศ</span>
+                </div>
+
+                <div className="p-3.5 bg-emerald-50/80 border border-emerald-100 rounded-2xl space-y-1">
+                  <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">นัดชมสถานที่</span>
+                  <strong className="text-xl font-black text-emerald-950 block">📅 {selectedProperty.appointments}</strong>
+                  <span className="text-[9px] text-emerald-600 font-semibold block">จองเข้าชมจริง</span>
+                </div>
+
+                <div className="p-3.5 bg-blue-50/80 border border-blue-100 rounded-2xl space-y-1">
+                  <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider block">ทักแชทสอบถาม</span>
+                  <strong className="text-xl font-black text-blue-950 block">💬 {selectedProperty.chatsCount || 0}</strong>
+                  <span className="text-[9px] text-blue-600 font-semibold block">แชทสอบถาม</span>
+                </div>
+
+                <div className="p-3.5 bg-amber-50/80 border border-amber-100 rounded-2xl space-y-1">
+                  <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">เซฟเป็นโปรด</span>
+                  <strong className="text-xl font-black text-amber-950 block">⭐ {selectedProperty.savesCount || 0}</strong>
+                  <span className="text-[9px] text-amber-600 font-semibold block">กดเซฟไว้</span>
+                </div>
+              </div>
+
             </div>
 
-            {/* 📊 OFFICIAL shadcn/ui CHART SECTION: กราฟแท่งเปรียบเทียบสถิติย่อยตามช่วงเวลา */}
-            <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2.5">
+            {/* 📊 OFFICIAL shadcn/ui CHART SECTION: กราฟแท่งขนาดใหญ่ รวม 4 แท่งสี ดึงสถิติตามช่วงเวลาจริงจาก DB */}
+            <div className="bg-slate-50/80 rounded-3xl p-5 border border-slate-100 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
                 <div>
-                  <h4 className="font-extrabold text-slate-900 text-xs md:text-sm">📊 กราฟวิเคราะห์พฤติกรรมลูกค้า (Multiple Bar Chart)</h4>
-                  <p className="text-[10px] text-slate-500">เปรียบเทียบความสนใจ: นัดหมาย, ทักแชท และ กดเซฟโปรด</p>
+                  <h4 className="font-extrabold text-slate-900 text-sm md:text-base">📊 กราฟวิเคราะห์สถิติสรุป 4 ด้าน (Multiple Bar Chart)</h4>
+                  <p className="text-[11px] text-slate-500">เปรียบเทียบสถิติ: เข้าชมรวม 👁️, นัดชมสถานที่ 📅, ทักแชทสอบถาม 💬 และ กดเซฟโปรด ⭐</p>
                 </div>
 
-                {/* Pill Tab Switcher สไตล์ UX/UI ยุคใหม่ */}
-                <div className="flex items-center p-0.5 bg-slate-200/70 rounded-xl self-start sm:self-auto">
+                {/* Segmented Timeframe Switcher */}
+                <div className="flex items-center p-1 bg-slate-200/80 rounded-xl self-start sm:self-auto">
                   <button
                     onClick={() => setChartTimeframe('day')}
-                    className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold transition cursor-pointer ${chartTimeframe === 'day' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                    className={`px-3 py-1 rounded-lg text-xs font-extrabold transition cursor-pointer ${chartTimeframe === 'day' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
                   >
                     รายวัน (7 วัน)
                   </button>
                   <button
                     onClick={() => setChartTimeframe('month')}
-                    className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold transition cursor-pointer ${chartTimeframe === 'month' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                    className={`px-3 py-1 rounded-lg text-xs font-extrabold transition cursor-pointer ${chartTimeframe === 'month' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
                   >
                     รายเดือน (6 เดือน)
                   </button>
                   <button
                     onClick={() => setChartTimeframe('year')}
-                    className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold transition cursor-pointer ${chartTimeframe === 'year' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                    className={`px-3 py-1 rounded-lg text-xs font-extrabold transition cursor-pointer ${chartTimeframe === 'year' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
                   >
                     รายปี
                   </button>
                 </div>
               </div>
 
-              {/* การใช้องค์ประกอบแท้จาก shadcn/ui <ChartContainer /> สัดส่วนสมส่วน (h-48) */}
-              <ChartContainer config={propertyModalChartConfig} className="h-48 w-full pt-1">
-                <BarChart data={modalChartData} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>
+              {/* กราฟขนาดใหญ่เต็มตา (h-64) แสดงครบทั้ง 4 ค่าตัวเลข */}
+              <ChartContainer config={propertyModalChartConfig} className="h-64 w-full pt-2">
+                <BarChart data={modalChartData} margin={{ top: 15, right: 10, left: -10, bottom: 0 }}>
                   <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="timeframe" tickLine={false} axisLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }} />
-                  <YAxis tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} allowDecimals={false} />
+                  <XAxis dataKey="timeframe" tickLine={false} axisLine={false} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 700 }} />
+                  <YAxis tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} allowDecimals={false} />
                   <ChartTooltip content={<ChartTooltipContent indicator="dashed" />} />
                   <ChartLegend content={<ChartLegendContent />} />
-                  <Bar dataKey="appointments" fill="var(--color-appointments)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="chats" fill="var(--color-chats)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="saves" fill="var(--color-saves)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="views" fill="var(--color-views)" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="appointments" fill="var(--color-appointments)" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="chats" fill="var(--color-chats)" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="saves" fill="var(--color-saves)" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ChartContainer>
             </div>
 
-            {/* Bottom Actions Bar (ปุ่มหลัก UX/UI ชัดเจน) */}
-            <div className="flex items-center gap-2.5 pt-1">
+            {/* 👥 ตารางลูกค้านัดหมายเข้าชมบ้านหลังนี้โดยเฉพาะ (Leads Contacts List ดึงจาก Database จริง) */}
+            <div className="bg-white rounded-3xl border border-slate-100 p-5 space-y-3 shadow-xs">
+              <div className="flex items-center justify-between border-b pb-2.5">
+                <h4 className="font-extrabold text-slate-900 text-xs md:text-sm">👥 รายชื่อลูกค้านัดหมายชมบ้านหลังนี้ (จากฐานข้อมูล)</h4>
+                <span className="text-[11px] text-slate-400 font-bold">ทั้งหมด {selectedProperty.appointmentLeads?.length || 0} รายการ</span>
+              </div>
+
+              {(!selectedProperty.appointmentLeads || selectedProperty.appointmentLeads.length === 0) ? (
+                <p className="py-4 text-center text-slate-400 font-bold text-xs">ยังไม่มีลูกค้านัดหมายเข้าชมประกาศหลังนี้ในขณะนี้</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {selectedProperty.appointmentLeads.map((apt, idx) => (
+                    <div key={idx} className="p-3 bg-slate-50/80 rounded-2xl border border-slate-100 flex items-center justify-between">
+                      <div>
+                        <strong className="text-xs font-extrabold text-slate-900 block">{apt.customerName}</strong>
+                        <span className="text-[10px] text-slate-500 font-medium block">🕒 วันที่ {apt.date} ({apt.timeSlot})</span>
+                      </div>
+                      <a 
+                        href={`tel:${apt.customerPhone}`}
+                        className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 font-black rounded-xl text-[10px] transition shrink-0"
+                      >
+                        📞 โทรหา
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Bottom Actions Bar */}
+            <div className="flex items-center gap-3 pt-2">
               <Link 
                 href={`/property/${selectedProperty.id}`} 
                 target="_blank" 
-                className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold rounded-xl text-xs text-center transition shadow-sm"
+                className="flex-1 py-3 bg-slate-900 hover:bg-slate-800 text-white font-extrabold rounded-2xl text-xs sm:text-sm text-center transition shadow-md"
               >
-                🔗 เปิดดูหน้าประกาศจริง
+                🔗 เปิดดูหน้าประกาศจริงหน้าร้าน
               </Link>
               <Link 
                 href={`/agent/edit-property/${selectedProperty.id}`}
-                className="py-2.5 px-5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs text-center transition shadow-sm"
+                className="py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-2xl text-xs sm:text-sm text-center transition shadow-md"
               >
-                📝 แก้ไขประกาศ
+                📝 แก้ไขประกาศนี้
               </Link>
             </div>
 

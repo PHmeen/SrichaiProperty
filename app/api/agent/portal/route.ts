@@ -145,7 +145,12 @@ export async function GET(request: Request) {
       const [allAppointments, allChats, allSaves] = await Promise.all([
         db.appointments.findMany({
           where: { property_id: { in: propertyIds } },
-          select: { property_id: true, created_at: true, appointment_date: true }
+          include: {
+            users_appointments_customer_idTousers: {
+              select: { first_name: true, last_name: true, phone: true }
+            }
+          },
+          orderBy: { appointment_date: 'asc' }
         }),
         db.chat_sessions.findMany({
           where: { property_id: { in: propertyIds } },
@@ -182,11 +187,16 @@ export async function GET(request: Request) {
           rawAppointments: propApts.map(a => a.created_at.toISOString()),
           rawChats: propChats.map(c => c.created_at.toISOString()),
           rawSaves: propSaves.map(s => s.created_at.toISOString()),
-          // ข้อมูลลูกค้าที่สนใจเฉพาะของบ้านหลังนี้
-          appointmentLeads: propApts.slice(0, 5).map(a => ({
-            id: a.property_id,
-            date: a.appointment_date,
-            createdAt: a.created_at
+          // รายชื่อลูกค้านัดหมายเข้าชมบ้านหลังนี้โดยเฉพาะ
+          appointmentLeads: propApts.map(a => ({
+            id: a.id,
+            date: a.appointment_date ? a.appointment_date.toISOString().split('T')[0] : '',
+            timeSlot: a.time_slot || 'ไม่ระบุเวลา',
+            status: a.status || 'pending',
+            customerName: a.users_appointments_customer_idTousers 
+              ? `${a.users_appointments_customer_idTousers.first_name || ''} ${a.users_appointments_customer_idTousers.last_name || ''}`.trim() 
+              : 'ลูกค้าทั่วไป',
+            customerPhone: a.users_appointments_customer_idTousers?.phone || '-'
           }))
         };
       });
