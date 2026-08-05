@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Prompt } from "next/font/google";
+import { Prompt, Geist } from "next/font/google";
 import "./globals.css";
 
 const prompt = Prompt({
@@ -14,6 +14,10 @@ export const metadata: Metadata = {
 };
 
 import { Providers } from "@/app/providers";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+
 
 export default function RootLayout({
   children,
@@ -23,7 +27,7 @@ export default function RootLayout({
   return (
     <html
       lang="th"
-      className={`${prompt.variable} h-full antialiased`}
+      className={cn("h-full", "antialiased", prompt.variable, "font-sans", geist.variable)}
     >
       <body className="min-h-full flex flex-col font-sans bg-slate-50 text-slate-800">
         <Providers>
