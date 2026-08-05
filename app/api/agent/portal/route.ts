@@ -145,9 +145,45 @@ export async function GET(request: Request) {
         createdAt: p.created_at
       }));
 
-      const pendingProperties = formattedProperties.filter(p => p.status === 'pending');
+      // ดึงนัดหมายล่าสุด 5 รายการ
+      const recentAppointments = await db.appointments.findMany({
+        where: { agent_id: agent.id },
+        include: {
+          properties: true,
+          users_appointments_customer_idTousers: {
+            select: { first_name: true, last_name: true, phone: true }
+          }
+        },
+        orderBy: { appointment_date: 'asc' },
+        take: 5
+      });
+
+      // ดึงแชทที่รอนายหน้าตอบกลับ
+      const chatSessionsForReply = await db.chat_sessions.findMany({
+        where: { agent_id: agent.id },
+        include: { messages: { orderBy: { created_at: 'desc' }, take: 1 } }
+      });
+      const pendingChatCount = chatSessionsForReply.filter(
+        s => s.messages[0] && s.messages[0].sender_id !== agent.id
+      ).length;
+
+      const formattedAppointments = recentAppointments.map(apt => {
+        const customer = apt.users_appointments_customer_idTousers;
+        const customerName = customer ? `${customer.first_name} ${customer.last_name}` : 'ลูกค้าทั่วไป';
+        return {
+          id: apt.id,
+          status: apt.status,
+          date: apt.appointment_date,
+          timeSlot: apt.time_slot === 'morning' ? '10:00 - 12:00 น. (ช่วงเช้า)' : '14:00 - 16:00 น. (ช่วงบ่าย)',
+          propertyTitle: apt.properties?.title || 'อสังหาริมทรัพย์',
+          customerName,
+          customerPhone: customer?.phone || '-'
+        };
+      });
 
       const isPro = agent.plan_type === 'pro' && (!agent.plan_expired_at || new Date(agent.plan_expired_at) > new Date());
+
+      const pendingProperties = formattedProperties.filter(p => p.status === 'pending');
 
       return NextResponse.json({
         properties: formattedProperties,
@@ -158,7 +194,10 @@ export async function GET(request: Request) {
         totalViews,
         totalCount: properties.length,
         planType: agent.plan_type || 'basic',
-        isPro
+        isPro,
+        planExpiredAt: agent.plan_expired_at,
+        recentAppointments: formattedAppointments,
+        pendingChatCount
       });
     }
 
