@@ -31,6 +31,8 @@ export default function AgentDashboardPage() {
     pendingApprovalProperties?: PropertyData[];
     totalCount: number;
     totalViews: number;
+    planType?: string;
+    isPro?: boolean;
   } | null>(null);
 
   const loadDashboard = useCallback(() => {
@@ -97,6 +99,7 @@ export default function AgentDashboardPage() {
   });
 
   const pendingApprovalCount = dbData?.pendingApprovalCount || 0;
+  const isPro = dbData?.isPro || false;
 
   return (
     <div className="pt-16 min-h-screen text-slate-800 font-sans antialiased text-xs md:text-sm flex flex-col">
@@ -111,18 +114,20 @@ export default function AgentDashboardPage() {
         />
 
         {/* Top Gold Promo Banner */}
-        <section className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 rounded-3xl p-5 text-white border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-4 text-left">
-            <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500 border border-amber-500/20 text-lg">👑</div>
-            <div className="space-y-1">
-              <h4 className="font-black text-sm md:text-base">ยกระดับโปรไฟล์ด้วยแพ็กเกจ Verified PRO</h4>
-              <p className="text-slate-400 text-[10px] md:text-xs">อัปเกรดวันนี้เพื่อลงประกาศได้ไม่จำกัดจำนวน และรับสิทธิพิเศษการดันโพสต์ฟรี!</p>
+        {!isPro && (
+          <section className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 rounded-3xl p-5 text-white border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4 text-left">
+              <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500 border border-amber-500/20 text-lg">👑</div>
+              <div className="space-y-1">
+                <h4 className="font-black text-sm md:text-base">ยกระดับโปรไฟล์ด้วยแพ็กเกจ Verified PRO</h4>
+                <p className="text-slate-400 text-[10px] md:text-xs">อัปเกรดวันนี้เพื่อลงประกาศได้ไม่จำกัดจำนวน และรับสิทธิพิเศษการดันโพสต์ฟรี!</p>
+              </div>
             </div>
-          </div>
-          <button onClick={() => setShowUpgradeModal(true)} className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs shrink-0 cursor-pointer shadow-lg">
-            อัปเกรด (599.- / เดือน)
-          </button>
-        </section>
+            <button onClick={() => setShowUpgradeModal(true)} className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs shrink-0 cursor-pointer shadow-lg">
+              อัปเกรด (599.- / เดือน)
+            </button>
+          </section>
+        )}
 
         {/* Page Title & Add Button */}
         <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -131,7 +136,7 @@ export default function AgentDashboardPage() {
             <p className="text-slate-500 text-xs mt-1">แผงควบคุมสำหรับจัดการรายการประกาศอสังหาริมทรัพย์ของคุณในระบบ</p>
           </div>
           <Link href="/agent/add-property" className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-5 py-3 rounded-2xl text-xs flex items-center justify-center gap-2 transition">
-            + ลงประกาศใหม่ (เหลือ 1 สิทธิ์ฟรี)
+            + ลงประกาศใหม่ {isPro ? '(สิทธิ์ PRO ไม่จำกัด)' : `(เหลือ ${Math.max(0, 3 - (dbData?.totalCount || 0))} สิทธิ์ฟรี)`}
           </Link>
         </section>
 
@@ -139,9 +144,14 @@ export default function AgentDashboardPage() {
         <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
             <span className="text-[10px] font-bold text-slate-400 block uppercase">ประกาศของคุณ</span>
-            <strong className="text-xl md:text-2xl font-black text-slate-800 block mt-1">{dbData?.totalCount || 0} / 3</strong>
+            <strong className="text-xl md:text-2xl font-black text-slate-800 block mt-1">
+              {dbData?.totalCount || 0} {isPro ? 'ประกาศ (PRO ไม่จำกัด)' : '/ 3'}
+            </strong>
             <div className="mt-2 w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-600 rounded-full" style={{ width: `${Math.min(((dbData?.totalCount || 0) / 3) * 100, 100)}%` }} />
+              <div
+                className={`h-full ${isPro ? 'bg-amber-500' : 'bg-blue-600'} rounded-full`}
+                style={{ width: isPro ? '100%' : `${Math.min(((dbData?.totalCount || 0) / 3) * 100, 100)}%` }}
+              />
             </div>
           </div>
           <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">

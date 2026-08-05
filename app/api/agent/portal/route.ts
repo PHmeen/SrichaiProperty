@@ -147,6 +147,8 @@ export async function GET(request: Request) {
 
       const pendingProperties = formattedProperties.filter(p => p.status === 'pending');
 
+      const isPro = agent.plan_type === 'pro' && (!agent.plan_expired_at || new Date(agent.plan_expired_at) > new Date());
+
       return NextResponse.json({
         properties: formattedProperties,
         pendingApprovalCount: pendingProperties.length,
@@ -154,7 +156,9 @@ export async function GET(request: Request) {
         totalPortfolioValue: (totalPortfolioValue / 1000000).toFixed(1) + ' ลบ.',
         pendingAptsCount,
         totalViews,
-        totalCount: properties.length
+        totalCount: properties.length,
+        planType: agent.plan_type || 'basic',
+        isPro
       });
     }
 
