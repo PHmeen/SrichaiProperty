@@ -114,7 +114,13 @@ export async function GET(request: Request) {
             orderBy: { order_index: 'asc' },
             take: 1
           },
-          _count: { select: { appointments: true } }
+          _count: { 
+            select: { 
+              appointments: true,
+              chat_sessions: true,
+              saved_properties: true
+            } 
+          }
         },
         orderBy: { created_at: 'desc' }
       });
@@ -133,17 +139,57 @@ export async function GET(request: Request) {
         totalViews += p.views_count;
       });
 
-      const formattedProperties = properties.map(p => ({
-        id: p.id,
-        title: p.title,
-        price: '฿' + Number(p.price).toLocaleString(),
-        type: p.property_types?.name || 'บ้านเดี่ยว',
-        status: p.status, // approved, pending, rejected
-        image: p.property_images[0]?.image_url || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-        views: p.views_count,
-        appointments: p._count.appointments,
-        createdAt: p.created_at
-      }));
+      // ดึงสถิติตามช่วงเวลา (Appointments, Chats, Saves) ของแต่ละทรัพย์
+      const propertyIds = properties.map(p => p.id);
+      
+      const [allAppointments, allChats, allSaves] = await Promise.all([
+        db.appointments.findMany({
+          where: { property_id: { in: propertyIds } },
+          select: { property_id: true, created_at: true, appointment_date: true }
+        }),
+        db.chat_sessions.findMany({
+          where: { property_id: { in: propertyIds } },
+          select: { property_id: true, created_at: true }
+        }),
+        db.saved_properties.findMany({
+          where: { property_id: { in: propertyIds } },
+          select: { property_id: true, created_at: true }
+        })
+      ]);
+
+      const formattedProperties = properties.map(p => {
+        const propApts = allAppointments.filter(a => a.property_id === p.id);
+        const propChats = allChats.filter(c => c.property_id === p.id);
+        const propSaves = allSaves.filter(s => s.property_id === p.id);
+
+        return {
+          id: p.id,
+          title: p.title,
+          price: '฿' + Number(p.price).toLocaleString(),
+          rawPrice: Number(p.price),
+          type: p.property_types?.name || 'บ้านเดี่ยว',
+          status: p.status,
+          location: p.location,
+          bedrooms: p.bedrooms || 0,
+          bathrooms: p.bathrooms || 0,
+          area_sqm: p.area_sqm ? Number(p.area_sqm) : 0,
+          image: p.property_images[0]?.image_url || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+          views: p.views_count,
+          appointments: p._count.appointments,
+          chatsCount: p._count.chat_sessions,
+          savesCount: p._count.saved_properties,
+          createdAt: p.created_at,
+          rawAppointments: propApts.map(a => a.created_at.toISOString()),
+          rawChats: propChats.map(c => c.created_at.toISOString()),
+          rawSaves: propSaves.map(s => s.created_at.toISOString()),
+          // ข้อมูลลูกค้าที่สนใจเฉพาะของบ้านหลังนี้
+          appointmentLeads: propApts.slice(0, 5).map(a => ({
+            id: a.property_id,
+            date: a.appointment_date,
+            createdAt: a.created_at
+          }))
+        };
+      });
 
       // ดึงนัดหมายล่าสุด 5 รายการ
       const recentAppointments = await db.appointments.findMany({
