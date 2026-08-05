@@ -154,7 +154,6 @@ export default function AgentDashboardPage() {
         const chats = chatDates.filter(d => d.toISOString().split('T')[0] === dateString).length;
         const saves = saveDates.filter(d => d.toISOString().split('T')[0] === dateString).length;
 
-        // ยอดวิวรายวันตามสถิติจริง
         const views = i === 0 ? totalViews : 0;
 
         result.push({ timeframe: dayLabel, views: views, appointments: apts, chats: chats, saves: saves });
@@ -172,7 +171,6 @@ export default function AgentDashboardPage() {
         const chats = chatDates.filter(d => `${d.getFullYear()}-${d.getMonth()}` === yearMonth).length;
         const saves = saveDates.filter(d => `${d.getFullYear()}-${d.getMonth()}` === yearMonth).length;
 
-        // ยอดวิวสะสมของเดือนปัจจุบันจาก DB
         const views = i === 0 ? totalViews : 0;
 
         result.push({ timeframe: monthLabel, views: views, appointments: apts, chats: chats, saves: saves });
@@ -189,7 +187,6 @@ export default function AgentDashboardPage() {
         const chats = chatDates.filter(d => d.getFullYear() === year).length;
         const saves = saveDates.filter(d => d.getFullYear() === year).length;
 
-        // ยอดวิวรวมของปีปัจจุบันจาก DB
         const views = i === 0 ? totalViews : 0;
 
         result.push({ timeframe: yearLabel, views: views, appointments: apts, chats: chats, saves: saves });
@@ -439,7 +436,7 @@ export default function AgentDashboardPage() {
 
       </main>
 
-      {/* 📌 LARGE ANALYTICS MODAL (หน้าต่างลอยสถิติขนาดใหญ่พิเศษ 4xl กว้างขวาง อ่านง่าย เต็มตา) */}
+      {/* 📌 LARGE ANALYTICS MODAL (หน้าต่างลอยสถิติขนาดใหญ่พิเศษ 4xl) */}
       {selectedProperty && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4 sm:p-6">
           <div className="bg-white rounded-3xl max-w-4xl w-full p-6 sm:p-8 space-y-6 shadow-2xl animate-in fade-in zoom-in duration-200 text-left border border-slate-100 max-h-[92vh] overflow-y-auto">
@@ -462,6 +459,7 @@ export default function AgentDashboardPage() {
                   </div>
                 </div>
               </div>
+
               <button 
                 onClick={() => setSelectedProperty(null)}
                 className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 font-bold transition shrink-0 cursor-pointer self-end sm:self-center"
@@ -568,34 +566,37 @@ export default function AgentDashboardPage() {
               </ChartContainer>
             </div>
 
-            {/* 👥 ตารางลูกค้านัดหมายเข้าชมบ้านหลังนี้โดยเฉพาะ (Leads Contacts List ดึงจาก Database จริง) */}
-            <div className="bg-white rounded-3xl border border-slate-100 p-5 space-y-3 shadow-xs">
-              <div className="flex items-center justify-between border-b pb-2.5">
-                <h4 className="font-extrabold text-slate-900 text-xs md:text-sm">👥 รายชื่อลูกค้านัดหมายชมบ้านหลังนี้ (จากฐานข้อมูล)</h4>
-                <span className="text-[11px] text-slate-400 font-bold">ทั้งหมด {selectedProperty.appointmentLeads?.length || 0} รายการ</span>
-              </div>
+            {/* 👥 รายชื่อลูกค้านัดหมายเข้าชมบ้านหลังนี้ (แสดงเฉพาะเมื่อมีคนนัดจริงเท่านั้น ให้ UI สะอาดกระชับ) */}
+            {selectedProperty.appointmentLeads && selectedProperty.appointmentLeads.length > 0 && (
+              <div className="bg-emerald-50/40 rounded-3xl border border-emerald-100 p-5 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between border-b border-emerald-100 pb-2.5">
+                  <h4 className="font-extrabold text-emerald-950 text-xs md:text-sm flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    👥 รายชื่อลูกค้านัดหมายชมบ้านหลังนี้
+                  </h4>
+                  <span className="text-[11px] bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full font-extrabold">
+                    {selectedProperty.appointmentLeads.length} รายการนัด
+                  </span>
+                </div>
 
-              {(!selectedProperty.appointmentLeads || selectedProperty.appointmentLeads.length === 0) ? (
-                <p className="py-4 text-center text-slate-400 font-bold text-xs">ยังไม่มีลูกค้านัดหมายเข้าชมประกาศหลังนี้ในขณะนี้</p>
-              ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {selectedProperty.appointmentLeads.map((apt, idx) => (
-                    <div key={idx} className="p-3 bg-slate-50/80 rounded-2xl border border-slate-100 flex items-center justify-between">
+                    <div key={idx} className="p-3 bg-white rounded-2xl border border-emerald-100 shadow-2xs flex items-center justify-between">
                       <div>
                         <strong className="text-xs font-extrabold text-slate-900 block">{apt.customerName}</strong>
-                        <span className="text-[10px] text-slate-500 font-medium block">🕒 วันที่ {apt.date} ({apt.timeSlot})</span>
+                        <span className="text-[10px] text-slate-500 font-medium block mt-0.5">🕒 วันที่ {apt.date} ({apt.timeSlot})</span>
                       </div>
                       <a 
                         href={`tel:${apt.customerPhone}`}
-                        className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 font-black rounded-xl text-[10px] transition shrink-0"
+                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-[10px] transition shrink-0 shadow-xs"
                       >
                         📞 โทรหา
                       </a>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Bottom Actions Bar */}
             <div className="flex items-center gap-3 pt-2">

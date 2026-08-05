@@ -140,7 +140,7 @@ export async function PATCH(
       title, type_id, price, description,
       bedrooms, bathrooms, area_sqm,
       location, province_id, amphure_id, district_id,
-      images, viewingSlots
+      images, viewingSlots, status: newStatus
     } = body;
 
     if (!title || !price || !location) {
@@ -173,21 +173,23 @@ export async function PATCH(
     }
 
     // 1) อัปเดตรายละเอียดหลักของบ้าน
+    const updateData: Record<string, unknown> = {};
+    if (title) updateData.title = title;
+    if (type_id) updateData.type_id = parseInt(String(type_id));
+    if (price) updateData.price = parseFloat(String(price));
+    if (description !== undefined) updateData.description = description;
+    if (bedrooms !== undefined && bedrooms !== null && bedrooms !== "") updateData.bedrooms = parseInt(String(bedrooms));
+    if (bathrooms !== undefined && bathrooms !== null && bathrooms !== "") updateData.bathrooms = parseInt(String(bathrooms));
+    if (area_sqm !== undefined && area_sqm !== null && area_sqm !== "") updateData.area_sqm = parseFloat(String(area_sqm));
+    if (location) updateData.location = location;
+    if (province_id) updateData.province_id = parseInt(String(province_id));
+    if (amphure_id) updateData.amphure_id = parseInt(String(amphure_id));
+    if (district_id) updateData.district_id = parseInt(String(district_id));
+    if (newStatus) updateData.status = newStatus;
+
     const updated = await db.properties.update({
       where: { id },
-      data: {
-        title,
-        type_id: type_id ? parseInt(String(type_id)) : undefined,
-        price: parseFloat(String(price)),
-        description: description || "",
-        bedrooms: bedrooms !== undefined && bedrooms !== null && bedrooms !== "" ? parseInt(String(bedrooms)) : undefined,
-        bathrooms: bathrooms !== undefined && bathrooms !== null && bathrooms !== "" ? parseInt(String(bathrooms)) : undefined,
-        area_sqm: area_sqm !== undefined && area_sqm !== null && area_sqm !== "" ? parseFloat(String(area_sqm)) : undefined,
-        location,
-        province_id: province_id ? parseInt(String(province_id)) : undefined,
-        amphure_id: amphure_id ? parseInt(String(amphure_id)) : undefined,
-        district_id: district_id ? parseInt(String(district_id)) : undefined
-      }
+      data: updateData
     });
 
     // 2) อัปเดตรูปภาพ (ลบของเดิมทั้งหมดแล้วบันทึกชุดใหม่ตามลำดับที่ส่งมา)
