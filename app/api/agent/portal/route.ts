@@ -60,7 +60,7 @@ export async function GET(request: Request) {
         include: {
           properties: true,
           users_appointments_customer_idTousers: {
-            select: { first_name: true, last_name: true }
+            select: { first_name: true, last_name: true, phone: true }
           }
         },
         orderBy: { appointment_date: 'asc' },
@@ -69,17 +69,25 @@ export async function GET(request: Request) {
 
       const formattedApts = appointments.map(apt => {
         const customer = apt.users_appointments_customer_idTousers;
-        const customerName = customer ? `${customer.first_name} ${customer.last_name}` : 'ลูกค้าทั่วไป';
+        const customerName = customer 
+          ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim() 
+          : 'ลูกค้าทั่วไป';
+        const customerPhone = customer?.phone || '-';
+        const aptDateStr = apt.appointment_date ? apt.appointment_date.toISOString().split('T')[0] : '';
         return {
           id: apt.id,
-          status: apt.status === 'approved' ? 'completed' : 'pending',
-          time: apt.time_slot === 'morning' ? '10:00 น.' : '14:00 น.',
-          title: apt.status === 'approved' ? '📞 โทรติดตามลูกค้า (Follow-up)' : '🏠 พาลูกค้าดูสถานที่จริง (Site Visit)',
-          detail: `${customerName} - สนใจ ${apt.properties?.title || 'อสังหาฯ'}`,
+          status: apt.status === 'approved' || apt.status === 'completed' ? 'completed' : 'pending',
+          rawStatus: apt.status,
+          date: aptDateStr,
+          timeSlot: apt.time_slot || 'ไม่ระบุเวลา',
+          time: apt.time_slot === 'morning' ? '10:00 น.' : apt.time_slot === 'afternoon' ? '14:00 น.' : (apt.time_slot || 'ไม่ระบุเวลา'),
+          title: apt.status === 'approved' || apt.status === 'completed' ? '✓ นัดหมายสำเร็จแล้ว' : '🏠 นัดชมสถานที่จริง (Site Visit)',
+          detail: `${customerName} (📞 ${customerPhone}) - สนใจ ${apt.properties?.title || 'อสังหาฯ'}`,
           note: apt.note ? `บันทึก: ${apt.note}` : 'ยังไม่มีบันทึกนัดหมายเพิ่มเติม',
           propertyTitle: apt.properties?.title || 'อสังหาฯ',
           propertyCode: apt.property_id ? apt.property_id.substring(0, 7).toUpperCase() : 'PR-XXXX',
-          customerName
+          customerName,
+          customerPhone
         };
       });
 

@@ -8,26 +8,22 @@ import PendingApprovalBanner from '@/components/agent/PendingApprovalBanner';
 interface AppointmentData {
   id: string;
   status: 'completed' | 'pending';
+  date: string;
   time: string;
-  title: string;
-  detail: string;
-  note: string;
   propertyTitle: string;
-  propertyCode: string;
   customerName: string;
+  customerPhone: string;
 }
 
 export default function AgentHomePage() {
   const { data: session, status } = useSession();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeWorkTab, setActiveWorkTab] = useState<'all' | 'pending' | 'completed'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'completed'>('all');
   const [currentDate, setCurrentDate] = useState('');
   const [dbData, setDbData] = useState<{
     propertiesCount: number;
     pendingAptsCount: number;
     pendingApprovalCount?: number;
     isPro?: boolean;
-    planType?: string;
     totalViews: number;
     pendingChatCount: number;
     appointments: AppointmentData[];
@@ -59,225 +55,169 @@ export default function AgentHomePage() {
   if (status === 'loading') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50">
-        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
-  const user = session?.user as { name?: string | null; email?: string | null; status?: string | null };
-  const userStatus = user?.status || 'pending';
-  const userName = user?.name || 'นายหน้า ศรีชัย';
-
-  // --- 1. หน้าจอแจ้งเตือนระหว่างรออนุมัติ (Pending) ---
-  if (userStatus === 'pending') {
+  const user = session?.user as { name?: string | null; status?: string | null };
+  if (user?.status === 'pending') {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white rounded-3xl p-8 border border-slate-100 shadow-xl text-center space-y-6">
-          <div className="w-16 h-16 bg-amber-500 rounded-full flex items-center justify-center mx-auto shadow-md">
-            <span className="text-2xl text-slate-950">🕒</span>
-          </div>
-          <h1 className="text-xl font-black text-slate-800">บัญชีอยู่ระหว่างการตรวจสอบ</h1>
-          <p className="text-slate-500 text-xs leading-relaxed">
-            ทีมงาน (Admin) กำลังตรวจสอบข้อมูลยืนยันตัวตนของคุณ จะใช้เวลาประมาณ 1-2 วันทำการ เมื่ออนุมัติแล้วจะส่งอีเมลแจ้งเตือนคุณทันที
-          </p>
-          <button 
-            onClick={() => signOut({ callbackUrl: '/login/agent' })}
-            className="w-full bg-slate-900 text-white font-extrabold py-3.5 px-6 rounded-xl hover:bg-slate-950 transition shadow"
-          >
-            ออกจากระบบ
-          </button>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 text-center">
+        <div className="bg-white rounded-3xl p-8 shadow-xl max-w-md space-y-4">
+          <div className="text-4xl">🕒</div>
+          <h1 className="text-lg font-black">บัญชีอยู่ระหว่างการตรวจสอบ</h1>
+          <p className="text-xs text-slate-500">ทีมงานกำลังตรวจสอบข้อมูลของคุณ เมื่อเรียบร้อยจะแจ้งให้ทราบทันที</p>
+          <button onClick={() => signOut({ callbackUrl: '/login/agent' })} className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl">ออกจากระบบ</button>
         </div>
       </div>
     );
   }
 
-  // ตัวกรองตารางงาน
+  // ตัวกรองตารางงานตามสถานะ
   const filteredApts = (dbData?.appointments || []).filter(apt => {
-    if (activeWorkTab === 'pending') return apt.status === 'pending';
-    if (activeWorkTab === 'completed') return apt.status === 'completed';
+    if (activeTab === 'pending') return apt.status === 'pending';
+    if (activeTab === 'completed') return apt.status === 'completed';
     return true;
   });
 
   const pendingApprovalCount = dbData?.pendingApprovalCount || 0;
+  const pendingChatCount = dbData?.pendingChatCount || 0;
+  const pendingAptsCount = dbData?.pendingAptsCount || 0;
 
   return (
-    <div className="pt-16 min-h-screen text-slate-800 font-sans antialiased text-xs md:text-sm flex flex-col">
-
-      {/* 2. Main Content Container */}
-      <main className="max-w-6xl w-full mx-auto p-4 md:p-8 space-y-6 flex-1">
+    <div className="pt-16 min-h-screen bg-slate-50/50 text-slate-800 text-xs md:text-sm font-sans antialiased">
+      <main className="max-w-5xl mx-auto p-4 md:p-8 space-y-6 text-left">
         
-        {/* Pending Approval Warning Banner */}
+        {/* Banner แจ้งเตือนรออนุมัติ */}
         <PendingApprovalBanner pendingCount={pendingApprovalCount} />
 
-        {/* Welcome Banner */}
-        <section className="bg-gradient-to-r from-blue-700 to-blue-800 rounded-3xl p-6 md:p-8 text-white flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-lg shadow-blue-900/10">
-          <div className="space-y-2">
-            <span className="bg-white/10 px-3 py-1 rounded-full text-[10px] font-bold">📅 {currentDate}</span>
-            <h2 className="text-2xl font-black tracking-tight">สวัสดีคุณ{userName.split(' ')[0]} 🚀</h2>
-            <p className="text-white/80 text-[11px] leading-relaxed">
-              ระบบพบลูกค้าใหม่ที่มีแนวโน้มสนใจอสังหาฯ ในพื้นที่ตรงกับพอร์ตโฟลิโอของคุณจำนวน 3 รายการ
-            </p>
-          </div>
-          <div className="w-full md:w-80">
-            <input 
-              type="text" 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="ค้นหารหัสอสังหาฯ, ชื่อลูกค้า..." 
-              className="w-full bg-white/10 rounded-2xl px-4 py-2 text-white placeholder-white/60 font-semibold text-xs border border-white/20 outline-none"
-            />
-          </div>
+        {/* Welcome Header */}
+        <section className="bg-gradient-to-r from-blue-700 via-blue-800 to-slate-900 rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-blue-900/10 space-y-2">
+          <span className="bg-white/10 px-3 py-1 rounded-full text-[10px] font-bold border border-white/10 inline-block">📅 {currentDate}</span>
+          <h2 className="text-2xl md:text-3xl font-black tracking-tight">สวัสดีคุณ{user?.name?.split(' ')[0] || 'นายหน้า'} 🚀</h2>
+          <p className="text-white/80 text-xs leading-relaxed max-w-xl">
+            ยินดีต้อนรับสู่ศูนย์บัญชาการนายหน้าศรีชัยพรอพเพอร์ตี้ ตรวจสอบรายการคิวนัดหมายและตอบแชทลูกค้าได้ทันที
+          </p>
         </section>
 
-        {/* Quick Actions - ปุ่มลัดไปหน้าที่ใช้บ่อย */}
-        <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Link
-            href="/agent/dashboard"
-            className="group bg-white hover:bg-amber-50 rounded-2xl p-4 border-2 border-slate-100 hover:border-amber-400 shadow-sm hover:shadow-md transition-all duration-150 active:scale-[0.98] flex items-center gap-3"
-          >
-            <span className="w-11 h-11 rounded-xl bg-amber-100 group-hover:bg-amber-500 text-xl flex items-center justify-center shrink-0 transition">🏘️</span>
+        {/* 4 ปุ่มลัดพรีเมียม (Quick Actions) */}
+        <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Link href="/agent/dashboard" className="group bg-white hover:bg-amber-50/60 rounded-2xl p-4 border border-slate-100 hover:border-amber-400 shadow-2xs hover:shadow-md transition flex items-center gap-3">
+            <span className="w-10 h-10 rounded-xl bg-amber-100 group-hover:bg-amber-500 group-hover:text-white text-lg flex items-center justify-center shrink-0 transition">🏘️</span>
             <div className="min-w-0">
-              <p className="font-black text-slate-900 text-xs">จัดการบ้านของฉัน</p>
-              <p className="text-[10px] text-slate-400 font-bold">ดู แก้ไข และลบประกาศทั้งหมด</p>
+              <p className="font-black text-slate-900">จัดการบ้าน</p>
+              <p className="text-[10px] text-slate-400 font-semibold truncate">ประกาศของฉัน</p>
             </div>
           </Link>
 
-          <Link
-            href="/agent/appointments"
-            className="group bg-white hover:bg-blue-50 rounded-2xl p-4 border-2 border-slate-100 hover:border-blue-400 shadow-sm hover:shadow-md transition-all duration-150 active:scale-[0.98] flex items-center gap-3 relative"
-          >
-            <span className="w-11 h-11 rounded-xl bg-blue-100 group-hover:bg-blue-500 text-xl flex items-center justify-center shrink-0 transition">📋</span>
+          <Link href="/agent/appointments" className="group bg-white hover:bg-blue-50/60 rounded-2xl p-4 border border-slate-100 hover:border-blue-400 shadow-2xs hover:shadow-md transition flex items-center gap-3 relative">
+            <span className="w-10 h-10 rounded-xl bg-blue-100 group-hover:bg-blue-500 group-hover:text-white text-lg flex items-center justify-center shrink-0 transition">📋</span>
             <div className="min-w-0">
-              <p className="font-black text-slate-900 text-xs">จัดการคิวนัดหมาย</p>
-              <p className="text-[10px] text-slate-400 font-bold">ยืนยัน / ปฏิเสธคำขอเข้าชมบ้าน</p>
+              <p className="font-black text-slate-900">คิวนัดหมาย</p>
+              <p className="text-[10px] text-slate-400 font-semibold truncate">พาลูกค้าชมบ้าน</p>
             </div>
-            {(dbData?.pendingAptsCount || 0) > 0 && (
-              <span className="absolute top-3 right-3 bg-red-500 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow">
-                {dbData?.pendingAptsCount}
+            {pendingAptsCount > 0 && (
+              <span className="absolute top-2.5 right-2.5 bg-blue-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-2xs">
+                {pendingAptsCount}
               </span>
             )}
           </Link>
 
-          <Link
-            href="/agent/add-property"
-            className="group bg-white hover:bg-emerald-50 rounded-2xl p-4 border-2 border-slate-100 hover:border-emerald-400 shadow-sm hover:shadow-md transition-all duration-150 active:scale-[0.98] flex items-center gap-3"
-          >
-            <span className="w-11 h-11 rounded-xl bg-emerald-100 group-hover:bg-emerald-500 text-xl flex items-center justify-center shrink-0 transition">➕</span>
+          <Link href="/agent/chat" className="group bg-white hover:bg-emerald-50/60 rounded-2xl p-4 border border-slate-100 hover:border-emerald-400 shadow-2xs hover:shadow-md transition flex items-center gap-3 relative">
+            <span className="w-10 h-10 rounded-xl bg-emerald-100 group-hover:bg-emerald-500 group-hover:text-white text-lg flex items-center justify-center shrink-0 transition">💬</span>
             <div className="min-w-0">
-              <p className="font-black text-slate-900 text-xs">ลงประกาศใหม่</p>
-              <p className="text-[10px] text-slate-400 font-bold">เพิ่มบ้านพร้อมวันว่างเข้าชม</p>
+              <p className="font-black text-slate-900">ข้อความแชท</p>
+              <p className="text-[10px] text-slate-400 font-semibold truncate">ตอบแชทลูกค้า</p>
+            </div>
+            {pendingChatCount > 0 && (
+              <span className="absolute top-2.5 right-2.5 bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-2xs animate-pulse">
+                {pendingChatCount}
+              </span>
+            )}
+          </Link>
+
+          <Link href="/agent/add-property" className="group bg-white hover:bg-purple-50/60 rounded-2xl p-4 border border-slate-100 hover:border-purple-400 shadow-2xs hover:shadow-md transition flex items-center gap-3">
+            <span className="w-10 h-10 rounded-xl bg-purple-100 group-hover:bg-purple-500 group-hover:text-white text-lg flex items-center justify-center shrink-0 transition">➕</span>
+            <div className="min-w-0">
+              <p className="font-black text-slate-900">ลงประกาศ</p>
+              <p className="text-[10px] text-slate-400 font-semibold truncate">เพิ่มทรัพย์สินใหม่</p>
             </div>
           </Link>
         </section>
 
-        {/* Stats Grid */}
+        {/* 4 Cards สถิติตัวเลขหลัก */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
-            <span className="text-[10px] font-bold text-slate-400 block uppercase">ประกาศที่เปิดขาย</span>
-            <strong className="text-xl md:text-2xl font-black text-slate-800 block mt-1">{dbData?.propertiesCount || 0} รายการ</strong>
+          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-2xs">
+            <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">ประกาศทั้งหมด</span>
+            <strong className="text-xl font-black text-slate-900 block mt-1">{dbData?.propertiesCount || 0} รายการ</strong>
           </div>
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
-            <span className="text-[10px] font-bold text-slate-400 block uppercase">ยอดวิวรวม</span>
-            <strong className="text-xl md:text-2xl font-black text-slate-800 block mt-1">{(dbData?.totalViews || 0).toLocaleString()}</strong>
+          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-2xs">
+            <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">ยอดเข้าชมรวม</span>
+            <strong className="text-xl font-black text-slate-900 block mt-1">{(dbData?.totalViews || 0).toLocaleString()} ครั้ง</strong>
           </div>
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
-            <span className="text-[10px] font-bold text-slate-400 block uppercase">แชทที่รอตอบ</span>
-            <strong className={`text-xl md:text-2xl font-black block mt-1 ${(dbData?.pendingChatCount || 0) > 0 ? 'text-red-500' : 'text-slate-800'}`}>{dbData?.pendingChatCount || 0} รายการ</strong>
+          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-2xs">
+            <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">แชทที่รอตอบ</span>
+            <strong className={`text-xl font-black block mt-1 ${pendingChatCount > 0 ? 'text-red-500' : 'text-slate-900'}`}>{pendingChatCount} รายการ</strong>
           </div>
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
-            <span className="text-[10px] font-bold text-slate-400 block uppercase">โควต้าลงประกาศ</span>
-            <strong className="text-xl md:text-2xl font-black text-amber-600 block mt-1">
+          <Link href="/agent/upgrade" className="bg-white hover:bg-amber-50/50 rounded-2xl p-4 border border-slate-100 hover:border-amber-400 shadow-2xs hover:shadow-md transition block group">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">โควต้าลงประกาศ</span>
+              <span className="text-[10px] font-black text-amber-600 group-hover:underline">อัปเกรด PRO →</span>
+            </div>
+            <strong className="text-xl font-black text-amber-600 block mt-1">
               {dbData?.isPro ? 'ไม่จำกัด 👑' : `${Math.max(0, 3 - (dbData?.propertiesCount || 0))} / 3`}
             </strong>
+          </Link>
+        </section>
+
+        {/* 📅 ตารางนัดหมายพาลูกค้าชมบ้าน (Single Column Full Width Layout) */}
+        <section className="bg-white rounded-3xl border border-slate-100 shadow-2xs overflow-hidden">
+          <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+            <div>
+              <h3 className="font-extrabold text-slate-900 text-sm md:text-base">📅 ตารางนัดหมายพาลูกค้าชมบ้าน</h3>
+              <p className="text-[10px] text-slate-400 mt-0.5">รายการคิวนัดหมายจากฐานข้อมูลเรียลไทม์</p>
+            </div>
+            <Link href="/agent/appointments" className="text-blue-600 font-bold text-xs hover:underline">
+              ดูทั้งหมด →
+            </Link>
+          </div>
+
+          {/* สวิตช์แถบกรอง */}
+          <div className="px-5 py-3.5 bg-slate-50/70 border-b border-slate-100 flex gap-2">
+            <button onClick={() => setActiveTab('all')} className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer ${activeTab === 'all' ? 'bg-slate-900 text-white shadow-2xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}`}>ทั้งหมด ({dbData?.appointments.length || 0})</button>
+            <button onClick={() => setActiveTab('pending')} className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer ${activeTab === 'pending' ? 'bg-slate-900 text-white shadow-2xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}`}>รอนัดพบ ({dbData?.appointments.filter(a => a.status === 'pending').length || 0})</button>
+            <button onClick={() => setActiveTab('completed')} className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer ${activeTab === 'completed' ? 'bg-slate-900 text-white shadow-2xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}`}>เสร็จสิ้นแล้ว ({dbData?.appointments.filter(a => a.status === 'completed').length || 0})</button>
+          </div>
+
+          {/* รายการนัดหมาย */}
+          <div className="p-5 space-y-3">
+            {filteredApts.length === 0 ? (
+              <p className="py-10 text-center text-slate-400 font-bold">ไม่มีรายการนัดหมายในขณะนี้</p>
+            ) : (
+              filteredApts.map(apt => (
+                <div key={apt.id} className="p-4 bg-slate-50/70 border border-slate-100 hover:border-blue-100 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition shadow-2xs">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold px-2 py-0.5 bg-white border border-slate-200 rounded-md text-slate-700">📅 {apt.date || 'ไม่ระบุวัน'} ({apt.time})</span>
+                      <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${apt.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
+                        {apt.status === 'completed' ? 'เสร็จสิ้นแล้ว' : 'รอนัดพบ'}
+                      </span>
+                    </div>
+                    <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm">🏠 {apt.propertyTitle}</h4>
+                    <p className="text-slate-600 text-xs font-medium">👤 ลูกค้า: <strong>{apt.customerName}</strong></p>
+                  </div>
+
+                  <a href={`tel:${apt.customerPhone}`} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl text-xs text-center transition shrink-0 shadow-2xs">
+                    📞 โทรหา ({apt.customerPhone})
+                  </a>
+                </div>
+              ))
+            )}
           </div>
         </section>
 
-        {/* 2 Column Main Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* Left Column: Schedule */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="font-extrabold text-slate-900 text-sm md:text-base">📅 ตารางงานนัดหมายเข้าชมบ้าน</h3>
-              </div>
-
-              {/* Filtering Tabs */}
-              <div className="px-5 py-3.5 bg-slate-50/50 border-b border-slate-100 flex gap-2">
-                <button onClick={() => setActiveWorkTab('all')} className={`px-3 py-1.5 rounded-xl text-xs font-bold ${activeWorkTab === 'all' ? 'bg-[#0f172a] text-white' : 'bg-white border text-slate-600'}`}>ทั้งหมด ({dbData?.appointments.length || 0})</button>
-                <button onClick={() => setActiveWorkTab('pending')} className={`px-3 py-1.5 rounded-xl text-xs font-bold ${activeWorkTab === 'pending' ? 'bg-[#0f172a] text-white' : 'bg-white border text-slate-600'}`}>รอการดำเนินการ ({dbData?.appointments.filter(a => a.status === 'pending').length || 0})</button>
-                <button onClick={() => setActiveWorkTab('completed')} className={`px-3 py-1.5 rounded-xl text-xs font-bold ${activeWorkTab === 'completed' ? 'bg-[#0f172a] text-white' : 'bg-white border text-slate-600'}`}>เสร็จสิ้น ({dbData?.appointments.filter(a => a.status === 'completed').length || 0})</button>
-              </div>
-
-              {/* List */}
-              <div className="p-5 space-y-4">
-                {filteredApts.length === 0 ? (
-                  <p className="text-slate-400 text-center font-bold py-6">ไม่มีตารางงานนัดหมายในช่วงนี้</p>
-                ) : (
-                  filteredApts.map(apt => (
-                    <div key={apt.id} className="flex gap-3">
-                      <div className="flex flex-col items-center">
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${apt.status === 'completed' ? 'bg-emerald-500' : 'bg-blue-500'}`}>
-                          {apt.status === 'completed' ? '✓' : '🕒'}
-                        </div>
-                        <div className="w-0.5 bg-slate-100 flex-1 my-1" />
-                      </div>
-                      <div className="flex-1 bg-white border border-slate-100 rounded-2xl p-4 space-y-2 text-left">
-                        <span className="text-[10px] font-bold text-slate-400 block">{apt.time} ({apt.status === 'completed' ? 'เสร็จสิ้นแล้ว' : 'นัดหมายรอพบ'})</span>
-                        <h4 className="font-extrabold text-slate-900 text-xs md:text-sm">{apt.title}</h4>
-                        <p className="text-slate-500 text-[11px] font-semibold">{apt.detail}</p>
-                        <div className={`border-l-2 pl-3 py-0.5 mt-2 ${apt.status === 'completed' ? 'border-emerald-500 bg-emerald-50/10' : 'border-blue-500 bg-blue-50/10'}`}>
-                          <p className="text-slate-600 italic text-[10px] leading-relaxed">{apt.note}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column: Sidebar */}
-          <div className="space-y-6">
-            <div className="bg-gradient-to-br from-[#1e293b] to-[#0f172a] rounded-3xl p-6 text-white border border-slate-800 shadow-xl space-y-4 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full -translate-y-6 translate-x-6 blur-xl" />
-              <span className="bg-amber-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded-full uppercase">
-                {dbData?.isPro ? 'VERIFIED PRO ACTIVE 👑' : 'VERIFIED PRO 👑'}
-              </span>
-              <h3 className="text-base font-black tracking-tight">
-                {dbData?.isPro ? 'คุณใช้งานสมาชิก PRO อยู่แล้ว' : 'ขยายธุรกิจแบบไร้ขีดจำกัด'}
-              </h3>
-              <p className="text-slate-400 text-[10px] leading-relaxed">
-                {dbData?.isPro 
-                  ? 'คุณสามารถลงประกาศได้ไม่จำกัดจำนวน พร้อมสิทธิ์ดันประกาศฟรีทุกเดือน' 
-                  : 'ดันประกาศและฟีเจอร์พรีเมียมเฉพาะตัวแทนที่อัปเกรดเพื่อรับยอดเข้าชมและฐานลูกค้าที่กว้างขวางขึ้น'}
-              </p>
-              <Link 
-                href="/agent/upgrade" 
-                className="w-full block py-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-xl text-xs transition text-center active:scale-[0.98]"
-              >
-                {dbData?.isPro ? 'ดูรายละเอียดแพ็กเกจ PRO' : 'อัปเกรด (599.-/เดือน) →'}
-              </Link>
-            </div>
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 space-y-3">
-              <h4 className="font-extrabold text-slate-900 text-xs md:text-sm border-b pb-3">📚 ข่าวสาร & คลังความรู้</h4>
-              <div className="space-y-3.5 text-left">
-                <div className="pb-2 border-b">
-                  <span className="text-[9px] font-extrabold text-red-500">ประกาศระบบ (สำคัญ)</span>
-                  <h5 className="font-bold text-slate-800 text-[11px] mt-0.5">ข้อควรระวัง: พ.ร.บ. PDPA กับการถ่ายรูปติดบุคคลอื่น</h5>
-                </div>
-                <div>
-                  <span className="text-[9px] font-extrabold text-blue-600">เทคนิคปิดดีลขาย</span>
-                  <h5 className="font-bold text-slate-800 text-[11px] mt-0.5">แจกสคริปต์ตอบแชทชนะใจ พลิกวิกฤตเมื่อลูกค้าต่อราคา</h5>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-
       </main>
-
     </div>
   );
 }
