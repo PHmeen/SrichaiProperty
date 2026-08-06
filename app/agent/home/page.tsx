@@ -28,6 +28,8 @@ export default function AgentHomePage() {
     pendingChatCount: number;
     appointments: AppointmentData[];
   } | null>(null);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     const days = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
@@ -46,7 +48,11 @@ export default function AgentHomePage() {
       fetch('/api/agent/portal?type=home')
         .then(res => res.json())
         .then(data => setDbData(data))
-        .catch(err => console.error('Error fetching home data:', err));
+        .catch(err => {
+          console.error('Error fetching home data:', err);
+          setLoadError(true);
+        })
+        .finally(() => setIsLoadingData(false));
     }
 
     return () => clearTimeout(timer);
@@ -75,11 +81,14 @@ export default function AgentHomePage() {
   }
 
   // ตัวกรองตารางงานตามสถานะ
-  const filteredApts = (dbData?.appointments || []).filter(apt => {
-    if (activeTab === 'pending') return apt.status === 'pending';
-    if (activeTab === 'completed') return apt.status === 'completed';
-    return true;
-  });
+  const appointments = dbData?.appointments || [];
+  const pendingAptsList = appointments.filter(a => a.status === 'pending');
+  const completedAptsList = appointments.filter(a => a.status === 'completed');
+  const filteredApts = (
+    activeTab === 'pending' ? pendingAptsList :
+    activeTab === 'completed' ? completedAptsList :
+    appointments
+  ).slice(0, 5);
 
   const pendingApprovalCount = dbData?.pendingApprovalCount || 0;
   const pendingChatCount = dbData?.pendingChatCount || 0;
@@ -148,18 +157,18 @@ export default function AgentHomePage() {
 
         {/* 4 Cards สถิติตัวเลขหลัก */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-2xs">
+          <Link href="/agent/dashboard" className="bg-white hover:bg-slate-50 rounded-2xl p-4 border border-slate-100 hover:border-slate-300 shadow-2xs hover:shadow-md transition block">
             <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">ประกาศทั้งหมด</span>
             <strong className="text-xl font-black text-slate-900 block mt-1">{dbData?.propertiesCount || 0} รายการ</strong>
-          </div>
+          </Link>
           <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-2xs">
             <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">ยอดเข้าชมรวม</span>
             <strong className="text-xl font-black text-slate-900 block mt-1">{(dbData?.totalViews || 0).toLocaleString()} ครั้ง</strong>
           </div>
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-2xs">
+          <Link href="/agent/chat" className="bg-white hover:bg-emerald-50/50 rounded-2xl p-4 border border-slate-100 hover:border-emerald-400 shadow-2xs hover:shadow-md transition block">
             <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">แชทที่รอตอบ</span>
             <strong className={`text-xl font-black block mt-1 ${pendingChatCount > 0 ? 'text-red-500' : 'text-slate-900'}`}>{pendingChatCount} รายการ</strong>
-          </div>
+          </Link>
           <Link href="/agent/upgrade" className="bg-white hover:bg-amber-50/50 rounded-2xl p-4 border border-slate-100 hover:border-amber-400 shadow-2xs hover:shadow-md transition block group">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">โควต้าลงประกาศ</span>
@@ -185,14 +194,22 @@ export default function AgentHomePage() {
 
           {/* สวิตช์แถบกรอง */}
           <div className="px-5 py-3.5 bg-slate-50/70 border-b border-slate-100 flex gap-2">
-            <button onClick={() => setActiveTab('all')} className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer ${activeTab === 'all' ? 'bg-slate-900 text-white shadow-2xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}`}>ทั้งหมด ({dbData?.appointments.length || 0})</button>
-            <button onClick={() => setActiveTab('pending')} className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer ${activeTab === 'pending' ? 'bg-slate-900 text-white shadow-2xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}`}>รอนัดพบ ({dbData?.appointments.filter(a => a.status === 'pending').length || 0})</button>
-            <button onClick={() => setActiveTab('completed')} className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer ${activeTab === 'completed' ? 'bg-slate-900 text-white shadow-2xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}`}>เสร็จสิ้นแล้ว ({dbData?.appointments.filter(a => a.status === 'completed').length || 0})</button>
+            <button onClick={() => setActiveTab('all')} className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer ${activeTab === 'all' ? 'bg-slate-900 text-white shadow-2xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}`}>ทั้งหมด ({appointments.length})</button>
+            <button onClick={() => setActiveTab('pending')} className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer ${activeTab === 'pending' ? 'bg-slate-900 text-white shadow-2xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}`}>รอนัดพบ ({pendingAptsList.length})</button>
+            <button onClick={() => setActiveTab('completed')} className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer ${activeTab === 'completed' ? 'bg-slate-900 text-white shadow-2xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}`}>เสร็จสิ้นแล้ว ({completedAptsList.length})</button>
           </div>
 
           {/* รายการนัดหมาย */}
           <div className="p-5 space-y-3">
-            {filteredApts.length === 0 ? (
+            {isLoadingData ? (
+              <div className="space-y-3 animate-pulse">
+                {[0, 1, 2].map(i => (
+                  <div key={i} className="h-20 bg-slate-100 rounded-2xl" />
+                ))}
+              </div>
+            ) : loadError ? (
+              <p className="py-10 text-center text-red-400 font-bold">โหลดข้อมูลนัดหมายไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</p>
+            ) : filteredApts.length === 0 ? (
               <p className="py-10 text-center text-slate-400 font-bold">ไม่มีรายการนัดหมายในขณะนี้</p>
             ) : (
               filteredApts.map(apt => (
@@ -208,9 +225,13 @@ export default function AgentHomePage() {
                     <p className="text-slate-600 text-xs font-medium">👤 ลูกค้า: <strong>{apt.customerName}</strong></p>
                   </div>
 
-                  <a href={`tel:${apt.customerPhone}`} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl text-xs text-center transition shrink-0 shadow-2xs">
-                    📞 โทรหา ({apt.customerPhone})
-                  </a>
+                  {apt.customerPhone ? (
+                    <a href={`tel:${apt.customerPhone}`} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl text-xs text-center transition shrink-0 shadow-2xs">
+                      📞 โทรหา ({apt.customerPhone})
+                    </a>
+                  ) : (
+                    <span className="px-4 py-2 bg-slate-100 text-slate-400 font-black rounded-xl text-xs text-center shrink-0">ไม่มีเบอร์ติดต่อ</span>
+                  )}
                 </div>
               ))
             )}
