@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import StatCards from '@/components/admin/StatCards';
 import ModerationList from '@/components/admin/ModerationList';
+
+const REFRESH_INTERVAL_MS = 15000;
 
 interface ModerationItem {
   id: string;
@@ -26,17 +28,49 @@ interface NewAgent {
   initials: string;
 }
 
+interface Toast {
+  id: number;
+  message: string;
+  variant: 'success' | 'error';
+}
+
 export default function AdminDashboardPage() {
   const [moderationItems, setModerationItems] = useState<ModerationItem[]>([]);
   const [newAgents, setNewAgents] = useState<NewAgent[]>([]);
 
   const [pendingCount, setPendingCount] = useState(0);
-  const [onlineCount, setOnlineCount] = useState(0);
+  const [approvedListingsCount, setApprovedListingsCount] = useState(0);
   const [agentsCount, setAgentsCount] = useState(0);
   const [proAgentsCount, setProAgentsCount] = useState(0);
   const [reportsCount, setReportsCount] = useState(0);
+  const [adminIp, setAdminIp] = useState<string>('...');
 
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // --- Notification dropdown ---
+  const [showNotifications, setShowNotifications] = useState(false);
+  const notificationsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (notificationsRef.current && !notificationsRef.current.contains(e.target as Node)) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
+
+  // --- Toast notifications (แทน alert()) ---
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const showToast = (message: string, variant: Toast['variant'] = 'success') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, variant }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
+  };
 
   // --- 1. Terminal Log State ---
   const [logs, setLogs] = useState<string[]>([]);
@@ -45,34 +79,103 @@ export default function AdminDashboardPage() {
     setLogs(prev => [newLog, ...prev]);
   };
 
-  // --- 2. ดึงข้อมูลจากฐานข้อมูลจริงเมื่อโหลดหน้าจอ ---
-  const fetchDashboardData = () => {
+  // --- 2. ดึงข้อมูลจากฐานข้อมูลจริงเมื่อโหลดหน้าจอ (พร้อม polling เพื่อให้เป็น Real-time จริง) ---
+  const fetchDashboardData = (isBackground = false) => {
     fetch('/api/admin/dashboard')
       .then(res => res.json())
       .then(data => {
         if (!data.error) {
           setPendingCount(data.pendingCount);
-          setOnlineCount(data.onlineCount);
+          setApprovedListingsCount(data.approvedListingsCount);
           setAgentsCount(data.agentsCount);
           setProAgentsCount(data.proAgentsCount);
           setModerationItems(data.moderationItems);
           setNewAgents(data.newAgents);
           setReportsCount(data.reportsCount);
+          setAdminIp(data.adminIp || 'unknown');
           if (data.systemLogs && data.systemLogs.length > 0) {
             setLogs(data.systemLogs);
           }
+          setFetchError(null);
+        } else {
+          setFetchError(data.error);
         }
         setLoading(false);
       })
       .catch(err => {
         console.error("Error fetching admin dashboard data:", err);
+        if (!isBackground) setFetchError('ไม่สามารถเชื่อมต่อฐานข้อมูลได้ กรุณาลองใหม่อีกครั้ง');
         setLoading(false);
       });
   };
 
   useEffect(() => {
     fetchDashboardData();
+    const interval = setInterval(() => fetchDashboardData(true), REFRESH_INTERVAL_MS);
+    return () => clearInterval(interval);
   }, []);
+
+  const filteredModerationItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return moderationItems;
+    return moderationItems.filter(item =>
+      item.title.toLowerCase().includes(q) ||
+      item.code.toLowerCase().includes(q) ||
+      item.seller.toLowerCase().includes(q)
+    );
+  }, [moderationItems, searchQuery]);
+
+  interface NotificationItem {
+    id: string;
+    icon: string;
+    text: string;
+    href: string;
+    urgent?: boolean;
+  }
+
+  const notifications = useMemo<NotificationItem[]>(() => {
+    const items: NotificationItem[] = [];
+
+    moderationItems
+      .filter(m => m.slaUrgent)
+      .forEach(m => items.push({
+        id: `sla-${m.id}`,
+        icon: '⏱️',
+        text: `ประกาศ "${m.title}" ใกล้เกินกำหนด SLA (${m.sla})`,
+        href: '/admin/moderation',
+        urgent: true
+      }));
+
+    if (reportsCount > 0) {
+      items.push({
+        id: 'reports',
+        icon: '⚠️',
+        text: `มีรายงานปัญหาจากลูกค้ารอตรวจสอบ ${reportsCount} รายการ`,
+        href: '/admin/reports',
+        urgent: true
+      });
+    }
+
+    if (pendingCount > 0) {
+      items.push({
+        id: 'pending',
+        icon: '📋',
+        text: `มีประกาศรออนุมัติทั้งหมด ${pendingCount} รายการ`,
+        href: '/admin/moderation'
+      });
+    }
+
+    newAgents.slice(0, 3).forEach(a => items.push({
+      id: `agent-${a.id}`,
+      icon: '👤',
+      text: `นายหน้าใหม่ "${a.name}" สมัครเข้าระบบ (${a.timeAgo})`,
+      href: '/admin/users'
+    }));
+
+    return items;
+  }, [moderationItems, reportsCount, pendingCount, newAgents]);
+
+  const urgentNotificationCount = notifications.filter(n => n.urgent).length;
 
   // --- 3. ฟังก์ชันส่งคำขออนุมัติไปยังฐานข้อมูลจริง (PATCH) ---
   const handleApprove = async (id: string, title: string) => {
@@ -85,14 +188,14 @@ export default function AdminDashboardPage() {
       const data = await res.json();
       if (data.success) {
         addLog(`[${new Date().toLocaleTimeString('th-TH')}] SUCCESS: Approved "${title}" by Admin_Root.`);
-        alert(`อนุมัติคำขอ "${title}" และเผยแพร่ขึ้นฐานข้อมูลสำเร็จ`);
+        showToast(`อนุมัติคำขอ "${title}" และเผยแพร่ขึ้นฐานข้อมูลสำเร็จ`, 'success');
         fetchDashboardData(); // ดึงข้อมูลใหม่
       } else {
-        alert("เกิดข้อผิดพลาด: " + (data.error || "ไม่สามารถดำเนินการได้"));
+        showToast("เกิดข้อผิดพลาด: " + (data.error || "ไม่สามารถดำเนินการได้"), 'error');
       }
     } catch (err) {
       console.error(err);
-      alert("เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล");
+      showToast("เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล", 'error');
     }
   };
 
@@ -107,14 +210,14 @@ export default function AdminDashboardPage() {
       const data = await res.json();
       if (data.success) {
         addLog(`[${new Date().toLocaleTimeString('th-TH')}] REJECTED: Rejected "${title}" by Admin_Root.`);
-        alert(`ปฏิเสธคำขอ "${title}" เรียบร้อยแล้ว`);
+        showToast(`ปฏิเสธคำขอ "${title}" เรียบร้อยแล้ว`, 'success');
         fetchDashboardData(); // ดึงข้อมูลใหม่
       } else {
-        alert("เกิดข้อผิดพลาด: " + (data.error || "ไม่สามารถดำเนินการได้"));
+        showToast("เกิดข้อผิดพลาด: " + (data.error || "ไม่สามารถดำเนินการได้"), 'error');
       }
     } catch (err) {
       console.error(err);
-      alert("เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล");
+      showToast("เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล", 'error');
     }
   };
 
@@ -128,14 +231,29 @@ export default function AdminDashboardPage() {
 
   return (
     <>
+      {/* Toast notifications */}
+      <div className="fixed top-4 right-4 z-50 space-y-2 w-80">
+        {toasts.map(t => (
+          <div
+            key={t.id}
+            className={`px-4 py-3 rounded-xl shadow-lg font-bold text-sm text-white ${t.variant === 'success' ? 'bg-emerald-600' : 'bg-rose-600'}`}
+          >
+            {t.message}
+          </div>
+        ))}
+      </div>
+
       {/* Top Header */}
         <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 shadow-sm">
           {/* Search Box */}
           <div className="relative w-80">
             <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">🔍</span>
-            <input 
-              type="text" 
-              placeholder="ค้นหาประกาศ (PRJ-XXX), รหัสนายหน้า..." 
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="ค้นหาประกาศ (ชื่อ, PRJ-XXX), รหัส/ชื่อนายหน้า..."
+              aria-label="ค้นหาประกาศหรือนายหน้า"
               className="w-full pl-8 pr-4 py-1.5 bg-slate-100 border border-slate-200 rounded-full focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all font-semibold"
             />
           </div>
@@ -143,32 +261,79 @@ export default function AdminDashboardPage() {
           {/* Admin Stats Status */}
           <div className="flex items-center gap-4">
             <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-[9px] font-black tracking-wide border border-slate-200">
-              IP: 192.168.1.1 (Secure)
+              IP: {adminIp}
             </span>
-            <button className="relative w-8 h-8 rounded-full border border-slate-200 hover:bg-slate-50 flex items-center justify-center transition-colors">
-              🔔
-              <span className="absolute top-1 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-            </button>
+            <div className="relative" ref={notificationsRef}>
+              <button
+                type="button"
+                onClick={() => setShowNotifications(v => !v)}
+                aria-label={`การแจ้งเตือน (${notifications.length} รายการ)`}
+                className="relative w-8 h-8 rounded-full border border-slate-200 hover:bg-slate-50 flex items-center justify-center transition-colors"
+              >
+                🔔
+                {urgentNotificationCount > 0 && (
+                  <span className="absolute top-1 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+                )}
+              </button>
+
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl border border-slate-200 shadow-xl z-50 overflow-hidden">
+                  <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                    <span className="font-extrabold text-slate-800 text-sm">🔔 การแจ้งเตือน</span>
+                    <span className="text-[9px] text-slate-400 font-bold">{notifications.length} รายการ</span>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+                    {notifications.length === 0 ? (
+                      <div className="p-6 text-center text-slate-400 font-bold text-sm">
+                        ไม่มีการแจ้งเตือนใหม่
+                      </div>
+                    ) : (
+                      notifications.map(n => (
+                        <Link
+                          key={n.id}
+                          href={n.href}
+                          onClick={() => setShowNotifications(false)}
+                          className="flex items-start gap-2.5 p-3 hover:bg-slate-50 transition-colors"
+                        >
+                          <span className="text-base shrink-0">{n.icon}</span>
+                          <span className={`text-xs font-semibold leading-relaxed ${n.urgent ? 'text-rose-600' : 'text-slate-700'}`}>
+                            {n.text}
+                          </span>
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
         {/* Dashboard Content Workspace */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          
+
+          {/* Error banner */}
+          {fetchError && (
+            <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm font-bold px-4 py-3 rounded-xl flex items-center justify-between">
+              <span>⚠️ {fetchError}</span>
+              <button onClick={() => fetchDashboardData()} className="underline font-black">ลองใหม่</button>
+            </div>
+          )}
+
           {/* Title Area */}
           <div>
             <h2 className="text-xl font-extrabold text-slate-900 leading-none">ภาพรวมระบบ (System Overview)</h2>
             <p className="text-slate-400 text-[10px] font-bold mt-1.5 flex items-center gap-1.5">
-              ข้อมูลอัปเดตแบบ Real-time <span className="bg-emerald-500 text-white px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider animate-pulse">Live</span>
+              ข้อมูลอัปเดตแบบ Real-time (ทุก {REFRESH_INTERVAL_MS / 1000} วินาที) <span className="bg-emerald-500 text-white px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider animate-pulse">Live</span>
             </p>
           </div>
 
           {/* ==================================================== */}
           {/* 📊 4 KPI CARDS ROW                                   */}
           {/* ==================================================== */}
-          <StatCards 
+          <StatCards
             pendingCount={pendingCount}
-            onlineCount={onlineCount}
+            approvedListingsCount={approvedListingsCount}
             agentsCount={agentsCount}
             proAgentsCount={proAgentsCount}
           />
@@ -195,10 +360,10 @@ export default function AdminDashboardPage() {
                   </Link>
                 </div>
 
-                <ModerationList 
-                  items={moderationItems} 
-                  onApprove={handleApprove} 
-                  onReject={handleReject} 
+                <ModerationList
+                  items={filteredModerationItems}
+                  onApprove={handleApprove}
+                  onReject={handleReject}
                 />
               </div>
 
@@ -233,9 +398,12 @@ export default function AdminDashboardPage() {
                             </span>
                           </div>
                         </div>
-                        <button className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-bold transition-all">
+                        <Link
+                          href="/admin/users"
+                          className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-bold transition-all"
+                        >
                           ดูโปรไฟล์
-                        </button>
+                        </Link>
                       </div>
                     ))
                   )}

@@ -2,12 +2,12 @@ import React from 'react';
 
 interface Props {
   pendingCount: number;
-  onlineCount: number;
+  approvedListingsCount: number;
   agentsCount: number;
   proAgentsCount: number;
 }
 
-export default function StatCards({ pendingCount, onlineCount, agentsCount, proAgentsCount }: Props) {
+export default function StatCards({ pendingCount, approvedListingsCount, agentsCount, proAgentsCount }: Props) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
       {/* Pending Mod */}
@@ -27,22 +27,18 @@ export default function StatCards({ pendingCount, onlineCount, agentsCount, proA
         </div>
       </div>
 
-      {/* Online Users */}
+      {/* Approved Listings */}
       <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between">
         <div className="flex justify-between items-start mb-4">
           <div className="p-3 bg-blue-50 rounded-xl text-blue-600">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
           </div>
-          <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-50 rounded-md">
-             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-             <span className="text-[10px] font-black text-emerald-600 uppercase tracking-wider">Live</span>
-          </div>
         </div>
         <div>
-          <h3 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Active Now</h3>
+          <h3 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Approved Listings</h3>
           <div className="flex items-end gap-2">
-            <span className="text-4xl font-black text-slate-900">{onlineCount}</span>
-            <span className="text-sm font-medium text-slate-400 mb-1">users</span>
+            <span className="text-4xl font-black text-slate-900">{approvedListingsCount}</span>
+            <span className="text-sm font-medium text-slate-400 mb-1">listings</span>
           </div>
         </div>
       </div>

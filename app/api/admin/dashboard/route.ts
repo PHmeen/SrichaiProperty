@@ -3,7 +3,10 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { db } from "@/lib/db";
 
-export async function GET() {
+const MODERATION_SLA_HOURS = 24;
+const MODERATION_SLA_URGENT_HOURS = 4;
+
+export async function GET(request: Request) {
   try {
     // ตรวจสอบสิทธิ์: เฉพาะ Admin เท่านั้น
     const session = await getServerSession(authOptions);
@@ -11,9 +14,14 @@ export async function GET() {
     if (!session || role !== "admin") {
       return NextResponse.json({ error: "Unauthorized: Admins only" }, { status: 401 });
     }
+
+    // IP จริงของผู้เรียก (รองรับ proxy/CDN ที่ตั้ง x-forwarded-for)
+    const forwardedFor = request.headers.get("x-forwarded-for");
+    const adminIp = forwardedFor ? forwardedFor.split(",")[0].trim() : (request.headers.get("x-real-ip") || "unknown");
+
     const [
       pendingCount,
-      onlineCount,
+      approvedListingsCount,
       agentsCount,
       proAgentsCount,
       pendingProperties,
@@ -37,7 +45,8 @@ export async function GET() {
           users: { select: { first_name: true, last_name: true, plan_type: true, is_verified: true } },
           property_images: { orderBy: { order_index: "asc" }, take: 1 }
         },
-        orderBy: { created_at: "desc" }
+        orderBy: { created_at: "desc" },
+        take: 20
       }),
       db.users.findMany({ where: { role_id: "agent" }, orderBy: { created_at: "desc" }, take: 5 }),
       db.reports.count({ where: { status: "pending" } }),
@@ -58,18 +67,28 @@ export async function GET() {
       db.reports.findMany({ take: 5, orderBy: { created_at: "desc" }, select: { id: true, reason: true, status: true, created_at: true } })
     ]);
 
-    const moderationItems = pendingProperties.map(p => ({
-      id: p.id,
-      title: p.title,
-      code: p.id.substring(0, 8).toUpperCase(),
-      price: "฿" + Number(p.price).toLocaleString(),
-      seller: p.users ? `${p.users.first_name || ""} ${p.users.last_name || ""}`.trim() : "ไม่ระบุตัวแทน",
-      plan: p.users?.plan_type === "pro" ? "PRO Member" : "Basic Plan",
-      isPremium: Number(p.price) > 7000000,
-      isVerified: p.users?.is_verified || false,
-      sla: "เหลือเวลา 4 ชม.",
-      image: p.property_images[0]?.image_url || ""
-    }));
+    const now = Date.now();
+    const moderationItems = pendingProperties.map(p => {
+      const deadline = new Date(p.created_at).getTime() + MODERATION_SLA_HOURS * 60 * 60 * 1000;
+      const hoursLeft = (deadline - now) / (60 * 60 * 1000);
+      const sla = hoursLeft > 0
+        ? `เหลือเวลา ${Math.ceil(hoursLeft)} ชม.`
+        : `เกินกำหนด ${Math.ceil(-hoursLeft)} ชม.`;
+
+      return {
+        id: p.id,
+        title: p.title,
+        code: p.id.substring(0, 8).toUpperCase(),
+        price: "฿" + Number(p.price).toLocaleString(),
+        seller: p.users ? `${p.users.first_name || ""} ${p.users.last_name || ""}`.trim() : "ไม่ระบุตัวแทน",
+        plan: p.users?.plan_type === "pro" ? "PRO Member" : "Basic Plan",
+        isPremium: Number(p.price) > 7000000,
+        isVerified: p.users?.is_verified || false,
+        sla,
+        slaUrgent: hoursLeft <= MODERATION_SLA_URGENT_HOURS,
+        image: p.property_images[0]?.image_url || ""
+      };
+    });
 
     const formattedNewAgents = newAgents.map(u => ({
       id: u.id,
@@ -138,9 +157,10 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      pendingCount, onlineCount, agentsCount, proAgentsCount,
+      pendingCount, approvedListingsCount, agentsCount, proAgentsCount,
       moderationItems, newAgents: formattedNewAgents,
-      reportsCount, kycCount, paymentsCount, systemLogs: formattedLogs
+      reportsCount, kycCount, paymentsCount, systemLogs: formattedLogs,
+      adminIp
     });
   } catch (error) {
     const err = error as Error;
