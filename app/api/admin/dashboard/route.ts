@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/authOptions";
 import { db } from "@/lib/db";
 
 export async function GET() {
   try {
+    // ตรวจสอบสิทธิ์: เฉพาะ Admin เท่านั้น
+    const session = await getServerSession(authOptions);
+    const role = (session?.user as { role?: string })?.role;
+    if (!session || role !== "admin") {
+      return NextResponse.json({ error: "Unauthorized: Admins only" }, { status: 401 });
+    }
     const [
       pendingCount,
       onlineCount,

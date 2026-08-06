@@ -20,6 +20,10 @@ export async function GET(request: Request) {
     if (!agent || agent.role_id !== 'agent') {
       return NextResponse.json({ error: 'สิทธิ์ไม่ถูกต้อง หรือยังไม่ได้เข้าสู่ระบบ' }, { status: 401 });
     }
+    // ตรวจสอบว่าบัญชีนายหน้าได้รับการอนุมัติแล้ว
+    if (agent.status !== 'approved') {
+      return NextResponse.json({ error: 'บัญชีนายหน้าของคุณยังไม่ได้รับการอนุมัติ หรือถูกระงับการใช้งาน' }, { status: 403 });
+    }
 
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
@@ -337,6 +341,14 @@ export async function POST(request: Request) {
 
     if (!sessionId || !content) {
       return NextResponse.json({ error: 'กรุณากรอกข้อมูลห้องสนทนาและข้อความให้ครบถ้วน' }, { status: 400 });
+    }
+
+    // ✅ ตรวจสอบว่านายหน้าเป็นสมาชิกของห้องแชทนี้จริง
+    const chatSession = await db.chat_sessions.findUnique({
+      where: { id: sessionId }
+    });
+    if (!chatSession || chatSession.agent_id !== agent.id) {
+      return NextResponse.json({ error: 'คุณไม่มีสิทธิ์ส่งข้อความในห้องสนทนานี้' }, { status: 403 });
     }
 
     const newMessage = await db.messages.create({

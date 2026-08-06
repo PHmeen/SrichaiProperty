@@ -68,8 +68,8 @@ export const authOptions: NextAuthOptions = {
         await db.login_histories.create({
           data: {
             user_id: user.id,
-            ip_address: "127.0.0.1",
-            user_agent: "NextAuth Credentials"
+            ip_address: "credentials-login",
+            user_agent: "NextAuth/CredentialsProvider"
           }
         }).catch(err => console.error("Error writing login history:", err));
 
@@ -87,7 +87,11 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === "google" || account?.provider === "facebook") {
-        const userEmail = user.email || `fb_${user.id || Date.now()}@facebook.com`;
+        const userEmail = user.email || (user.id ? `fb_${user.id}@facebook.com` : null);
+        if (!userEmail) {
+          console.error('Facebook login: no email and no user.id');
+          return false;
+        }
         user.email = userEmail;
 
         const existingUser = await db.users.findUnique({
@@ -155,6 +159,7 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
+    maxAge: 60 * 60 * 8, // 8 ชั่วโมง (ลด exposure window ถ้า JWT ถูกขโมย)
   },
   secret: process.env.NEXTAUTH_SECRET,
 };

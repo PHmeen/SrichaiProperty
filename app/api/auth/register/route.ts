@@ -13,6 +13,20 @@ export async function POST(request: Request) {
       );
     }
 
+    // ✅ ตรวจสอบความแข็งแกร่งของรหัสผ่าน (อย่างน้อย 8 ตัว มีทั้งตัวอักษรและตัวเลข)
+    if (password.length < 8) {
+      return NextResponse.json(
+        { error: "รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร" },
+        { status: 400 }
+      );
+    }
+    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+      return NextResponse.json(
+        { error: "รหัสผ่านต้องประกอบด้วยตัวอักษรและตัวเลขอย่างน้อย 1 ตัว" },
+        { status: 400 }
+      );
+    }
+
     const existingUser = await db.users.findUnique({
       where: { email }
     });

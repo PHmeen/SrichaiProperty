@@ -5,8 +5,8 @@ import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
 export default function AdminLoginPage() {
-  const [email, setEmail] = useState('admin@srichaiproperty.com');
-  const [password, setPassword] = useState('1234');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -93,7 +93,7 @@ export default function AdminLoginPage() {
         </form>
 
         <div className="pt-3 border-t border-slate-100 text-center text-[11px] text-slate-400 font-medium">
-          บัญชีเริ่มต้น: <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700">admin@srichaiproperty.com</code> / รหัสผ่าน: <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700">1234</code>
+          🔒 เข้าถึงได้เฉพาะผู้ดูแลระบบที่ได้รับอนุญาตเท่านั้น
         </div>
       </div>
     </div>

@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/authOptions";
 import { db } from "@/lib/db";
 
 // API Endpoint สำหรับให้ผู้ใช้ทำการลบบัญชีตนเองออกอย่างถาวร
 export async function DELETE() {
   try {
     // 1. ดึงข้อมูลเซสชันของผู้ใช้ที่ล็อกอินอยู่ในขณะนี้ (ตรวจสอบความปลอดภัยหลังบ้าน)
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     
     if (!session || !session.user || !session.user.email) {
       return NextResponse.json(

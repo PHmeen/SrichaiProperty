@@ -106,7 +106,7 @@ export async function PATCH(req: Request) {
     if (action === 'ban' && agentId) {
       await db.users.update({
         where: { id: agentId },
-        data: { status: 'suspended' } // suspended/banned
+        data: { status: 'banned' } // ตรงกับ status ที่ authOptions ตรวจสอบ
       });
     }
 

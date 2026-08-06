@@ -1,18 +1,19 @@
-'use client';
-
+import { getServerSession } from 'next-auth/next';
+import { redirect } from 'next/navigation';
+import { authOptions } from '@/lib/authOptions';
 import AdminSidebar from '@/components/layout/AdminSidebar';
-import { usePathname } from 'next/navigation';
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
+  const session = await getServerSession(authOptions);
+  const user = session?.user as { role?: string } | undefined;
 
-  // ถ้าเป็นหน้าล็อกอินแอดมิน ไม่ต้องแสดง Sidebar
-  if (pathname === '/admin/login') {
-    return <>{children}</>;
+  // ถ้ายังไม่ได้ login หรือ role ไม่ใช่ admin ให้ redirect ไปหน้า login
+  if (!session || user?.role !== 'admin') {
+    redirect('/admin/login');
   }
 
   return (

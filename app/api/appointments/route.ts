@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/authOptions";
 import { db } from "@/lib/db";
 
 // แปลง Date -> "YYYY-MM-DD"
@@ -12,7 +13,7 @@ function toDateKey(d: Date): string {
 // - ?view=agent : ของนายหน้าที่ล็อกอินอยู่ (ใช้โดยหน้า Appointments Manager)
 export async function GET(request: Request) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
 
     if (!session || !session.user || !session.user.email) {
       return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อน" }, { status: 401 });
@@ -155,7 +156,7 @@ export async function GET(request: Request) {
 // POST: บันทึกข้อมูลการนัดหมายใหม่ลงฐานข้อมูล
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
 
     if (!session || !session.user || !session.user.email) {
       return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อน" }, { status: 401 });
@@ -245,7 +246,7 @@ export async function POST(request: Request) {
 // (ข) ลูกค้าแก้วัน/รอบที่จอง (ทำได้เฉพาะตอนสถานะยัง pending) : body { id, date, timeSlot }
 export async function PATCH(request: Request) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
 
     if (!session || !session.user || !session.user.email) {
       return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อน" }, { status: 401 });
