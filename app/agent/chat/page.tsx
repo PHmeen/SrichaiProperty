@@ -3,40 +3,47 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { io, Socket } from 'socket.io-client';
-import ChatList from '@/components/agent/ChatList';
-import ChatRoom from '@/components/agent/ChatRoom';
+import SharedChatView, { SharedChatSession } from '@/components/common/SharedChatView';
 import { AgentContact as Contact, AgentChatMessage as Message } from '@/types';
 
 export type { Contact, Message };
 
+/**
+ * ==============================================================================
+ * AGENT CHAT PAGE (หน้าแชทสำหรับเอเย่นต์ / นายหน้า)
+ * ==============================================================================
+ * เรียกใช้งาน SharedChatView ร่วมกับฝั่งลูกค้า เพื่อความสวยงาม เป็นเอกภาพ และไม่โค้ดซ้ำ
+ */
 export default function AgentChatPage() {
   const { status } = useSession();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedContactId, setSelectedContactId] = useState('');
-  const [newMessageText, setNewMessageText] = useState('');
+  const [selectedContactId, setSelectedContactId] = useState<string>('');
   const [isTypingState, setIsTypingState] = useState<{ [key: string]: boolean }>({});
   const [contacts, setContacts] = useState<Contact[]>([]);
 
   const socketRef = useRef<Socket | null>(null);
 
-  // 1. Fetch Chat Data from Database
+  // 1. โหลดข้อมูลห้องแชทของนายหน้าจาก Database
+  const fetchChatData = () => {
+    fetch('/api/agent/portal?type=chat')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setContacts(data);
+          if (data.length > 0) {
+            setSelectedContactId(prev => prev || data[0].id);
+          }
+        }
+      })
+      .catch(err => console.error('Error fetching chat sessions:', err));
+  };
+
   useEffect(() => {
     if (status === 'authenticated') {
-      fetch('/api/agent/portal?type=chat')
-        .then(res => res.json())
-        .then(data => {
-          if (Array.isArray(data)) {
-            setContacts(data);
-            if (data.length > 0) {
-              setSelectedContactId(data[0].id);
-            }
-          }
-        })
-        .catch(err => console.error('Error fetching chat sessions:', err));
+      fetchChatData();
     }
   }, [status]);
 
-  // 2. Connect to Socket.io Server for Real-time
+  // 2. เชื่อมต่อ Socket.io รับ-ส่งข้อความแบบเรียลไทม์
   useEffect(() => {
     if (!selectedContactId) return;
 
@@ -51,14 +58,7 @@ export default function AgentChatPage() {
     });
 
     socket.on('receive-message', () => {
-      fetch('/api/agent/portal?type=chat')
-        .then(res => res.json())
-        .then(data => {
-          if (Array.isArray(data)) {
-            setContacts(data);
-          }
-        })
-        .catch(console.error);
+      fetchChatData();
     });
 
     socket.on('client-typing', (data: { isTyping: boolean }) => {
@@ -83,19 +83,17 @@ export default function AgentChatPage() {
 
   const activeContact = contacts.find(c => c.id === selectedContactId) || null;
 
-  // 3. Send Message Handler (Saves to DB and sends via Socket.io)
-  const handleSendMessage = async (textToSend?: string) => {
-    const finalTxt = textToSend || newMessageText;
-    if (!finalTxt.trim() || !activeContact) return;
+  // 3. ฟังก์ชันส่งข้อความ
+  const handleSendMessage = async (textToSend: string) => {
+    if (!textToSend.trim() || !activeContact) return;
 
     try {
-      // Save Message into PostgreSQL Database via POST route
       const response = await fetch('/api/agent/portal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId: activeContact.id,
-          content: finalTxt
+          content: textToSend
         })
       });
 
@@ -105,79 +103,63 @@ export default function AgentChatPage() {
 
       const savedMessage = await response.json();
 
-      // Emit to Socket.io Server for real-time delivery
       if (socketRef.current?.connected) {
         socketRef.current.emit('send-message', {
           roomId: activeContact.id,
           message: savedMessage
         });
-      } else {
-        // Local state update if socket server is offline
-        setContacts(prev => prev.map(c => {
-          if (c.id === activeContact.id) {
-            return {
-              ...c,
-              lastMessageSnippet: savedMessage.content,
-              lastMessageTime: savedMessage.time,
-              messages: [...c.messages, savedMessage]
-            };
-          }
-          return c;
-        }));
       }
 
-      if (!textToSend) {
-        setNewMessageText('');
-      }
+      fetchChatData();
     } catch (err) {
       console.error('Error sending message:', err);
     }
   };
 
-  const sendQuickAction = (actionType: 'location' | 'document' | 'callback') => {
-    if (actionType === 'location') {
-      handleSendMessage('📍 [พิกัดจุดนัดพบ] แผนที่เดินทางหน้าโครงการ: https://maps.google.com/?q=7.0089,100.4975');
-    } else if (actionType === 'document') {
-      handleSendMessage('📄 [แนบเอกสาร] โบรชัวร์โครงการและแบบแปลนบ้าน.pdf');
-    } else if (actionType === 'callback') {
-      handleSendMessage(`📋 [ขอเบอร์ติดต่อกลับ] สะดวกรบกวนขอเบอร์โทรศัพท์ติดต่อกลับเพื่อคุยรายละเอียดเพิ่มเติมด้วยครับ`);
+  // 4. แปลงข้อมูล contacts ของนายหน้าให้อยู่ในโครงสร้าง SharedChatSession
+  const sharedSessions: SharedChatSession[] = contacts.map(c => ({
+    id: c.id,
+    name: c.name,
+    avatarLetter: c.avatarLetter || c.name.charAt(0),
+    isActive: true,
+    lastMessage: c.lastMessageSnippet,
+    time: c.lastMessageTime,
+    propertyTitle: c.propertyName,
+    propertyPrice: c.propertyPrice,
+    propertyCode: c.propertyCode,
+    messages: c.messages.map(m => ({
+      id: m.id,
+      sender: m.sender === 'client' ? 'other' : 'agent',
+      text: m.content,
+      time: m.time
+    }))
+  }));
+
+  // ปุ่มลัดสำหรับเอเย่นต์ (Quick Actions)
+  const quickActions = [
+    {
+      label: '📍 ส่งพิกัดจุดนัดพบ',
+      action: () => handleSendMessage('📍 [พิกัดจุดนัดพบ] แผนที่เดินทางหน้าโครงการ: https://maps.google.com/?q=7.0089,100.4975')
+    },
+    {
+      label: '📄 ส่งไฟล์เอกสารบ้าน',
+      action: () => handleSendMessage('📄 [แนบเอกสาร] โบรชัวร์โครงการและแบบแปลนบ้าน.pdf')
+    },
+    {
+      label: '📋 ขอเบอร์ติดต่อกลับ',
+      action: () => handleSendMessage('📋 [ขอเบอร์ติดต่อกลับ] สะดวกรบกวนขอเบอร์โทรศัพท์ติดต่อกลับเพื่อคุยรายละเอียดเพิ่มเติมด้วยครับ')
     }
-  };
+  ];
 
-  const filteredContacts = contacts.filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    c.propertyCode.toLowerCase().includes(searchQuery.toLowerCase())
+  return (
+    <SharedChatView
+      role="agent"
+      sessions={sharedSessions}
+      selectedSessionId={selectedContactId}
+      onSelectSession={(id) => setSelectedContactId(id)}
+      onSendMessage={handleSendMessage}
+      isTyping={selectedContactId ? isTypingState[selectedContactId] : false}
+      quickActions={quickActions}
+    />
   );
-
- 
-return (
-  <div className="h-full w-full p-4 md:p-6">
-
-    <div className="h-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-6">
-
-      <ChatList
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        filteredContacts={filteredContacts}
-        selectedContactId={selectedContactId}
-        setSelectedContactId={setSelectedContactId}
-      />
-
-      <ChatRoom
-        activeContact={activeContact}
-        selectedContactId={selectedContactId}
-        isTypingState={isTypingState}
-        newMessageText={newMessageText}
-        setNewMessageText={setNewMessageText}
-        handleSendMessage={handleSendMessage}
-        sendQuickAction={sendQuickAction}
-      />
-
-    </div>
-
-  </div>
-);
-
-
-
 }

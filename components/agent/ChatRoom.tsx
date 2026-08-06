@@ -1,5 +1,8 @@
 import React from 'react';
 import { AgentContact } from '@/types';
+// นำ shadcn UI Chat primitives มาใช้งานในหน้าแชทของ Agent
+import { Message, MessageAvatar, MessageContent, MessageFooter } from '@/components/ui/message';
+import { Bubble, BubbleContent } from '@/components/ui/bubble';
 
 interface Props {
   activeContact: AgentContact | null;
@@ -11,6 +14,11 @@ interface Props {
   sendQuickAction: (actionType: 'location' | 'document' | 'callback') => void;
 }
 
+/**
+ * ==============================================================================
+ * CHAT ROOM COMPONENT (หน้าต่างห้องแชทฝั่ง Agent)
+ * ==============================================================================
+ */
 export default function ChatRoom({
   activeContact,
   selectedContactId,
@@ -20,27 +28,31 @@ export default function ChatRoom({
   handleSendMessage,
   sendQuickAction
 }: Props) {
+  // หากยังไม่ได้เลือกผู้ติดต่อ
   if (!activeContact) {
     return (
-      <section className="flex-1 bg-white border border-slate-100 rounded-3xl shadow-sm flex flex-col overflow-hidden relative justify-center items-center">
-        <div className="text-slate-400 font-bold">กรุณาเลือกผู้ติดต่อเพื่อเริ่มแชท</div>
+      <section className="flex-1 bg-white border border-slate-200/80 rounded-2xl shadow-sm flex flex-col overflow-hidden relative justify-center items-center h-full">
+        <div className="text-slate-400 font-bold text-xs">กรุณาเลือกผู้ติดต่อเพื่อเริ่มแชท</div>
       </section>
     );
   }
 
   return (
-    <section className="flex-1 bg-white border border-slate-100 rounded-3xl shadow-sm flex flex-col overflow-hidden relative">
-      {/* Chat Header */}
-      <div className="p-4 border-b flex items-center justify-between bg-white shrink-0">
-        <div className="text-left">
-          <h4 className="font-extrabold text-slate-900 text-xs md:text-sm">{activeContact.name}</h4>
-          <span className="text-[9px] text-emerald-600 font-bold flex items-center gap-1 mt-0.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" /> กำลังออนไลน์
-          </span>
+    <section className="flex-1 bg-white border border-slate-200/80 rounded-2xl shadow-sm flex flex-col overflow-hidden relative h-full">
+      {/* 1. Header ส่วนหัว แสดงชื่อผู้สนทนาและสถานะออนไลน์ */}
+      <div className="p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/80 backdrop-blur-sm shrink-0">
+        <div className="text-left flex items-center gap-3">
+          <MessageAvatar fallback={activeContact.name.charAt(0)} />
+          <div>
+            <h4 className="font-extrabold text-slate-900 text-xs md:text-sm">{activeContact.name}</h4>
+            <span className="text-[9px] text-emerald-600 font-bold flex items-center gap-1 mt-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" /> กำลังออนไลน์
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Property Card */}
+      {/* 2. การ์ดแสดงอสังหาฯ ที่ลูกค้าสนใจ */}
       <div className="px-4 py-3 bg-[#f8fafc]/80 border-b flex items-center justify-between gap-4 shrink-0 text-left">
         <div>
           <span className="text-[9px] text-slate-400 font-bold block">ทรัพย์ที่สนใจ ({activeContact.propertyCode})</span>
@@ -51,22 +63,27 @@ export default function ChatRoom({
         </div>
       </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 p-4 overflow-y-auto space-y-4 min-h-[250px] flex flex-col justify-end">
+      {/* 3. รายการข้อความ (ใช้ shadcn UI Chat Message Primitives) */}
+      <div className="flex-1 p-4 overflow-y-auto space-y-2 min-h-[250px] flex flex-col justify-end">
         {activeContact.messages.map(m => {
           const isClient = m.sender === 'client';
           return (
-            <div key={m.id} className={`flex gap-3 ${isClient ? 'justify-start text-left' : 'justify-end text-right'}`}>
-              <div className="max-w-[70%]">
-                <div className={`p-3 rounded-2xl text-[11px] font-semibold leading-relaxed shadow-sm ${isClient ? 'bg-slate-100 text-slate-800 rounded-tl-none' : 'bg-blue-600 text-white rounded-tr-none'}`}>
-                  {m.content}
-                </div>
-                <div className="text-[9px] text-slate-400 font-bold mt-1 px-1">{m.time}</div>
-              </div>
-            </div>
+            <Message key={m.id} align={isClient ? 'start' : 'end'}>
+              {/* รูปโปรไฟล์ฝั่งลูกค้า */}
+              {isClient && <MessageAvatar fallback={activeContact.name.charAt(0)} />}
+              
+              {/* บอลลูนข้อความ + เวลา */}
+              <MessageContent>
+                <Bubble variant={isClient ? 'secondary' : 'primary'}>
+                  <BubbleContent>{m.content}</BubbleContent>
+                </Bubble>
+                <MessageFooter>{m.time}</MessageFooter>
+              </MessageContent>
+            </Message>
           );
         })}
 
+        {/* แสดงสถานะเมื่อมีคนกำลังพิมพ์ */}
         {isTypingState[selectedContactId] && (
           <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-bold px-2 shrink-0">
             <span className="flex gap-1">
@@ -77,7 +94,7 @@ export default function ChatRoom({
         )}
       </div>
 
-      {/* Actions & Inputs */}
+      {/* 4. ปุ่มลัด Quick Actions & ช่องพิมพ์ข้อความ */}
       <div className="p-4 border-t bg-white space-y-3 shrink-0">
         <div className="flex flex-wrap gap-2">
           <button onClick={() => sendQuickAction('location')} className="px-3 py-1.5 bg-slate-50 hover:bg-blue-50 text-slate-500 rounded-xl text-[10px] font-extrabold border transition">📍 ส่งพิกัดจุดนัดพบ</button>
@@ -85,7 +102,7 @@ export default function ChatRoom({
           <button onClick={() => sendQuickAction('callback')} className="px-3 py-1.5 bg-slate-50 hover:bg-blue-50 text-slate-500 rounded-xl text-[10px] font-extrabold border transition">📋 ขอเบอร์ติดต่อกลับ</button>
         </div>
 
-        <div className="relative bg-[#f8fafc] border rounded-2xl p-1.5 flex items-center shadow-inner">
+        <div className="relative bg-[#f8fafc] border rounded-2xl p-1.5 flex items-center shadow-xs">
           <input 
             type="text" 
             value={newMessageText}
@@ -100,3 +117,5 @@ export default function ChatRoom({
     </section>
   );
 }
+
+

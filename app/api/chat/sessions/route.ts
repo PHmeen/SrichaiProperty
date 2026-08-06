@@ -141,3 +141,57 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'สร้างห้องแชทล้มเหลว: ' + err.message }, { status: 500 });
   }
 }
+
+// DELETE: ลบห้องแชทและข้อความทั้งหมดในห้องนั้น
+export async function DELETE(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบก่อน' }, { status: 401 });
+    }
+
+    const user = await db.users.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'ไม่พบผู้ใช้ในระบบ' }, { status: 404 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const sessionId = searchParams.get('sessionId');
+
+    if (!sessionId) {
+      return NextResponse.json({ error: 'กรุณาระบุรหัสห้องแชทที่ต้องการลบ' }, { status: 400 });
+    }
+
+    const chatSession = await db.chat_sessions.findUnique({
+      where: { id: sessionId }
+    });
+
+    if (!chatSession) {
+      return NextResponse.json({ error: 'ไม่พบห้องแชทนี้' }, { status: 404 });
+    }
+
+    if (chatSession.customer_id !== user.id && chatSession.agent_id !== user.id) {
+      return NextResponse.json({ error: 'คุณไม่มีสิทธิ์ลบห้องแชทนี้' }, { status: 403 });
+    }
+
+    // ลบข้อความทั้งหมดในห้องแชทก่อน
+    await db.messages.deleteMany({
+      where: { session_id: sessionId }
+    });
+
+    // ลบตัวห้องแชท
+    await db.chat_sessions.delete({
+      where: { id: sessionId }
+    });
+
+    return NextResponse.json({ success: true, message: 'ลบห้องแชทเรียบร้อยแล้ว' });
+  } catch (error) {
+    const err = error as Error;
+    console.error('Delete Chat Session Error:', err);
+    return NextResponse.json({ error: 'ลบห้องแชทล้มเหลว: ' + err.message }, { status: 500 });
+  }
+}
+

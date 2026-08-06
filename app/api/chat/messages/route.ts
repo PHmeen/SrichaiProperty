@@ -63,3 +63,58 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'ส่งข้อความล้มเหลว: ' + err.message }, { status: 500 });
   }
 }
+
+// DELETE: ลบข้อความแชทรายรายการ
+export async function DELETE(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบก่อน' }, { status: 401 });
+    }
+
+    const user = await db.users.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'ไม่พบผู้ใช้ในระบบ' }, { status: 404 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const messageId = searchParams.get('messageId');
+
+    if (!messageId) {
+      return NextResponse.json({ error: 'กรุณาระบุรหัสข้อความที่ต้องการลบ' }, { status: 400 });
+    }
+
+    const message = await db.messages.findUnique({
+      where: { id: messageId },
+      include: { chat_sessions: true }
+    });
+
+    if (!message) {
+      return NextResponse.json({ error: 'ไม่พบข้อความนี้' }, { status: 404 });
+    }
+
+    // อนุญาตให้ลบได้หากเป็นผู้ส่งข้อความ หรือ เป็นผู้ร่วมอยู่ในห้องแชทนั้น
+    const isSender = message.sender_id === user.id;
+    const isParticipant = message.chat_sessions
+      ? message.chat_sessions.customer_id === user.id || message.chat_sessions.agent_id === user.id
+      : false;
+
+    if (!isSender && !isParticipant) {
+      return NextResponse.json({ error: 'คุณไม่มีสิทธิ์ลบข้อความนี้' }, { status: 403 });
+    }
+
+    await db.messages.delete({
+      where: { id: messageId }
+    });
+
+    return NextResponse.json({ success: true, message: 'ลบข้อความเรียบร้อยแล้ว' });
+  } catch (error) {
+    const err = error as Error;
+    console.error('Delete Message Error:', err);
+    return NextResponse.json({ error: 'ลบข้อความล้มเหลว: ' + err.message }, { status: 500 });
+  }
+}
+
