@@ -70,7 +70,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (session?.user) {
       fetch('/api/appointments')
         .then(res => res.json())
-        .then(data => Array.isArray(data) && setAppointments(data))
+        .then(data => {
+          if (data.success && Array.isArray(data.appointments)) {
+            setAppointments(data.appointments);
+          } else if (Array.isArray(data)) {
+            setAppointments(data);
+          }
+        })
         .catch(console.error);
 
       fetch('/api/chat/sessions')
@@ -131,9 +137,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     .catch(console.error);
   };
 
-  // ยกเลิกคำขอนัดหมาย
-  const cancelAppointment = (id: string | number) => {
-    setAppointments(prev => prev.map(appt => appt.id === id ? { ...appt, status: 'cancelled' as const } : appt));
+  // ยกเลิกคำขอนัดหมาย ลงฐานข้อมูล PostgreSQL จริง (อัปเดต UI ทันที + ส่ง API)
+  const cancelAppointment = async (id: string | number) => {
+    // 1) อัปเดต State หน้าบ้านทันที เพื่อให้รายการย้ายไปแท็บ "ยกเลิกแล้ว" ทันทีโดยไม่ต้องรอ
+    setAppointments(prev => prev.map(appt => String(appt.id) === String(id) ? { ...appt, status: 'cancelled' as const } : appt));
+
+    try {
+      // 2) ส่งสั่งลบ/ยกเลิกไปยัง PostgreSQL ใน DB จริงเบื้องหลัง
+      const res = await fetch(`/api/appointments?id=${encodeURIComponent(String(id))}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        await refreshAppointments();
+      }
+    } catch (err) {
+      console.error("Cancel appointment error:", err);
+    }
   };
 
   // แก้ไขวัน/เวลานัดหมายลง DB

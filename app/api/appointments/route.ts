@@ -3,194 +3,118 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { db } from "@/lib/db";
 
-// แปลง Date -> "YYYY-MM-DD"
-function toDateKey(d: Date): string {
-  return d.toISOString().split("T")[0];
+const toDateKey = (d: Date) => d.toISOString().split("T")[0];
+
+// Helper เช็คความปลอดภัย ดึง User จาก Session
+async function getAuthUser() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return null;
+  return db.users.findUnique({ where: { email: session.user.email } });
 }
 
-// GET: ดึงรายการนัดหมาย
-// - ค่าเริ่มต้น (ไม่ใส่ query ?view) : ของลูกค้าที่ล็อกอินอยู่ (พฤติกรรมเดิม ใช้โดย AppContext)
-// - ?view=agent : ของนายหน้าที่ล็อกอินอยู่ (ใช้โดยหน้า Appointments Manager)
+// 📌 GET: ดึงรายการนัดหมาย (ของลูกค้า หรือ ของนายหน้า ?view=agent)
 export async function GET(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getAuthUser();
+    if (!user) return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อน" }, { status: 401 });
 
-    if (!session || !session.user || !session.user.email) {
-      return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อน" }, { status: 401 });
-    }
+    const isAgent = new URL(request.url).searchParams.get("view") === "agent" && user.role_id === "agent";
 
-    // ค้นหาผู้ใช้จากอีเมล
-    const user = await db.users.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "ไม่พบผู้ใช้ในระบบ" }, { status: 404 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const view = searchParams.get("view");
-
-    // ========== มุมมองนายหน้า (Appointments Manager) ==========
-    if (view === "agent") {
-      if (user.role_id !== "agent") {
-        return NextResponse.json({ error: "อนุญาตเฉพาะบัญชีนายหน้าเท่านั้น" }, { status: 403 });
-      }
-
-      const appointments = await db.appointments.findMany({
-        where: { agent_id: user.id },
-        include: {
-          properties: {
-            include: {
-              property_images: { orderBy: { order_index: "asc" }, take: 1 }
-            }
-          },
-          users_appointments_customer_idTousers: {
-            select: { first_name: true, last_name: true, phone: true }
-          }
-        },
-        orderBy: { appointment_date: "asc" }
-      });
-
-      const formatted = appointments.map((apt) => {
-        const customer = apt.users_appointments_customer_idTousers;
-        const customerName = customer ? `${customer.first_name} ${customer.last_name}` : "ลูกค้าทั่วไป";
-        const prop = apt.properties;
-        const propImage = prop?.property_images?.[0]?.image_url
-          || "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80";
-
-        return {
-          id: apt.id,
-          status: apt.status || "pending", // pending | approved | rejected | completed
-          date: toDateKey(apt.appointment_date),
-          timeSlot: apt.time_slot || "morning", // 'morning' | 'afternoon'
-          note: apt.note || "",
-          customerName,
-          customerPhone: customer?.phone || null,
-          propertyId: apt.property_id || "",
-          propertyTitle: prop?.title || "ไม่พบข้อมูลอสังหาฯ",
-          propertyImage: propImage,
-          originalDate: (apt as Record<string, unknown>).original_date ? toDateKey((apt as Record<string, unknown>).original_date as Date) : null,
-          originalTimeSlot: ((apt as Record<string, unknown>).original_time_slot as string) || null,
-          wasEdited: Boolean((apt as Record<string, unknown>).original_date)
-        };
-      });
-
-      return NextResponse.json(formatted);
-    }
-
-    // ========== มุมมองลูกค้า (พฤติกรรมเดิม ห้ามแก้) ==========
     const appointments = await db.appointments.findMany({
-      where: {
-        customer_id: user.id
-      },
+      where: isAgent ? { agent_id: user.id } : { customer_id: user.id },
       include: {
         properties: {
           include: {
-            property_images: {
-              orderBy: { order_index: "asc" },
-              take: 1
-            },
-            property_types: true,
-            users: { // นายหน้าที่ดูแลทรัพย์
-              select: {
-                first_name: true,
-                last_name: true,
-                profile_image: true
-              }
-            }
+            property_images: { orderBy: { order_index: "asc" }, take: 1 },
+            users: { select: { first_name: true, last_name: true, phone: true } }
           }
+        },
+        users_appointments_customer_idTousers: {
+          select: { id: true, first_name: true, last_name: true, phone: true, email: true, profile_image: true }
         }
       },
-      orderBy: {
-        appointment_date: "asc"
-      }
+      orderBy: { appointment_date: "asc" }
     });
 
-    // แปลงโครงสร้างข้อมูลให้เข้ากับอินเตอร์เฟซ Appointment ของหน้าบ้าน
-    const formattedAppointments = appointments.map((apt) => {
-      const prop = apt.properties;
-      const agentName = prop?.users ? `${prop.users.first_name} ${prop.users.last_name}` : "ไม่ระบุตัวแทน";
-      const agentImage = prop?.users?.profile_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(agentName)}&background=1e40af&color=fff`;
-      const propImage = prop?.property_images?.[0]?.image_url || "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80";
+    interface AppointmentData {
+      id: string;
+      property_id: string | null;
+      appointment_date: Date;
+      time_slot: string | null;
+      status: string | null;
+      note: string | null;
+      created_at: Date;
+      properties?: {
+        title?: string;
+        price?: number | string;
+        location?: string;
+        property_images?: { image_url: string }[];
+        users?: { first_name?: string; last_name?: string; phone?: string };
+      } | null;
+      users_appointments_customer_idTousers?: {
+        first_name?: string;
+        last_name?: string;
+        phone?: string;
+        email?: string;
+        profile_image?: string;
+      } | null;
+    }
 
-      // แมปสถานะจาก DB ไปยังหน้าบ้าน
-      let mappedStatus: 'upcoming' | 'past' | 'cancelled' | 'pending' = 'pending';
-      if (apt.status === 'approved') mappedStatus = 'upcoming';
-      else if (apt.status === 'completed' || apt.status === 'no-show') mappedStatus = 'past';
-      else if (apt.status === 'rejected') mappedStatus = 'cancelled';
-      else mappedStatus = 'pending';
+    const formatted = (appointments as unknown as AppointmentData[]).map((apt) => {
+      const p = apt.properties;
+      const cust = apt.users_appointments_customer_idTousers;
+      const agentUser = p?.users;
 
-      // แมปช่วงเวลา
-      const timeSlotLabel = apt.time_slot === 'morning' ? 'ช่วงเช้า (09:00 - 12:00 น.)' : 'ช่วงบ่าย (13:00 - 16:00 น.)';
-
-      const d = new Date(apt.appointment_date);
-      const dateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+      const customerName = cust ? `${cust.first_name || ""} ${cust.last_name || ""}`.trim() : "ลูกค้าทั่วไป";
+      const agentName = agentUser ? `${agentUser.first_name || ""} ${agentUser.last_name || ""}`.trim() : "นายหน้า";
+      const timeSlotText = apt.time_slot === "morning" ? "10:00 - 12:00 น. (ช่วงเช้า)" : apt.time_slot === "afternoon" ? "14:00 - 16:00 น. (ช่วงบ่าย)" : apt.time_slot || "ไม่ระบุเวลา";
 
       return {
         id: apt.id,
-        propertyId: apt.property_id || "",
-        date: dateStr,
-        timeSlot: timeSlotLabel,
+        propertyId: apt.property_id,
+        propertyName: p?.title || "อสังหาริมทรัพย์",
+        propertyTitle: p?.title || "อสังหาริมทรัพย์",
+        propertyPrice: p ? "฿" + Number(p.price).toLocaleString() : "",
+        price: p ? "฿" + Number(p.price).toLocaleString() : "",
+        propertyImage: p?.property_images?.[0]?.image_url || "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600",
+        location: p?.location || "",
+        date: toDateKey(apt.appointment_date),
+        timeSlot: apt.time_slot,
+        timeSlotText,
+        status: apt.status,
         note: apt.note || "",
-        status: mappedStatus,
-        propertyName: prop?.title || "ไม่พบข้อมูลอสังหาฯ",
-        propertyPrice: prop ? "฿" + Number(prop.price).toLocaleString() : "฿0",
-        propertyImage: propImage,
-        propertyType: prop?.property_types?.name || "บ้านเดี่ยว",
+        customerName,
+        customerPhone: cust?.phone || "-",
+        customerEmail: cust?.email || "-",
+        customerAvatar: cust?.profile_image,
         agentName,
-        agentImage,
-        // ข้อมูลเสริมสำหรับปุ่ม "แก้ไขวัน/รอบ" ฝั่งลูกค้า (ค่า raw ของ time_slot เอาไว้ส่งกลับตอน PATCH)
-        rawTimeSlot: apt.time_slot || "morning"
+        agentPhone: agentUser?.phone || "-",
+        createdAt: apt.created_at
       };
     });
 
-    return NextResponse.json(formattedAppointments);
-  } catch (error) {
+    return NextResponse.json({ success: true, appointments: formatted });
+  } catch (error: unknown) {
     const err = error as Error;
-    console.error("Fetch Appointments Error:", err);
     return NextResponse.json({ error: "ดึงข้อมูลนัดหมายล้มเหลว: " + err.message }, { status: 500 });
   }
 }
 
-// POST: บันทึกข้อมูลการนัดหมายใหม่ลงฐานข้อมูล
+// 📌 POST: บันทึกข้อมูลการนัดหมายใหม่ลงฐานข้อมูล
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getAuthUser();
+    if (!user) return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อน" }, { status: 401 });
 
-    if (!session || !session.user || !session.user.email) {
-      return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อน" }, { status: 401 });
-    }
-
-    const user = await db.users.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "ไม่พบผู้ใช้ในระบบ" }, { status: 404 });
-    }
-
-    const body = await request.json();
-    const { propertyId, date, timeSlot, note } = body;
-
+    const { propertyId, date, timeSlot, note } = await request.json();
     if (!propertyId || !date || !timeSlot) {
       return NextResponse.json({ error: "กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน" }, { status: 400 });
     }
 
-    // ดึงข้อมูลทรัพย์เพื่อค้นหาไอดีนายหน้าผู้รับผิดชอบ
-    const property = await db.properties.findUnique({
-      where: { id: propertyId }
-    });
+    const property = await db.properties.findUnique({ where: { id: propertyId } });
+    if (!property) return NextResponse.json({ error: "ไม่พบข้อมูลอสังหาริมทรัพย์นี้" }, { status: 404 });
 
-    if (!property) {
-      return NextResponse.json({ error: "ไม่พบข้อมูลอสังหาริมทรัพย์นี้" }, { status: 404 });
-    }
-
-    // แปลงข้อความ timeSlot ของหน้าบ้านกลับไปเป็นค่า 'morning' หรือ 'afternoon' ตามเงื่อนไข DB
-    let dbTimeSlot = 'morning';
-    if (timeSlot.includes("13:") || timeSlot.includes("15:") || timeSlot.includes("บ่าย") || timeSlot.toLowerCase().includes("afternoon")) {
-      dbTimeSlot = 'afternoon';
-    }
+    const dbTimeSlot = timeSlot.includes("13:") || timeSlot.includes("15:") || timeSlot.includes("บ่าย") || timeSlot.toLowerCase().includes("afternoon") ? "afternoon" : "morning";
 
     const newAppointment = await db.appointments.create({
       data: {
@@ -199,83 +123,59 @@ export async function POST(request: Request) {
         property_id: property.id,
         appointment_date: new Date(date),
         time_slot: dbTimeSlot,
-        status: "pending", // รอยืนยันนัดหมายจากแผงควบคุมนายหน้า
+        status: "pending",
         note: note || ""
       }
     });
 
-    // ปิดวันว่างของบ้านหลังนี้ (mark ว่าถูกจองแล้ว)
-    // หมายเหตุ: เดิมโค้ดตรงนี้เคยอัปเดตตาราง agent_availabilities (วันว่างส่วนตัวของนายหน้า) ด้วย
-    // แต่ agent_availabilities ผูกกับ agent_id เท่านั้น ไม่ผูกกับ property_id ทำให้การจองบ้านหลังหนึ่ง
-    // ไปทำให้บ้านอีกหลังของนายหน้าคนเดียวกันโดนมาร์กว่า "ถูกจองแล้ว" ไปด้วยทั้งที่ไม่เกี่ยวกัน
-    // ตามแผนที่เลิกใช้ระบบ agent_availabilities แล้ว จึงตัดส่วนนี้ออก เหลือแค่ property_viewing_slots
     await db.property_viewing_slots.updateMany({
-      where: {
-        property_id: property.id,
-        available_date: new Date(date),
-        time_slot: dbTimeSlot
-      },
+      where: { property_id: property.id, available_date: new Date(date), time_slot: dbTimeSlot },
       data: { is_booked: true }
     });
 
+    const customerName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "ลูกค้า";
+    const timeLabel = dbTimeSlot === "morning" ? "ช่วงเช้า (10:00 - 12:00 น.)" : "ช่วงบ่าย (14:00 - 16:00 น.)";
+
     if (property.agent_id) {
-      // ส่งการแจ้งเตือนถึงนายหน้าเจ้าของทรัพย์
-      const customerName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "ลูกค้า";
-      const timeLabel = dbTimeSlot === "morning" ? "ช่วงเช้า" : "ช่วงบ่าย";
       await db.notifications.create({
         data: {
           user_id: property.agent_id,
           title: "🏠 มีคำขอนัดหมายดูบ้านใหม่",
           content: `${customerName} ได้ส่งคำขอนัดหมายดู "${property.title}" วันที่ ${date} (${timeLabel})`,
-          type: "appointment",
-          is_read: false
+          type: "appointment"
         }
-      }).catch(err => console.error("Notification trigger error:", err));
+      }).catch(() => {});
     }
 
+    await db.notifications.create({
+      data: {
+        user_id: user.id,
+        title: "✅ ส่งคำขอนัดหมายเรียบร้อยแล้ว",
+        content: `ส่งคำขอนัดชม "${property.title}" สำหรับวันที่ ${date} เรียบร้อยแล้ว ระบบกำลังส่งต่อให้นายหน้ายืนยัน`,
+        type: "appointment"
+      }
+    }).catch(() => {});
+
     return NextResponse.json({ success: true, data: newAppointment });
-  } catch (error) {
+  } catch (error: unknown) {
     const err = error as Error;
-    console.error("Create Appointment Error:", err);
     return NextResponse.json({ error: "สร้างคำขอนัดหมายล้มเหลว: " + err.message }, { status: 500 });
   }
 }
 
-// PATCH: ปรับปรุงสถานะ/วันเวลานัดหมาย
-// (ก) นายหน้ายืนยัน / ปฏิเสธ / ปิดงานเสร็จสิ้น : body { id, action: 'confirm' | 'reject' | 'complete' }
-// (ข) ลูกค้าแก้วัน/รอบที่จอง (ทำได้เฉพาะตอนสถานะยัง pending) : body { id, date, timeSlot }
+// 📌 PATCH: ปรับปรุงสถานะ/วันเวลานัดหมาย (ฝั่งนายหน้าตอบรับ/ปฏิเสธ หรือ ลูกค้าแก้วัน)
 export async function PATCH(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const user = await getAuthUser();
+    if (!user) return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อน" }, { status: 401 });
 
-    if (!session || !session.user || !session.user.email) {
-      return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อน" }, { status: 401 });
-    }
-
-    const user = await db.users.findUnique({
-      where: { email: session.user.email }
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "ไม่พบผู้ใช้ในระบบ" }, { status: 404 });
-    }
-
-    const body = await request.json();
-    const { id, action, date, timeSlot } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: "กรุณาระบุรหัสนัดหมาย" }, { status: 400 });
-    }
+    const { id, action, date, timeSlot } = await request.json();
+    if (!id) return NextResponse.json({ error: "กรุณาระบุรหัสนัดหมาย" }, { status: 400 });
 
     const appointment = await db.appointments.findUnique({ where: { id } });
+    if (!appointment) return NextResponse.json({ error: "ไม่พบนัดหมายนี้ในระบบ" }, { status: 404 });
 
-    if (!appointment) {
-      return NextResponse.json({ error: "ไม่พบนัดหมายนี้ในระบบ" }, { status: 404 });
-    }
-
-    // -----------------------------------------------------------------
     // (ก) ฝั่งนายหน้า: ยืนยันรับคิว / ปฏิเสธ / ปิดงานเสร็จสิ้น
-    // -----------------------------------------------------------------
     if (action === "confirm" || action === "reject" || action === "complete") {
       if (user.role_id !== "agent" || appointment.agent_id !== user.id) {
         return NextResponse.json({ error: "คุณไม่มีสิทธิ์จัดการนัดหมายนี้" }, { status: 403 });
@@ -285,10 +185,19 @@ export async function PATCH(request: Request) {
         if (appointment.status !== "approved") {
           return NextResponse.json({ error: "ปิดงานได้เฉพาะนัดหมายที่ยืนยันแล้วเท่านั้น" }, { status: 400 });
         }
-        const updated = await db.appointments.update({
-          where: { id },
-          data: { status: "completed" }
-        });
+        const updated = await db.appointments.update({ where: { id }, data: { status: "completed" } });
+
+        if (appointment.customer_id) {
+          const prop = appointment.property_id ? await db.properties.findUnique({ where: { id: appointment.property_id }, select: { title: true } }) : null;
+          await db.notifications.create({
+            data: {
+              user_id: appointment.customer_id,
+              title: "✨ การนัดชมบ้านเสร็จสิ้นแล้ว",
+              content: `การเข้าชมบ้าน "${prop?.title || "อสังหาฯ"}" เสร็จสิ้นเรียบร้อยแล้ว อย่าลืมให้คะแนนรีวิวการบริการของนายหน้านะครับ`,
+              type: "review"
+            }
+          }).catch(() => {});
+        }
         return NextResponse.json({ success: true, data: updated });
       }
 
@@ -297,104 +206,59 @@ export async function PATCH(request: Request) {
       }
 
       const newStatus = action === "confirm" ? "approved" : "rejected";
-      const updated = await db.appointments.update({
-        where: { id },
-        data: { status: newStatus }
-      });
+      const updated = await db.appointments.update({ where: { id }, data: { status: newStatus } });
 
-      // ถ้าปฏิเสธ: ปลดล็อกวันว่างเดิมคืน เผื่อมีลูกค้าคนอื่นมาจองแทน
       if (action === "reject" && appointment.property_id) {
         await db.property_viewing_slots.updateMany({
-          where: {
-            property_id: appointment.property_id,
-            available_date: appointment.appointment_date,
-            time_slot: appointment.time_slot ?? undefined
-          },
+          where: { property_id: appointment.property_id, available_date: appointment.appointment_date, time_slot: appointment.time_slot ?? undefined },
           data: { is_booked: false }
         });
+      }
+
+      const property = appointment.property_id ? await db.properties.findUnique({ where: { id: appointment.property_id }, select: { title: true } }) : null;
+      const propertyTitle = property?.title || "อสังหาริมทรัพย์";
+
+      if (appointment.customer_id) {
+        const notiTitle = action === "confirm" ? "🎉 นายหน้ายืนยันการนัดชมบ้านแล้ว" : "❌ คำขอนัดหมายดูบ้านถูกปฏิเสธ";
+        const notiContent = action === "confirm" ? `นัดหมายชมบ้าน "${propertyTitle}" ได้รับการยืนยันเรียบร้อยแล้ว กรุณาไปตามวันและเวลาที่นัดหมาย` : `คำขอนัดชมบ้าน "${propertyTitle}" ถูกปฏิเสธ คุณสามารถเลือกลองนัดหมายวันเวลาอื่นใหม่ได้`;
+
+        await db.notifications.create({
+          data: { user_id: appointment.customer_id, title: notiTitle, content: notiContent, type: "appointment" }
+        }).catch(() => {});
       }
 
       return NextResponse.json({ success: true, data: updated });
     }
 
-    // -----------------------------------------------------------------
-    // (ข) ฝั่งลูกค้า: แก้วัน/รอบที่จอง (ทำได้เฉพาะตอนยัง pending)
-    // -----------------------------------------------------------------
+    // (ข) ฝั่งลูกค้า: แก้วันเวลานัดหมาย
     if (date && timeSlot) {
-      if (appointment.customer_id !== user.id) {
-        return NextResponse.json({ error: "คุณไม่มีสิทธิ์แก้ไขนัดหมายนี้" }, { status: 403 });
+      if (appointment.customer_id !== user.id || appointment.status !== "pending") {
+        return NextResponse.json({ error: "แก้ไขได้เฉพาะนัดหมายของคุณที่ยังไม่ถูกยืนยันเท่านั้น" }, { status: 400 });
       }
+      if (!appointment.property_id) return NextResponse.json({ error: "ไม่พบข้อมูลอสังหาริมทรัพย์" }, { status: 400 });
 
-      if (appointment.status !== "pending") {
-        return NextResponse.json({ error: "แก้ไขได้เฉพาะนัดหมายที่ยังไม่ถูกยืนยันเท่านั้น" }, { status: 400 });
-      }
+      const isSameSlot = toDateKey(appointment.appointment_date) === date && appointment.time_slot === timeSlot;
 
-      if (!appointment.property_id) {
-        return NextResponse.json({ error: "ไม่พบข้อมูลอสังหาริมทรัพย์ของนัดหมายนี้" }, { status: 400 });
-      }
-
-      const isSameSlot =
-        toDateKey(appointment.appointment_date) === date &&
-        appointment.time_slot === timeSlot;
-
-      // ถ้าเปลี่ยนวัน/รอบจริง ต้องเช็คว่ารอบใหม่ว่างและยังไม่มีคนจอง
       if (!isSameSlot) {
         const targetSlot = await db.property_viewing_slots.findUnique({
-          where: {
-            property_id_available_date_time_slot: {
-              property_id: appointment.property_id,
-              available_date: new Date(date),
-              time_slot: timeSlot
-            }
-          }
+          where: { property_id_available_date_time_slot: { property_id: appointment.property_id, available_date: new Date(date), time_slot: timeSlot } }
         });
-
-        if (!targetSlot) {
-          return NextResponse.json({ error: "ไม่พบวันว่างนี้ในระบบ" }, { status: 400 });
-        }
-        if (targetSlot.is_booked) {
-          return NextResponse.json({ error: "ช่วงเวลานี้ถูกจองไปแล้ว กรุณาเลือกรอบอื่น" }, { status: 400 });
-        }
-      }
-
-      // เก็บวันที่ลูกค้าจองไว้ครั้งแรกไว้แสดงขีดฆ่า (บันทึกแค่ครั้งแรกที่แก้เท่านั้น)
-      const updateData: {
-        appointment_date: Date;
-        time_slot: string;
-        original_date?: Date;
-        original_time_slot?: string;
-      } = {
-        appointment_date: new Date(date),
-        time_slot: timeSlot
-      };
-
-      if (!(appointment as Record<string, unknown>).original_date) {
-        updateData.original_date = appointment.appointment_date;
-        updateData.original_time_slot = appointment.time_slot || "morning";
+        if (!targetSlot) return NextResponse.json({ error: "ไม่พบวันว่างนี้ในระบบ" }, { status: 400 });
+        if (targetSlot.is_booked) return NextResponse.json({ error: "ช่วงเวลานี้ถูกจองไปแล้ว" }, { status: 400 });
       }
 
       const updated = await db.appointments.update({
         where: { id },
-        data: updateData
+        data: { appointment_date: new Date(date), time_slot: timeSlot }
       });
 
       if (!isSameSlot) {
-        // ปลดล็อกวันเก่า
         await db.property_viewing_slots.updateMany({
-          where: {
-            property_id: appointment.property_id,
-            available_date: appointment.appointment_date,
-            time_slot: appointment.time_slot ?? undefined
-          },
+          where: { property_id: appointment.property_id, available_date: appointment.appointment_date, time_slot: appointment.time_slot ?? undefined },
           data: { is_booked: false }
         });
-        // ล็อกวันใหม่
         await db.property_viewing_slots.updateMany({
-          where: {
-            property_id: appointment.property_id,
-            available_date: new Date(date),
-            time_slot: timeSlot
-          },
+          where: { property_id: appointment.property_id, available_date: new Date(date), time_slot: timeSlot },
           data: { is_booked: true }
         });
       }
@@ -402,10 +266,77 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ success: true, data: updated });
     }
 
-    return NextResponse.json({ error: "คำขอไม่ถูกต้อง กรุณาระบุ action หรือ date/timeSlot" }, { status: 400 });
-  } catch (error) {
+    return NextResponse.json({ error: "คำขอไม่ถูกต้อง" }, { status: 400 });
+  } catch (error: unknown) {
     const err = error as Error;
-    console.error("Update Appointment Error:", err);
     return NextResponse.json({ error: "อัปเดตนัดหมายล้มเหลว: " + err.message }, { status: 500 });
+  }
+}
+
+// 📌 DELETE: ยกเลิกนัดหมาย (ลบลง DB จริง + ปลดล็อกวันว่าง + ส่ง Notification แจ้งเตือน)
+export async function DELETE(request: Request) {
+  try {
+    const user = await getAuthUser();
+    if (!user) return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อน" }, { status: 401 });
+
+    const id = new URL(request.url).searchParams.get("id");
+    if (!id) return NextResponse.json({ error: "กรุณาระบุรหัสนัดหมาย (id)" }, { status: 400 });
+
+    const appointment = await db.appointments.findUnique({
+      where: { id },
+      include: { properties: true }
+    });
+    if (!appointment) return NextResponse.json({ error: "ไม่พบนัดหมายนี้ในระบบ" }, { status: 404 });
+
+    const isCustomer = appointment.customer_id === user.id;
+    const isAgent = appointment.agent_id === user.id;
+
+    if (!isCustomer && !isAgent) {
+      return NextResponse.json({ error: "คุณไม่มีสิทธิ์ยกเลิกนัดหมายนี้" }, { status: 403 });
+    }
+
+    // 1) ปลดล็อกวันว่างคืน
+    if (appointment.property_id && appointment.appointment_date) {
+      await db.property_viewing_slots.updateMany({
+        where: { property_id: appointment.property_id, available_date: appointment.appointment_date, time_slot: appointment.time_slot ?? undefined },
+        data: { is_booked: false }
+      });
+    }
+
+    // 2) อัปเดตสถานะเป็น 'cancelled' ลงในฐานข้อมูล PostgreSQL จริง (แทนการลบทิ้ง เพื่อเก็บประวัติไว้แสดงในแท็บยกเลิกแล้ว)
+    const updated = await db.appointments.update({
+      where: { id },
+      data: { status: 'cancelled' }
+    });
+
+    // 3) ส่งแจ้งเตือนหานายหน้าหรือลูกค้าฝั่งตรงข้าม
+    const propertyTitle = appointment.properties?.title || "อสังหาริมทรัพย์";
+    const customerName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "ผู้ใช้";
+    const dateStr = toDateKey(appointment.appointment_date);
+
+    if (isCustomer && appointment.agent_id) {
+      await db.notifications.create({
+        data: {
+          user_id: appointment.agent_id,
+          title: "🚨 ลูกค้ายกเลิกนัดหมายดูบ้าน",
+          content: `ลูกค้า (${customerName}) ได้ยกเลิกคิวนัดชมบ้าน "${propertyTitle}" สำหรับวันที่ ${dateStr} แล้ว`,
+          type: "appointment"
+        }
+      }).catch(() => {});
+    } else if (isAgent && appointment.customer_id) {
+      await db.notifications.create({
+        data: {
+          user_id: appointment.customer_id,
+          title: "🚨 นายหน้าระบุยกเลิกนัดหมายดูบ้าน",
+          content: `นายหน้าได้ยกเลิกคิวนัดชมบ้าน "${propertyTitle}" สำหรับวันที่ ${dateStr}`,
+          type: "appointment"
+        }
+      }).catch(() => {});
+    }
+
+    return NextResponse.json({ success: true, message: "ยกเลิกนัดหมายสำเร็จ", data: updated });
+  } catch (error: unknown) {
+    const err = error as Error;
+    return NextResponse.json({ error: "ยกเลิกนัดหมายล้มเหลว: " + err.message }, { status: 500 });
   }
 }

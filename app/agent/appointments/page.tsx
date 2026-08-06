@@ -13,7 +13,7 @@ import Image from 'next/image';
 
 interface AgentAppointment {
   id: string;
-  status: 'pending' | 'approved' | 'rejected' | 'completed';
+  status: 'pending' | 'approved' | 'rejected' | 'completed' | 'cancelled';
   date: string; // YYYY-MM-DD
   timeSlot: 'morning' | 'afternoon';
   note: string;
@@ -74,7 +74,11 @@ export default function AgentAppointmentsPage() {
     try {
       const res = await fetch('/api/appointments?view=agent');
       const data = await res.json();
-      if (Array.isArray(data)) setAppointments(data);
+      if (data.success && Array.isArray(data.appointments)) {
+        setAppointments(data.appointments);
+      } else if (Array.isArray(data)) {
+        setAppointments(data);
+      }
     } catch (err) {
       console.error('Error loading agent appointments:', err);
     } finally {
@@ -89,7 +93,13 @@ export default function AgentAppointmentsPage() {
         fetch('/api/appointments?view=agent')
           .then(res => res.json())
           .then(data => {
-            if (isSubscribed && Array.isArray(data)) setAppointments(data);
+            if (isSubscribed) {
+              if (data.success && Array.isArray(data.appointments)) {
+                setAppointments(data.appointments);
+              } else if (Array.isArray(data)) {
+                setAppointments(data);
+              }
+            }
           })
           .catch(err => console.error('Error loading agent appointments:', err))
           .finally(() => {
@@ -159,7 +169,7 @@ export default function AgentAppointmentsPage() {
   // --- แยกกลุ่มตามแท็บ ---
   const newRequests = useMemo(() => appointments.filter(a => a.status === 'pending'), [appointments]);
   const upcoming = useMemo(() => appointments.filter(a => a.status === 'approved'), [appointments]);
-  const doneOrCancelled = useMemo(() => appointments.filter(a => a.status === 'completed' || a.status === 'rejected'), [appointments]);
+  const doneOrCancelled = useMemo(() => appointments.filter(a => a.status === 'completed' || a.status === 'rejected' || a.status === 'cancelled'), [appointments]);
 
   const listForActiveTab =
     activeTab === 'new' ? newRequests :
@@ -340,9 +350,14 @@ export default function AgentAppointmentsPage() {
               </button>
               <button
                 onClick={() => setActiveTab('done')}
-                className={`px-4 py-2.5 border-b-2 font-black text-xs whitespace-nowrap transition cursor-pointer ${activeTab === 'done' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
+                className={`px-4 py-2.5 border-b-2 font-black text-xs whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 ${activeTab === 'done' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
               >
                 เสร็จสิ้น / ยกเลิก
+                {doneOrCancelled.length > 0 && (
+                  <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full text-[9px] font-bold">
+                    {doneOrCancelled.length}
+                  </span>
+                )}
               </button>
             </div>
           </div>
@@ -364,13 +379,18 @@ export default function AgentAppointmentsPage() {
               </div>
             ) : (
               sortedList.map(apt => (
-                <div key={apt.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col md:flex-row gap-4 relative overflow-hidden">
+                <div
+                  key={apt.id}
+                  className={`bg-white rounded-2xl border p-4 shadow-sm flex flex-col md:flex-row gap-4 relative overflow-hidden transition-all hover:shadow-md ${
+                    apt.status === 'cancelled' ? 'bg-slate-50/80 border-red-200 opacity-80' : 'border-slate-100'
+                  }`}
+                >
 
                   {/* แถบสีข้างซ้ายบอกสถานะ */}
                   <div className={`absolute left-0 top-0 bottom-0 w-1 ${
                     apt.status === 'pending' ? 'bg-amber-400' :
                     apt.status === 'approved' ? 'bg-blue-500' :
-                    apt.status === 'completed' ? 'bg-emerald-500' : 'bg-red-400'
+                    apt.status === 'completed' ? 'bg-emerald-500' : 'bg-red-500'
                   }`} />
 
                   <div className="flex-1 pl-2 space-y-2">
@@ -390,7 +410,7 @@ export default function AgentAppointmentsPage() {
                         apt.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                         'bg-red-50 text-red-600 border-red-200'
                       }`}>
-                        {apt.status === 'pending' ? 'รอยืนยัน' : apt.status === 'approved' ? 'ยืนยันแล้ว' : apt.status === 'completed' ? 'เสร็จสิ้น' : 'ปฏิเสธแล้ว'}
+                        {apt.status === 'pending' ? 'รอยืนยัน' : apt.status === 'approved' ? 'ยืนยันแล้ว' : apt.status === 'completed' ? 'เสร็จสิ้น' : apt.status === 'cancelled' ? 'ลูกค้ายกเลิกแล้ว' : 'ปฏิเสธแล้ว'}
                       </span>
                     </div>
 

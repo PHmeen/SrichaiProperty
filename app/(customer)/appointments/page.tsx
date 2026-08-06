@@ -82,17 +82,24 @@ export default function AppointmentsPage() {
     });
 
   const upcomingCount = appointments.filter(
-    apt => apt.status === 'upcoming' || apt.status === 'pending'
+    apt => apt.status === 'approved' || apt.status === 'pending' || apt.status === 'upcoming'
+  ).length;
+
+  const cancelledCount = appointments.filter(
+    apt => apt.status === 'cancelled' || apt.status === 'rejected'
   ).length;
 
   const getStatusDetails = (status: string) => {
     switch (status) {
+      case 'approved':
       case 'upcoming':
         return { text: "ยืนยันแล้ว", bg: "bg-emerald-50 border-emerald-200", color: "text-emerald-700" };
       case 'pending':
         return { text: "รอยืนยันคิว", bg: "bg-amber-50 border-amber-200", color: "text-amber-700" };
       case 'cancelled':
         return { text: "ยกเลิกแล้ว", bg: "bg-red-50 border-red-200", color: "text-red-700" };
+      case 'rejected':
+        return { text: "ปฏิเสธแล้ว", bg: "bg-rose-50 border-rose-200", color: "text-rose-700" };
       default:
         return { text: "เข้าชมแล้ว", bg: "bg-slate-100 border-slate-200", color: "text-slate-600" };
     }
@@ -100,9 +107,15 @@ export default function AppointmentsPage() {
 
   const filteredAppointments = appointments.filter(apt => {
     if (activeTab === 'upcoming') {
-      return apt.status === 'upcoming' || apt.status === 'pending';
+      return apt.status === 'approved' || apt.status === 'pending' || apt.status === 'upcoming';
     }
-    return apt.status === activeTab;
+    if (activeTab === 'past') {
+      return apt.status === 'completed' || apt.status === 'past';
+    }
+    if (activeTab === 'cancelled') {
+      return apt.status === 'cancelled' || apt.status === 'rejected';
+    }
+    return true;
   });
 
   const [reviewModalApt, setReviewModalApt] = useState<{ id: string; agentName: string; propertyName: string } | null>(null);
@@ -145,6 +158,9 @@ export default function AppointmentsPage() {
             className={`px-4 py-2 border-b-2 font-bold text-xs whitespace-nowrap transition cursor-pointer ${activeTab === 'cancelled' ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
           >
             ยกเลิกแล้ว
+            {cancelledCount > 0 && (
+              <span className="bg-slate-200 text-slate-700 ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold">{cancelledCount}</span>
+            )}
           </button>
         </div>
 
@@ -228,11 +244,13 @@ export default function AppointmentsPage() {
                         ⭐ ให้คะแนนการบริการ
                       </button>
                     )}
-                    {(apt.status === 'upcoming' || apt.status === 'pending') && (
+                    {(apt.status === 'approved' || apt.status === 'upcoming' || apt.status === 'pending') && (
                       <button 
-                        onClick={() => {
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
                           if (confirm('คุณแน่ใจหรือไม่ว่าต้องการยกเลิกนัดหมายนี้?')) {
-                            cancelAppointment(apt.id);
+                            await cancelAppointment(apt.id);
                           }
                         }}
                         className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg font-bold text-xs transition cursor-pointer"
