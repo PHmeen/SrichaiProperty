@@ -5,15 +5,17 @@ import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 
 export default function RegisterPage() {
+  // หน้านี้สมัครได้เฉพาะ "ลูกค้า" เท่านั้น จึง fix role เป็น 'buyer' ตายตัว (ไม่มีตัวเลือกอื่น)
+  // ตัวแปรนี้จะถูกส่งไปที่ /api/auth/register แล้วแปลงเป็น role_id = 'customer' ที่ฝั่ง backend
   const role = 'buyer';
-  const [showOtpModal, setShowOtpModal] = useState(false);
-  const [otpValues, setOtpValues] = useState(['', '', '', '', '', '']);
-  const [passwordVisible, setPasswordVisible] = useState(false);
-  
+  const [showOtpModal, setShowOtpModal] = useState(false); // ควบคุมการเปิด/ปิด popup กรอก OTP
+  const [otpValues, setOtpValues] = useState(['', '', '', '', '', '']); // เก็บเลข OTP ทีละหลัก (6 ช่อง)
+  const [passwordVisible, setPasswordVisible] = useState(false); // toggle โชว์/ซ่อนรหัสผ่าน
+
   const togglePassword = () => {
     setPasswordVisible(!passwordVisible);
   };
-  
+
   // สร้างสเตตสำหรับเก็บค่าจากฟอร์ม
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -21,7 +23,9 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // [ติวสอบ]: ฟังก์ชันสมัครสมาชิกและล็อกอินอัตโนมัติ
+  //  ฟังก์ชันสมัครสมาชิกและล็อกอินอัตโนมัติ
+  // หมายเหตุ: ฟังก์ชันนี้ถูกเรียกตอนกดปุ่ม "ยืนยันและสร้างบัญชี" ใน OTP modal
+  // แต่ในโค้ดปัจจุบันไม่ได้ส่ง otpValues ไปตรวจสอบกับ backend จริง (เป็นแค่ UI mockup ของขั้นตอน OTP)
   const verifyOtp = async () => {
     try {
       // 1. ส่งข้อมูลฟอร์มไปให้ Backend บันทึกลง Database
@@ -39,7 +43,7 @@ export default function RegisterPage() {
         return;
       }
 
-      // [ติวสอบ]: 2. เมื่อสมัครสมาชิกผ่านสำเร็จ ยิงคำสั่ง NextAuth signIn เข้าระบบโดยอัตโนมัติทันที
+      //  2. เมื่อสมัครสมาชิกผ่านสำเร็จ ยิงคำสั่ง NextAuth signIn เข้าระบบโดยอัตโนมัติทันที
       // ตรงนี้คือจุดเด่นที่ทำให้ลูกค้าสมัครปุ๊บ ใช้เว็บต่อได้เลยไม่ต้องไปกดล็อกอินซ้ำ
       const loginRes = await signIn('credentials', {
         redirect: false,
@@ -60,23 +64,25 @@ export default function RegisterPage() {
     setShowOtpModal(false);
   };
 
+  //  อัปเดตค่า OTP ทีละช่อง เวลาผู้ใช้พิมพ์ตัวเลข
   const handleOtpChange = (index: number, value: string) => {
-    if (value.length > 1) value = value[0];
+    if (value.length > 1) value = value[0]; // กันพิมพ์เกิน 1 ตัวต่อช่อง (เอาเฉพาะตัวแรก)
     const newOtpValues = [...otpValues];
     newOtpValues[index] = value;
     setOtpValues(newOtpValues);
 
     // Focus next input automatically
+    // พอกรอกช่องนี้เสร็จ ให้เลื่อน cursor ไปช่องถัดไปอัตโนมัติ (index < 5 เพราะมีทั้งหมด 6 ช่อง คือ index 0-5)
     if (value && index < 5) {
       const nextInput = document.getElementById(`otp-input-${index + 1}`);
       nextInput?.focus();
     }
   };
 
-  // [ติวสอบ]: เมื่อผู้ใช้กดส่งฟอร์มสมัครสมาชิก
+  //  เมื่อผู้ใช้กดปุ่ม "รับรหัส OTP เพื่อยืนยันตัวตน" ในฟอร์มหลัก
   const handleRegister = (event: React.FormEvent) => {
-    event.preventDefault(); // กันหน้าเว็บโหลดใหม่
-    // เช็คก่อนว่ากรอกรหัสผ่าน 2 ช่องตรงกันไหม
+    event.preventDefault(); // กันหน้าเว็บโหลดใหม่ (ปกติ submit form จะรีเฟรชหน้า)
+    // เช็คก่อนว่ากรอกรหัสผ่าน 2 ช่องตรงกันไหม ก่อนจะไปขั้นต่อไป
     if (password !== confirmPassword) {
       alert("รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน");
       return;
