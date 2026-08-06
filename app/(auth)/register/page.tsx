@@ -21,8 +21,10 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  // [ติวสอบ]: ฟังก์ชันสมัครสมาชิกและล็อกอินอัตโนมัติ
   const verifyOtp = async () => {
     try {
+      // 1. ส่งข้อมูลฟอร์มไปให้ Backend บันทึกลง Database
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -37,7 +39,8 @@ export default function RegisterPage() {
         return;
       }
 
-      // เมื่อสมัครสมาชิกผ่านสำเร็จ ยิงล็อกอินเข้าระบบโดยอัตโนมัติทันที
+      // [ติวสอบ]: 2. เมื่อสมัครสมาชิกผ่านสำเร็จ ยิงคำสั่ง NextAuth signIn เข้าระบบโดยอัตโนมัติทันที
+      // ตรงนี้คือจุดเด่นที่ทำให้ลูกค้าสมัครปุ๊บ ใช้เว็บต่อได้เลยไม่ต้องไปกดล็อกอินซ้ำ
       const loginRes = await signIn('credentials', {
         redirect: false,
         email,
@@ -49,7 +52,7 @@ export default function RegisterPage() {
         window.location.href = '/login';
       } else {
         alert("สมัครสมาชิกและเข้าสู่ระบบสำเร็จ!");
-        window.location.href = '/home';
+        window.location.href = '/home'; // พาไปหน้าแรกของลูกค้า
       }
     } catch {
       alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์หลังบ้านเพื่อสมัครสมาชิกได้");
@@ -70,12 +73,15 @@ export default function RegisterPage() {
     }
   };
 
+  // [ติวสอบ]: เมื่อผู้ใช้กดส่งฟอร์มสมัครสมาชิก
   const handleRegister = (event: React.FormEvent) => {
-    event.preventDefault();
+    event.preventDefault(); // กันหน้าเว็บโหลดใหม่
+    // เช็คก่อนว่ากรอกรหัสผ่าน 2 ช่องตรงกันไหม
     if (password !== confirmPassword) {
       alert("รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน");
       return;
     }
+    // ถ้าตรงกัน ให้เปิด Modal ป๊อปอัปให้กรอก OTP (แล้วพอกรอกเสร็จมันจะไปเรียก verifyOtp)
     setShowOtpModal(true);
   };
 

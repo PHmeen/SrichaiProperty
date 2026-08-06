@@ -17,26 +17,31 @@ export default function LoginPage() {
   const [policyType, setPolicyType] = useState<'privacy' | 'terms' | null>(null);
   const [showCookies, setShowCookies] = useState(true);
 
+  // [ติวสอบ]: ฟังก์ชันเมื่อกดปุ่ม "เข้าสู่ระบบ"
   const handleLogin = async (event: React.FormEvent) => {
-    event.preventDefault();
+    event.preventDefault(); // ป้องกันหน้าเว็บรีเฟรช
     setIsLoading(true);
     setErrorMsg('');
 
     try {
+      // 1. เรียกใช้ NextAuth signIn เพื่อตรวจสอบอีเมล/รหัสผ่าน
       const res = await signIn('credentials', {
         redirect: false,
         email,
         password,
       });
 
+      // 2. ถ้าล็อกอินไม่ผ่าน (รหัสผิด, เมลไม่มี) จะได้ error กลับมา
       if (res?.error) {
         setErrorMsg(res.error);
         setIsLoading(false);
       } else {
+        // 3. ถ้าล็อกอินผ่าน ดึงข้อมูล Session ปัจจุบันเพื่อดูว่าคนนี้เป็น Role อะไร
         const sessionRes = await fetch('/api/auth/session');
         const sessionData = await sessionRes.json();
         const role = sessionData?.user?.role;
 
+        // 4. สั่งพาผู้ใช้ไปหน้าเว็บที่ถูกต้องตาม Role
         if (role === 'admin') {
           window.location.href = '/admin/dashboard';
         } else if (role === 'agent') {

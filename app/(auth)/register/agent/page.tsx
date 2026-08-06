@@ -66,7 +66,8 @@ export default function AgentRegisterPage() {
   const [isUploadingProfile, setIsUploadingProfile] = useState(false);
   const [isUploadingKyc, setIsUploadingKyc] = useState(false);
 
-  // ฟังก์ชันอัปโหลดไฟล์จริงไปหลังบ้าน
+  // [ติวสอบ]: ฟังก์ชันอัปโหลดไฟล์จริงไปหลังบ้าน
+  // เมื่อเราเลือกไฟล์รูป มันจะยิงไฟล์แนบ (FormData) ไปที่ /api/upload
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'profile' | 'kyc') => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -87,6 +88,8 @@ export default function AgentRegisterPage() {
       });
       const data = await res.json();
       if (data.success) {
+        // [ติวสอบ]: เมื่อหลังบ้านเซฟรูปลง Cloud สำเร็จ จะคืนค่า URL รูปกลับมา
+        // เราก็เอา URL นั้นมาเก็บใน State เพื่อส่งไปพร้อมกับข้อมูลตอนกด Register
         if (type === 'profile') {
           setProfileImage(data.url);
         } else {
@@ -107,9 +110,12 @@ export default function AgentRegisterPage() {
     }
   };
 
+  // [ติวสอบ]: ฟังก์ชันนี้คือหัวใจหลักของการสมัครสมาชิก (ส่งข้อมูลไป Backend)
   const verifyOtp = async () => {
+    // 1. นำชื่อและนามสกุลมาต่อกัน ก่อนส่งไป Backend
     const fullName = `${firstName} ${lastName}`.trim();
     try {
+      // 2. ยิง API (POST) ไปที่ /api/auth/register พร้อมแนบข้อมูลทั้งหมดในรูปแบบ JSON
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -125,8 +131,10 @@ export default function AgentRegisterPage() {
         return;
       }
 
+      // 3. ถ้าสำเร็จ Backend จะสร้างบัญชีให้ (แต่สถานะคือ pending เพราะ role เป็น agent)
       alert("สมัครสมาชิกนายหน้าสำเร็จเรียบร้อย! บัญชีของคุณอยู่ระหว่างรอแอดมินตรวจสอบและอนุมัติก่อนเข้าใช้งาน");
       setShowOtpModal(false);
+      // 4. พาผู้ใช้กลับไปหน้า Login
       window.location.href = '/login/agent';
     } catch {
       alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์หลังบ้านเพื่อสมัครสมาชิกได้");
@@ -146,16 +154,22 @@ export default function AgentRegisterPage() {
     }
   };
 
+  // [ติวสอบ]: ฟังก์ชันนี้ถูกเรียกเมื่อกดปุ่ม "ส่งคำขอสมัครตัวแทน" ล่างสุดของจอ
   const handleRegister = (event: React.FormEvent) => {
-    event.preventDefault();
+    event.preventDefault(); // ป้องกันไม่ให้หน้าเว็บรีเฟรชเมื่อกดปุ่ม Submit ฟอร์ม
+    
+    // ด่านตรวจที่ 1: รหัสผ่านตรงกันไหม?
     if (password !== confirmPassword) {
       alert("รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน");
       return;
     }
+    // ด่านตรวจที่ 2: ติ๊กยอมรับข้อตกลงหรือยัง?
     if (!agreed) {
       alert("กรุณากดยอมรับเงื่อนไขการเป็นนายหน้า");
       return;
     }
+    
+    // ถ้าผ่านหมด ก็ข้ามไปเรียกฟังก์ชัน verifyOtp เพื่อส่งเข้า Database ได้เลย
     verifyOtp();
   };
 

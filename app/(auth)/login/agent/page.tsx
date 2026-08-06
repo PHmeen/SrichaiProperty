@@ -15,30 +15,36 @@ export default function AgentLoginPage() {
     setPasswordVisible(!passwordVisible);
   };
 
+  // [ติวสอบ]: ฟังก์ชันเข้าสู่ระบบสำหรับนายหน้า
   const handleLogin = async (event: React.FormEvent) => {
-    event.preventDefault();
+    event.preventDefault(); // กันหน้ารีเฟรช
     setIsLoading(true);
     setErrorMsg('');
 
     try {
+      // 1. เรียก signIn เพื่อเช็คอีเมลและรหัสผ่าน
       const res = await signIn('credentials', {
         redirect: false,
         email,
         password,
       });
 
+      // 2. ถ้าติด Error (เช่น รหัสผิด หรือ แอดมินยังไม่อนุมัติ) จะโชว์ข้อความแจ้งเตือน
+      // (ระบบเช็คสถานะ pending อยู่ที่ไฟล์ lib/authOptions.ts)
       if (res?.error) {
         setErrorMsg(res.error);
         setIsLoading(false);
       } else {
+        // 3. ถ้าล็อกอินผ่าน เข้าไปเช็ค Role
         const sessionRes = await fetch('/api/auth/session');
         const sessionData = await sessionRes.json();
         const role = sessionData?.user?.role;
 
+        // 4. พาไปหน้าเว็บที่ถูกต้อง
         if (role === 'admin') {
           window.location.href = '/admin/dashboard';
         } else {
-          window.location.href = '/agent/home';
+          window.location.href = '/agent/home'; // พาไปหน้าของนายหน้า
         }
       }
     } catch {
