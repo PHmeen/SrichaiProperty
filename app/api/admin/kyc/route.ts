@@ -45,7 +45,10 @@ export async function GET(req: Request) {
       }
     });
 
-    return NextResponse.json({ success: true, users });
+    return NextResponse.json(
+      { success: true, users },
+      { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+    );
   } catch (error) {
     console.error("Error fetching kyc agents:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
@@ -79,5 +82,30 @@ export async function PATCH(req: Request) {
     const err = error as Error;
     console.error("Error updating user status:", err);
     return NextResponse.json({ error: err.message || "Internal Server Error" }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const session = await getServerSession(authOptions) as AdminSession | null;
+    if (!session || !session.user || session.user.role !== 'admin') {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get('userId');
+
+    if (!userId) {
+      return NextResponse.json({ error: "Missing userId" }, { status: 400 });
+    }
+
+    await db.users.delete({
+      where: { id: userId }
+    });
+
+    return NextResponse.json({ success: true, message: "ลบบัญชีสำเร็จ" });
+  } catch (error) {
+    console.error("Error deleting agent:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

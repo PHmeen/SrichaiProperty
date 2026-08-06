@@ -1,20 +1,14 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/authOptions';
 import fs from 'fs';
 import path from 'path';
 
-// ประเภทไฟล์ที่อนุญาต
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+// ประเภทไฟล์ที่อนุญาต (รวมรูปภาพและเอกสาร PDF)
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export async function POST(request: Request) {
   try {
-    // 🔐 ตรวจสอบ Session ก่อน — ต้อง login ก่อนถึงอัปโหลดได้
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'กรุณาเข้าสู่ระบบก่อนอัปโหลดไฟล์' }, { status: 401 });
-    }
+    // อนุญาตให้อัปโหลดไฟล์รูปภาพ/เอกสารได้โดยไม่ต้องเข้าสู่ระบบก่อน (สำหรับหน้าสมัครนายหน้า/ยื่นเอกสาร KYC)
 
     const formData = await request.formData();
     const file = formData.get('file') as File;

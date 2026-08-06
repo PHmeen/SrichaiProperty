@@ -9,26 +9,60 @@ export default function AdminKycPage() {
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
 
   const fetchAgents = (status: string) => {
-    fetch(`/api/admin/kyc?status=${status}`)
+    setLoading(true);
+    fetch(`/api/admin/kyc?status=${status}&t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+    })
       .then(res => res.json())
       .then(data => {
-        if (data.success) {
+        if (data.success && Array.isArray(data.users)) {
           setAgents(data.users);
+        } else {
+          setAgents([]);
         }
         setLoading(false);
       })
       .catch(err => {
         console.error(err);
+        setAgents([]);
         setLoading(false);
       });
   };
 
   useEffect(() => {
-    fetchAgents(activeTab);
+    let ignore = false;
+    async function loadData() {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/admin/kyc?status=${activeTab}&t=${Date.now()}`, {
+          cache: 'no-store',
+          headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+        });
+        const data = await res.json();
+        if (!ignore) {
+          if (data.success && Array.isArray(data.users)) {
+            setAgents(data.users);
+          } else {
+            setAgents([]);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        if (!ignore) setAgents([]);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+    loadData();
+    return () => { ignore = true; };
   }, [activeTab]);
 
   const handleUpdateStatus = async (userId: string, newStatus: string) => {
     if (!confirm(`คุณแน่ใจหรือไม่ที่จะ ${newStatus === 'approved' ? 'อนุมัติ' : 'ไม่อนุมัติ'} บัญชีนี้?`)) return;
+
+    // อัปเดต UI ทันที 0 วินาทีโดยตัดรายการนั้นออก
+    setAgents(prev => prev.filter(a => a.id !== userId));
 
     try {
       const res = await fetch('/api/admin/kyc', {
@@ -42,10 +76,37 @@ export default function AdminKycPage() {
         fetchAgents(activeTab); // refresh list
       } else {
         alert("เกิดข้อผิดพลาด: " + data.error);
+        fetchAgents(activeTab);
       }
     } catch (err) {
       console.error(err);
       alert("เกิดข้อผิดพลาดในการอัปเดตสถานะ");
+      fetchAgents(activeTab);
+    }
+  };
+
+  const handleDeleteAgent = async (userId: string) => {
+    if (!confirm("คุณแน่ใจหรือไม่ว่าต้องการลบบัญชีนี้ออกจากระบบอย่างถาวร?")) return;
+
+    // ตัดออกจาก UI ทันที 0 วินาที
+    setAgents(prev => prev.filter(a => a.id !== userId));
+
+    try {
+      const res = await fetch(`/api/admin/kyc?userId=${userId}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("ลบบัญชีสำเร็จ");
+        fetchAgents(activeTab);
+      } else {
+        alert("เกิดข้อผิดพลาด: " + data.error);
+        fetchAgents(activeTab);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("เกิดข้อผิดพลาดในการลบบัญชี");
+      fetchAgents(activeTab);
     }
   };
 
@@ -110,6 +171,7 @@ export default function AdminKycPage() {
                   agent={agent} 
                   activeTab={activeTab} 
                   onUpdateStatus={handleUpdateStatus} 
+                  onDeleteAgent={handleDeleteAgent}
                 />
               ))}
             </div>

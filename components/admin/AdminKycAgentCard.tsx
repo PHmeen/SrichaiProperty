@@ -17,9 +17,10 @@ interface Props {
   agent: AgentData;
   activeTab: 'pending' | 'approved' | 'rejected';
   onUpdateStatus: (userId: string, status: string) => void;
+  onDeleteAgent?: (userId: string) => void;
 }
 
-export default function AdminKycAgentCard({ agent, activeTab, onUpdateStatus }: Props) {
+export default function AdminKycAgentCard({ agent, activeTab, onUpdateStatus, onDeleteAgent }: Props) {
   return (
     <div className="bg-white rounded-2xl border-2 border-amber-500/20 shadow-sm overflow-hidden flex flex-col">
       {/* Card Main Content */}
@@ -150,6 +151,14 @@ export default function AdminKycAgentCard({ agent, activeTab, onUpdateStatus }: 
             <span className="text-xs font-bold text-amber-600">รอตรวจสอบเอกสาร (Status: Pending)</span>
           </div>
           <div className="flex items-center gap-3">
+            {onDeleteAgent && (
+              <button 
+                onClick={() => onDeleteAgent(agent.id)}
+                className="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold rounded-xl transition-all text-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>🗑️</span> ลบบัญชีนี้
+              </button>
+            )}
             <button 
               onClick={() => onUpdateStatus(agent.id, 'rejected')}
               className="px-5 py-2.5 bg-white border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-100 text-slate-600 font-bold rounded-xl transition-all text-xs flex items-center gap-2"

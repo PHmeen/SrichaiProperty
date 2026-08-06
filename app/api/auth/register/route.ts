@@ -20,12 +20,12 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
-      return NextResponse.json(
-        { error: "รหัสผ่านต้องประกอบด้วยตัวอักษรและตัวเลขอย่างน้อย 1 ตัว" },
-        { status: 400 }
-      );
-    }
+    // if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+    //   return NextResponse.json(
+    //     { error: "รหัสผ่านต้องประกอบด้วยตัวอักษรและตัวเลขอย่างน้อย 1 ตัว" },
+    //     { status: 400 }
+    //   );
+    // }
 
     const existingUser = await db.users.findUnique({
       where: { email }

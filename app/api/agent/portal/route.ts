@@ -20,9 +20,9 @@ export async function GET(request: Request) {
     if (!agent || agent.role_id !== 'agent') {
       return NextResponse.json({ error: 'สิทธิ์ไม่ถูกต้อง หรือยังไม่ได้เข้าสู่ระบบ' }, { status: 401 });
     }
-    // ตรวจสอบว่าบัญชีนายหน้าได้รับการอนุมัติแล้ว
-    if (agent.status !== 'approved') {
-      return NextResponse.json({ error: 'บัญชีนายหน้าของคุณยังไม่ได้รับการอนุมัติ หรือถูกระงับการใช้งาน' }, { status: 403 });
+    // ตรวจสอบว่าบัญชีนายหน้าไม่ได้ถูกแบนหรือถูกระงับ
+    if (agent.status === 'banned' || agent.status === 'suspended') {
+      return NextResponse.json({ error: 'บัญชีนายหน้าของคุณถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
