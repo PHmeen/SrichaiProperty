@@ -267,8 +267,8 @@ export default function AgentDashboardPage() {
 
         {/* 4 Cards Summary */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">โควตาประกาศ</span>
+          <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs space-y-2 transition-all hover:border-slate-300">
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">โควตาประกาศ</span>
             <strong className="text-xl font-black text-slate-900 block">
               {dbData?.totalCount || 0} {isPro ? 'ประกาศ (PRO)' : '/ 3'}
             </strong>
@@ -280,48 +280,50 @@ export default function AgentDashboardPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ยอดเข้าชมรวม</span>
+          <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs space-y-2 transition-all hover:border-slate-300">
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">ยอดเข้าชมรวม</span>
             <strong className="text-xl font-black text-slate-900 block">{(dbData?.totalViews || 0).toLocaleString()} ครั้ง</strong>
-            <span className="text-[10px] text-emerald-600 font-bold block">📈 ได้รับความสนใจต่อเนื่อง</span>
+            <span className="text-[10px] text-emerald-600 font-extrabold block flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" /> ได้รับความสนใจต่อเนื่อง
+            </span>
           </div>
 
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ลูกค้านัดชมสถานที่</span>
+          <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs space-y-2 transition-all hover:border-slate-300">
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">ลูกค้านัดชมสถานที่</span>
             <strong className="text-xl font-black text-blue-600 block">{dbData?.pendingAptsCount || 0} รายการ</strong>
-            <span className="text-[10px] text-slate-400 block">🎯 รอยืนยันการพบลูกค้า</span>
+            <span className="text-[10px] text-slate-400 font-bold block">🎯 รอยืนยันการพบลูกค้า</span>
           </div>
 
-          <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm space-y-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">มูลค่าพอร์ตโฟลิโอ</span>
+          <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs space-y-2 transition-all hover:border-slate-300">
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">มูลค่าพอร์ตโฟลิโอ</span>
             <strong className="text-xl font-black text-emerald-600 block">{dbData?.totalPortfolioValue || '0.0 ลบ.'}</strong>
-            <span className="text-[10px] text-slate-400 block">💎 มูลค่ารวมทรัพย์สินที่อนุมัติ</span>
+            <span className="text-[10px] text-slate-400 font-bold block">💎 มูลค่ารวมทรัพย์สินที่อนุมัติ</span>
           </div>
         </section>
 
         {/* 2 Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           
-          {/* ซ้าย: รายการประกาศอสังหาริมทรัพย์ */}
-          <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-100 shadow-sm p-5 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+          {/* ซ้าย: รายการประกาศอสังหาริมทรัพย์แต่ละหลัง */}
+          <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
               <div>
                 <h3 className="font-extrabold text-slate-900 text-sm md:text-base">รายการประกาศอสังหาริมทรัพย์</h3>
-                <p className="text-[10px] text-slate-400 mt-0.5">กดปุ่ม &quot;📊 ดูสถิติกราฟ&quot; เพื่อเปิดหน้าต่างลอยสถิติเชิงลึกรายบ้าน</p>
+                <p className="text-[11px] text-slate-400 mt-0.5 font-medium">กดปุ่ม &quot;📊 ดูสถิติกราฟ&quot; เพื่อดูรายละเอียดเชิงลึกของบ้านแต่ละหลัง</p>
               </div>
               
               <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  placeholder="🔍 ค้นหาตามชื่อประกาศ..."
+                  placeholder="🔍 ค้นหาตามชื่อ..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 outline-none focus:border-blue-500 w-36 sm:w-44 transition"
+                  className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-1.5 text-xs text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 w-36 sm:w-44 transition placeholder-slate-400 font-medium"
                 />
                 <select 
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 outline-none cursor-pointer"
+                  className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 outline-none cursor-pointer"
                 >
                   <option value="all">ทั้งหมด ({dbData?.properties.length || 0})</option>
                   <option value="approved">อนุมัติแล้ว</option>
@@ -331,66 +333,74 @@ export default function AgentDashboardPage() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[500px]">
+              <table className="w-full text-left border-collapse min-w-[550px]">
                 <thead>
-                  <tr className="border-b text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    <th className="py-2.5 px-1">อสังหาริมทรัพย์</th>
-                    <th className="py-2.5 px-2 text-center">ยอดเข้าชม / นัดหมาย</th>
+                  <tr className="border-b border-slate-100 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                    <th className="py-2.5 px-2">อสังหาริมทรัพย์</th>
+                    <th className="py-2.5 px-2 text-center">สถิติคนดู / นัดหมาย</th>
                     <th className="py-2.5 px-2 text-center">สถานะ</th>
-                    <th className="py-2.5 px-1 text-right">การจัดการ & สถิติ</th>
+                    <th className="py-2.5 px-2 text-right">การจัดการ & สถิติ</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody className="divide-y divide-slate-100">
                   {filteredProperties.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="py-8 text-center text-slate-400 font-bold">
+                      <td colSpan={4} className="py-10 text-center text-slate-400 font-bold text-xs">
                         ยังไม่มีรายการประกาศในระบบ กดปุ่ม &quot;+ ลงประกาศใหม่&quot; เพื่อเริ่มสร้างประกาศแรกของคุณ
                       </td>
                     </tr>
                   ) : (
                     filteredProperties.map(p => (
-                      <tr key={p.id} className="hover:bg-slate-50/60 transition">
-                        <td className="py-3 px-1 flex gap-3 items-center">
-                          <Image src={p.image} alt="property" width={56} height={40} className="w-14 h-10 rounded-xl object-cover border shrink-0" unoptimized />
-                          <div>
-                            <h4 className="font-bold text-slate-900 text-xs line-clamp-1">{p.title}</h4>
-                            <span className="text-blue-600 font-black text-[11px] block">{p.price}</span>
+                      <tr key={p.id} className="hover:bg-slate-50/80 transition group">
+                        <td className="py-3 px-2 flex gap-3 items-center">
+                          <div className="relative w-14 h-11 rounded-xl overflow-hidden border border-slate-200 shrink-0 shadow-2xs">
+                            <Image src={p.image} alt="property" fill className="object-cover group-hover:scale-105 transition-transform duration-300" unoptimized />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-extrabold text-slate-900 text-xs truncate max-w-[200px]">{p.title}</h4>
+                            <span className="text-blue-600 font-black text-xs block mt-0.5">{p.price}</span>
                           </div>
                         </td>
 
-                        <td className="py-3 px-2 text-center font-semibold text-slate-600 text-[11px]">
-                          👁️ {p.views.toLocaleString()} ครั้ง | 📅 {p.appointments} นัด
+                        <td className="py-3 px-2 text-center font-bold text-slate-600 text-[11px]">
+                          <div className="inline-flex items-center gap-2 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-xl">
+                            <span>👁️ {p.views.toLocaleString()}</span>
+                            <span className="text-slate-300">|</span>
+                            <span className="text-blue-600">📅 {p.appointments} นัด</span>
+                          </div>
                         </td>
 
                         <td className="py-3 px-2 text-center">
-                          <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${p.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                          <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full border ${p.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80' : 'bg-amber-50 text-amber-700 border-amber-200/80'}`}>
                             {p.status === 'approved' ? 'อนุมัติแล้ว' : 'รอตรวจสอบ'}
                           </span>
                         </td>
 
-                        <td className="py-3 px-1 text-right">
-                          <div className="flex items-center justify-end gap-2 text-xs font-bold">
+                        <td className="py-3 px-2 text-right">
+                          <div className="flex items-center justify-end gap-1.5 text-xs font-bold">
                             <button
                               onClick={() => setSelectedProperty(p)}
-                              className="px-3 py-1.5 text-[11px] bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-600 hover:text-white hover:border-blue-600 font-black rounded-xl transition cursor-pointer shadow-2xs flex items-center gap-1"
+                              className="px-2.5 py-1.5 text-[10px] bg-blue-50 text-blue-700 border border-blue-200/80 hover:bg-blue-600 hover:text-white font-extrabold rounded-xl transition cursor-pointer shadow-2xs flex items-center gap-1"
                               title="เปิดหน้าต่างลอยสถิติเชิงลึก"
                             >
-                              📊 ดูสถิติกราฟ
+                              📊 สถิติ
                             </button>
                             <button
                               onClick={() => handleCopyLink(p.id)}
-                              className="text-slate-600 hover:text-blue-600 transition cursor-pointer"
+                              className="px-2.5 py-1.5 text-[10px] bg-slate-50 text-slate-600 border border-slate-200/80 hover:bg-slate-100 font-bold rounded-xl transition cursor-pointer"
                               title="คัดลอกลิงก์ประกาศไปแชร์"
                             >
                               {copiedId === p.id ? '✓ คัดลอกแล้ว' : '🔗 แชร์'}
                             </button>
-                            <Link href={`/agent/edit-property/${p.id}`} className="text-blue-600 hover:underline">แก้ไข</Link>
+                            <Link href={`/agent/edit-property/${p.id}`} className="px-2.5 py-1.5 text-[10px] bg-slate-50 text-blue-600 border border-slate-200/80 hover:bg-blue-50 font-bold rounded-xl transition">
+                              แก้ไข
+                            </Link>
                             <button
                               onClick={() => handleDelete(p.id)}
                               disabled={deletingId === p.id}
-                              className="text-red-500 hover:underline disabled:opacity-50 cursor-pointer"
+                              className="px-2 py-1.5 text-[10px] text-rose-500 hover:bg-rose-50 rounded-xl transition disabled:opacity-50 cursor-pointer"
                             >
-                              {deletingId === p.id ? '...' : 'ลบ'}
+                              {deletingId === p.id ? '...' : '🗑️'}
                             </button>
                           </div>
                         </td>
@@ -403,29 +413,29 @@ export default function AgentDashboardPage() {
           </div>
 
           {/* ขวา: ตารางนัดหมายลูกค้าล่าสุด */}
-          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 space-y-4 text-left">
-            <div className="flex items-center justify-between border-b pb-3">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-5 space-y-4 text-left">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h4 className="font-extrabold text-slate-900 text-xs md:text-sm">📅 นัดหมายชมสถานที่ล่าสุด</h4>
-              <Link href="/agent/appointments" className="text-blue-600 font-bold text-[11px]">ดูทั้งหมด</Link>
+              <Link href="/agent/appointments" className="text-blue-600 font-bold text-[11px] hover:underline">ดูทั้งหมด</Link>
             </div>
 
             {(!dbData?.recentAppointments || dbData.recentAppointments.length === 0) ? (
-              <p className="py-6 text-center text-slate-400 font-bold text-xs">ยังไม่มีรายการนัดหมายชมสถานที่ในขณะนี้</p>
+              <p className="py-8 text-center text-slate-400 font-bold text-xs">ยังไม่มีรายการนัดหมายชมสถานที่ในขณะนี้</p>
             ) : (
               <div className="space-y-2.5">
                 {dbData.recentAppointments.map(apt => (
-                  <div key={apt.id} className="p-3 bg-gradient-to-r from-slate-50 to-blue-50/30 rounded-2xl border border-slate-100 space-y-1.5">
+                  <div key={apt.id} className="p-3 bg-slate-50/70 hover:bg-blue-50/40 rounded-xl border border-slate-200/60 transition space-y-1.5">
                     <div className="flex items-center justify-between font-bold text-xs">
-                      <span className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                      <span className="flex items-center gap-1.5 text-slate-900 font-extrabold truncate">
+                        <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0"></span>
                         {apt.customerName}
                       </span>
-                      <a href={`tel:${apt.customerPhone}`} className="text-[10px] bg-blue-100 text-blue-800 font-black px-2 py-0.5 rounded-full hover:bg-blue-200 transition">
+                      <a href={`tel:${apt.customerPhone}`} className="text-[10px] bg-blue-100/80 text-blue-800 font-black px-2 py-0.5 rounded-full hover:bg-blue-200 transition shrink-0">
                         📞 {apt.customerPhone}
                       </a>
                     </div>
-                    <p className="text-[11px] text-slate-700 font-medium line-clamp-1">🏠 {apt.propertyTitle}</p>
-                    <span className="text-[10px] text-slate-400 block">🕒 {apt.timeSlot}</span>
+                    <p className="text-[11px] text-slate-700 font-semibold truncate">🏠 {apt.propertyTitle}</p>
+                    <span className="text-[10px] text-slate-400 font-medium block">🕒 {apt.timeSlot}</span>
                   </div>
                 ))}
               </div>
