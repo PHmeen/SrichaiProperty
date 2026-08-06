@@ -41,7 +41,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await fetch('/api/appointments');
       const data = await res.json();
-      if (Array.isArray(data)) setAppointments(data);
+      if (data.success && Array.isArray(data.appointments)) {
+        setAppointments(data.appointments);
+      } else if (Array.isArray(data)) {
+        setAppointments(data);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -139,8 +143,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ยกเลิกคำขอนัดหมาย ลงฐานข้อมูล PostgreSQL จริง (อัปเดต UI ทันที + ส่ง API)
   const cancelAppointment = async (id: string | number) => {
+    const targetIdStr = String(id).trim();
     // 1) อัปเดต State หน้าบ้านทันที เพื่อให้รายการย้ายไปแท็บ "ยกเลิกแล้ว" ทันทีโดยไม่ต้องรอ
-    setAppointments(prev => prev.map(appt => String(appt.id) === String(id) ? { ...appt, status: 'cancelled' as const } : appt));
+    setAppointments(prev => prev.map(appt => String(appt.id).trim() === targetIdStr ? { ...appt, status: 'cancelled' as const } : appt));
 
     try {
       // 2) ส่งสั่งลบ/ยกเลิกไปยัง PostgreSQL ใน DB จริงเบื้องหลัง
