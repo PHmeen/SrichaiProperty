@@ -83,14 +83,24 @@ export default function AdminSidebar() {
           <nav className="space-y-6 pt-3">
             <div className="space-y-1.5">
               <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-2.5">Overview</span>
-              <Link 
-                href="/admin/dashboard" 
+              <Link
+                href="/admin/dashboard"
                 onClick={() => setIsMobileOpen(false)}
                 className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg font-bold transition-all text-left ${
                   isActive('/admin/dashboard') ? 'bg-slate-800 text-white shadow-inner' : 'hover:bg-slate-800 text-slate-300'
                 }`}
               >
                 📊 แดชบอร์ดหลัก
+              </Link>
+
+              <Link
+                href="/admin/analytics"
+                onClick={() => setIsMobileOpen(false)}
+                className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg font-bold transition-all text-left ${
+                  isActive('/admin/analytics') ? 'bg-slate-800 text-white shadow-inner' : 'hover:bg-slate-800 text-slate-300'
+                }`}
+              >
+                📈 สถิติ/รายงาน
               </Link>
             </div>
 
