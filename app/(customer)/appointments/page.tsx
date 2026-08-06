@@ -16,15 +16,10 @@ interface AppointmentItem {
   timeSlotText: string;
   status: 'pending' | 'approved' | 'rejected' | 'completed' | 'cancelled' | string;
   note: string;
+  cancelReason?: string;
   agentName: string;
   agentPhone: string;
   agentImage?: string;
-}
-
-interface EditableSlot {
-  date: string;
-  timeSlot: 'morning' | 'afternoon';
-  isBooked: boolean;
 }
 
 const MONTH_NAMES_TH = [
@@ -37,7 +32,7 @@ export default function AppointmentsPage() {
   const [appointments, setAppointments] = useState<AppointmentItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // === ดึงข้อมูลคิวนัดหมายจริงจาก PostgreSQL API ===
+  // === ดึงข้อมูลคิวนัดหมายจากฐานข้อมูล PostgreSQL จริง ===
   const loadAppointments = useCallback(async () => {
     try {
       const res = await fetch('/api/appointments');
@@ -71,95 +66,61 @@ export default function AppointmentsPage() {
     return () => { ignore = true; };
   }, []);
 
-  // === กดยกเลิกนัดหมาย (ส่ง DELETE ลง DB จริง + อัปเดต UI ทันที) ===
-  const handleCancelAppointment = async (id: string) => {
-    if (!confirm('คุณแน่ใจหรือไม่ว่าต้องการยกเลิกนัดหมายนี้?')) return;
+  // === ระบบ "ยกเลิกนัดหมายระบุเหตุผล" (Cancel Modal) ===
+  const [cancelingApt, setCancelingApt] = useState<AppointmentItem | null>(null);
+  const [cancelReasonOption, setCancelReasonOption] = useState<string>('ติดภารกิจด่วน / การเดินทางไม่สะดวก');
+  const [customReasonText, setCustomReasonText] = useState<string>('');
+  const [submittingCancel, setSubmittingCancel] = useState(false);
+
+  const openCancelModal = (apt: AppointmentItem) => {
+    setCancelingApt(apt);
+    setCancelReasonOption('ติดภารกิจด่วน / การเดินทางไม่สะดวก');
+    setCustomReasonText('');
+  };
+
+  const closeCancelModal = () => {
+    setCancelingApt(null);
+    setCancelReasonOption('ติดภารกิจด่วน / การเดินทางไม่สะดวก');
+    setCustomReasonText('');
+  };
+
+  const confirmCancelAppointment = async () => {
+    if (!cancelingApt) return;
+    const finalReason = cancelReasonOption === 'อื่นๆ' ? customReasonText.trim() : cancelReasonOption;
+    if (cancelReasonOption === 'อื่นๆ' && !finalReason) {
+      alert('กรุณาระบุเหตุผลการยกเลิก');
+      return;
+    }
+
+    setSubmittingCancel(true);
 
     // 1) อัปเดต UI ทันที 0 วินาที
-    setAppointments(prev => prev.map(a => String(a.id) === String(id) ? { ...a, status: 'cancelled' } : a));
+    setAppointments(prev => prev.map(a => String(a.id) === String(cancelingApt.id) ? { ...a, status: 'cancelled', cancelReason: finalReason } : a));
     setActiveTab('cancelled');
 
     try {
-      // 2) ส่ง DELETE ลง PostgreSQL จริง
-      const res = await fetch(`/api/appointments?id=${encodeURIComponent(id)}`, {
+      // 2) ส่ง DELETE ลง PostgreSQL จริงพร้อมเหตุผลทาง Query Parameter แบบปกติ
+      const res = await fetch(`/api/appointments?id=${encodeURIComponent(cancelingApt.id)}&reason=${encodeURIComponent(finalReason)}`, {
         method: 'DELETE'
       });
       const data = await res.json();
       if (res.ok && data.success) {
         await loadAppointments();
+      } else {
+        alert(data.error || 'เกิดข้อผิดพลาดในการยกเลิกนัดหมาย');
+        await loadAppointments();
       }
     } catch (err) {
       console.error('Cancel appointment error:', err);
-    }
-  };
-
-  // === ปุ่ม "แก้ไขวัน/รอบ" ===
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [slotsForEdit, setSlotsForEdit] = useState<EditableSlot[]>([]);
-  const [loadingSlots, setLoadingSlots] = useState(false);
-  const [selectedNewDate, setSelectedNewDate] = useState<string | null>(null);
-  const [selectedNewSlot, setSelectedNewSlot] = useState<'morning' | 'afternoon' | null>(null);
-  const [savingEdit, setSavingEdit] = useState(false);
-  const [editError, setEditError] = useState('');
-
-  const editingAppointment = appointments.find(a => String(a.id) === String(editingId)) || null;
-
-  const openEditModal = async (apt: AppointmentItem) => {
-    setEditingId(apt.id);
-    setEditError('');
-    setSelectedNewDate(apt.date);
-    setSelectedNewSlot((apt.timeSlot as 'morning' | 'afternoon') || 'morning');
-    setLoadingSlots(true);
-    try {
-      const res = await fetch(`/api/properties/viewing-slots?propertyId=${apt.propertyId}`);
-      const data = await res.json();
-      if (data.success && Array.isArray(data.slots)) {
-        setSlotsForEdit(data.slots);
-      } else {
-        setSlotsForEdit([]);
-      }
-    } catch {
-      setSlotsForEdit([]);
     } finally {
-      setLoadingSlots(false);
+      setSubmittingCancel(false);
+      closeCancelModal();
     }
   };
 
-  const closeEditModal = () => {
-    setEditingId(null);
-    setSlotsForEdit([]);
-    setSelectedNewDate(null);
-    setSelectedNewSlot(null);
-    setEditError('');
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editingAppointment || !selectedNewDate || !selectedNewSlot) return;
-    setSavingEdit(true);
-    setEditError('');
-    try {
-      const res = await fetch('/api/appointments', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: editingAppointment.id, date: selectedNewDate, timeSlot: selectedNewSlot })
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        await loadAppointments();
-        closeEditModal();
-      } else {
-        setEditError(data.error || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
-      }
-    } catch {
-      setEditError('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
-    } finally {
-      setSavingEdit(false);
-    }
-  };
-
-  // แยกกลุ่มแท็บและนับจำนวน
+  // นับจำนวนรายการแต่ละกลุ่ม
   const upcomingCount = appointments.filter(
-    apt => apt.status === 'approved' || apt.status === 'pending' || apt.status === 'upcoming'
+    apt => apt.status === 'approved' || apt.status === 'pending'
   ).length;
 
   const cancelledCount = appointments.filter(
@@ -169,7 +130,6 @@ export default function AppointmentsPage() {
   const getStatusDetails = (status: string) => {
     switch (status) {
       case 'approved':
-      case 'upcoming':
         return { text: "ยืนยันแล้ว", bg: "bg-emerald-50 border-emerald-200", color: "text-emerald-700" };
       case 'pending':
         return { text: "รอยืนยันคิว", bg: "bg-amber-50 border-amber-200", color: "text-amber-700" };
@@ -182,7 +142,7 @@ export default function AppointmentsPage() {
     }
   };
 
-  // 📌 การกรองข้อมูลสำหรับแท็บ (100% strict)
+  // กรองรายการตามแท็บที่เลือก
   const filteredAppointments = appointments.filter(apt => {
     if (activeTab === 'upcoming') {
       return apt.status === 'approved' || apt.status === 'pending';
@@ -200,7 +160,7 @@ export default function AppointmentsPage() {
 
   return (
     <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm flex flex-col">
-      {/* Header Bar */}
+      {/* หัวข้อหน้า */}
       <div className="pt-8 pb-6 bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-3">
           <span className="text-2xl bg-amber-100 text-amber-500 w-12 h-12 flex items-center justify-center rounded-xl shadow-sm">📅</span>
@@ -212,7 +172,7 @@ export default function AppointmentsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-grow">
-        {/* Tabs Bar */}
+        {/* เมนูแท็บ */}
         <div className="flex space-x-3 mb-6 border-b border-slate-200 pb-1">
           <button 
             onClick={() => setActiveTab('upcoming')} 
@@ -242,7 +202,7 @@ export default function AppointmentsPage() {
           </button>
         </div>
 
-        {/* List Section */}
+        {/* รายการนัดหมาย */}
         <div className="space-y-4">
           {loading ? (
             <div className="flex items-center justify-center py-16">
@@ -295,9 +255,15 @@ export default function AppointmentsPage() {
                     <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
                       <span>นายหน้า: {apt.agentName} ({apt.agentPhone})</span>
                     </div>
+                    {apt.cancelReason && (
+                      <div className="mt-1.5 text-xs bg-red-50 text-red-700 p-2 rounded-lg border border-red-100 font-bold flex items-start gap-1">
+                        <span>💬</span>
+                        <span>เหตุผลการยกเลิก: {apt.cancelReason}</span>
+                      </div>
+                    )}
                   </div>
 
-                  {/* ปุ่มกดกระทำ */}
+                  {/* ปุ่มปฏิกิริยา */}
                   <div className="flex items-center justify-end gap-2 border-t lg:border-t-0 pt-3 lg:pt-0">
                     <button 
                       onClick={async () => {
@@ -322,15 +288,6 @@ export default function AppointmentsPage() {
                       💬 แชทกับนายหน้า
                     </button>
 
-                    {apt.status === 'pending' && (
-                      <button
-                        onClick={() => openEditModal(apt)}
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg font-bold text-xs transition cursor-pointer"
-                      >
-                        แก้ไขวัน/รอบ
-                      </button>
-                    )}
-
                     {apt.status === 'completed' && (
                       <button 
                         onClick={() => setReviewModalApt({ id: String(apt.id), agentName: apt.agentName, propertyName: apt.propertyName })}
@@ -340,9 +297,9 @@ export default function AppointmentsPage() {
                       </button>
                     )}
 
-                    {(apt.status === 'approved' || apt.status === 'upcoming' || apt.status === 'pending') && (
+                    {(apt.status === 'approved' || apt.status === 'pending') && (
                       <button 
-                        onClick={() => handleCancelAppointment(String(apt.id))}
+                        onClick={() => openCancelModal(apt)}
                         className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg font-bold text-xs transition cursor-pointer active:scale-95"
                       >
                         ยกเลิกนัด
@@ -356,110 +313,79 @@ export default function AppointmentsPage() {
         </div>
       </div>
 
-      {/* Edit Appointment Modal */}
-      {editingAppointment && (
+      {/* Cancel Appointment Modal (ระบุเหตุผล) */}
+      {cancelingApt && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 border border-slate-100">
             <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="font-extrabold text-slate-900 text-base">✏️ แก้ไขวัน / รอบเวลานัดหมาย</h3>
-              <button onClick={closeEditModal} className="text-slate-400 hover:text-slate-600 font-bold text-lg cursor-pointer">✕</button>
+              <h3 className="font-extrabold text-red-600 text-base flex items-center gap-1.5">
+                <span>🚨</span> ยืนยันการยกเลิกนัดหมาย
+              </h3>
+              <button onClick={closeCancelModal} className="text-slate-400 hover:text-slate-600 font-bold text-lg cursor-pointer">✕</button>
             </div>
-            
+
             <div>
-              <p className="text-xs font-bold text-slate-500">อสังหาริมทรัพย์:</p>
-              <p className="text-sm font-extrabold text-slate-900">{editingAppointment.propertyName}</p>
+              <p className="text-xs font-bold text-slate-500">อสังหาริมทรัพย์ที่ขอนัดดู:</p>
+              <p className="text-sm font-extrabold text-slate-900 line-clamp-1">{cancelingApt.propertyName}</p>
+              <p className="text-xs font-medium text-slate-500 mt-0.5">นายหน้า: {cancelingApt.agentName}</p>
             </div>
 
-            {editError && (
-              <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-bold rounded-xl">
-                ⚠️ {editError}
-              </div>
-            )}
+            <div className="space-y-2">
+              <label className="block text-xs font-extrabold text-slate-700">กรุณาเลือกเหตุผลในการยกเลิก:</label>
+              
+              {[
+                "ติดภารกิจด่วน / การเดินทางไม่สะดวก",
+                "ได้อสังหาริมทรัพย์หลังอื่นแล้ว",
+                "ต้องการเปลี่ยนไปจองวัน/เวลารอบใหม่",
+                "งบประมาณหรือแผนเปลี่ยน",
+                "อื่นๆ"
+              ].map((reasonOpt, idx) => (
+                <label key={idx} className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white transition cursor-pointer text-xs font-bold text-slate-700">
+                  <input 
+                    type="radio" 
+                    name="cancelReasonOption" 
+                    value={reasonOpt} 
+                    checked={cancelReasonOption === reasonOpt}
+                    onChange={(e) => setCancelReasonOption(e.target.value)}
+                    className="accent-red-600"
+                  />
+                  <span>{reasonOpt}</span>
+                </label>
+              ))}
 
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">เลือกวันที่ต้องการเปลี่ยน:</label>
-                <input 
-                  type="date" 
-                  value={selectedNewDate || ''} 
-                  onChange={(e) => setSelectedNewDate(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-xl text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+              {cancelReasonOption === 'อื่นๆ' && (
+                <textarea
+                  rows={2}
+                  placeholder="พิมพ์ระบุเหตุผลเพิ่มเติม..."
+                  value={customReasonText}
+                  onChange={(e) => setCustomReasonText(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-red-500 mt-2"
                 />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">เลือกรอบเวลา:</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedNewSlot('morning')}
-                    className={`py-2 px-3 rounded-xl border text-xs font-extrabold cursor-pointer transition ${
-                      selectedNewSlot === 'morning' ? 'bg-blue-600 text-white border-blue-600 shadow' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
-                    }`}
-                  >
-                    🌅 ช่วงเช้า (10:00 - 12:00 น.)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedNewSlot('afternoon')}
-                    className={`py-2 px-3 rounded-xl border text-xs font-extrabold cursor-pointer transition ${
-                      selectedNewSlot === 'afternoon' ? 'bg-blue-600 text-white border-blue-600 shadow' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
-                    }`}
-                  >
-                    🌇 ช่วงบ่าย (14:00 - 16:00 น.)
-                  </button>
-                </div>
-              </div>
-
-              {loadingSlots && (
-                <p className="text-[11px] text-slate-400 font-bold text-center">กำลังตรวจสอบรอบเวลาที่ว่าง...</p>
-              )}
-
-              {slotsForEdit.length > 0 && (
-                <div className="mt-2 text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                  <span className="font-bold text-slate-700">รอบที่ว่างของบ้านนี้:</span>
-                  <div className="flex flex-wrap gap-1.5 mt-1">
-                    {slotsForEdit.map((s, idx) => (
-                      <span 
-                        key={idx} 
-                        onClick={() => {
-                          setSelectedNewDate(s.date);
-                          setSelectedNewSlot(s.timeSlot);
-                        }}
-                        className={`px-2 py-0.5 rounded border text-[10px] font-bold cursor-pointer ${
-                          selectedNewDate === s.date && selectedNewSlot === s.timeSlot ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 hover:bg-blue-50'
-                        }`}
-                      >
-                        {s.date} ({s.timeSlot === 'morning' ? 'เช้า' : 'บ่าย'})
-                      </span>
-                    ))}
-                  </div>
-                </div>
               )}
             </div>
 
             <div className="flex items-center justify-end gap-2 border-t pt-3">
               <button
                 type="button"
-                onClick={closeEditModal}
+                onClick={closeCancelModal}
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs cursor-pointer"
               >
-                ยกเลิก
+                ย้อนกลับ
               </button>
               <button
                 type="button"
-                onClick={handleSaveEdit}
-                disabled={savingEdit}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs cursor-pointer shadow disabled:opacity-50"
+                onClick={confirmCancelAppointment}
+                disabled={submittingCancel}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs cursor-pointer shadow disabled:opacity-50"
               >
-                {savingEdit ? 'กำลังบันทึก...' : 'บันทึกการเปลี่ยนแปลง'}
+                {submittingCancel ? 'กำลังยกเลิก...' : 'ยืนยันยกเลิกนัด'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Review Modal */}
+      {/* โมดัลให้คะแนนรีวิว */}
       {reviewModalApt && (
         <ReviewModal
           isOpen={true}

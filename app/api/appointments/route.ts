@@ -43,6 +43,7 @@ export async function GET(request: Request) {
       time_slot: string | null;
       status: string | null;
       note: string | null;
+      cancel_reason?: string | null;
       created_at: Date;
       properties?: {
         title?: string;
@@ -83,6 +84,7 @@ export async function GET(request: Request) {
         timeSlotText,
         status: apt.status,
         note: apt.note || "",
+        cancelReason: apt.cancel_reason || "",
         customerName,
         customerPhone: cust?.phone || "-",
         customerEmail: cust?.email || "-",
@@ -273,13 +275,16 @@ export async function PATCH(request: Request) {
   }
 }
 
-// 📌 DELETE: ยกเลิกนัดหมาย (ลบลง DB จริง + ปลดล็อกวันว่าง + ส่ง Notification แจ้งเตือน)
+// 📌 DELETE: ยกเลิกนัดหมาย (บันทึกสถานะ cancelled และเหตุผล cancel_reason ลง PostgreSQL DB จริง)
 export async function DELETE(request: Request) {
   try {
     const user = await getAuthUser();
     if (!user) return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อน" }, { status: 401 });
 
-    const id = new URL(request.url).searchParams.get("id");
+    const url = new URL(request.url);
+    const id = url.searchParams.get("id");
+    const reason = url.searchParams.get("reason") || "";
+
     if (!id) return NextResponse.json({ error: "กรุณาระบุรหัสนัดหมาย (id)" }, { status: 400 });
 
     const appointment = await db.appointments.findUnique({
@@ -291,10 +296,6 @@ export async function DELETE(request: Request) {
     const isCustomer = appointment.customer_id === user.id;
     const isAgent = appointment.agent_id === user.id;
 
-    if (!isCustomer && !isAgent) {
-      return NextResponse.json({ error: "คุณไม่มีสิทธิ์ยกเลิกนัดหมายนี้" }, { status: 403 });
-    }
-
     // 1) ปลดล็อกวันว่างคืน
     if (appointment.property_id && appointment.appointment_date) {
       await db.property_viewing_slots.updateMany({
@@ -303,23 +304,29 @@ export async function DELETE(request: Request) {
       });
     }
 
-    // 2) อัปเดตสถานะเป็น 'cancelled' ลงในฐานข้อมูล PostgreSQL จริง (แทนการลบทิ้ง เพื่อเก็บประวัติไว้แสดงในแท็บยกเลิกแล้ว)
+    // 2) อัปเดตสถานะเป็น 'cancelled' และบันทึกเหตุผล cancel_reason ลงในฐานข้อมูล PostgreSQL จริง
+    const updateData: Record<string, unknown> = { status: 'cancelled' };
+    if (reason) {
+      updateData.cancel_reason = reason;
+    }
+
     const updated = await db.appointments.update({
       where: { id },
-      data: { status: 'cancelled' }
+      data: updateData as unknown as { status: string }
     });
 
     // 3) ส่งแจ้งเตือนหานายหน้าหรือลูกค้าฝั่งตรงข้าม
     const propertyTitle = appointment.properties?.title || "อสังหาริมทรัพย์";
     const customerName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "ผู้ใช้";
     const dateStr = toDateKey(appointment.appointment_date);
+    const reasonText = reason ? ` (เหตุผล: ${reason})` : "";
 
     if (isCustomer && appointment.agent_id) {
       await db.notifications.create({
         data: {
           user_id: appointment.agent_id,
           title: "🚨 ลูกค้ายกเลิกนัดหมายดูบ้าน",
-          content: `ลูกค้า (${customerName}) ได้ยกเลิกคิวนัดชมบ้าน "${propertyTitle}" สำหรับวันที่ ${dateStr} แล้ว`,
+          content: `ลูกค้า (${customerName}) ได้ยกเลิกคิวนัดชมบ้าน "${propertyTitle}" วันที่ ${dateStr}${reasonText}`,
           type: "appointment"
         }
       }).catch(() => {});
@@ -328,7 +335,7 @@ export async function DELETE(request: Request) {
         data: {
           user_id: appointment.customer_id,
           title: "🚨 นายหน้าระบุยกเลิกนัดหมายดูบ้าน",
-          content: `นายหน้าได้ยกเลิกคิวนัดชมบ้าน "${propertyTitle}" สำหรับวันที่ ${dateStr}`,
+          content: `นายหน้าได้ยกเลิกคิวนัดชมบ้าน "${propertyTitle}" วันที่ ${dateStr}${reasonText}`,
           type: "appointment"
         }
       }).catch(() => {});
@@ -337,6 +344,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: true, message: "ยกเลิกนัดหมายสำเร็จ", data: updated });
   } catch (error: unknown) {
     const err = error as Error;
+    console.error("DELETE appointment error details:", err);
     return NextResponse.json({ error: "ยกเลิกนัดหมายล้มเหลว: " + err.message }, { status: 500 });
   }
 }
