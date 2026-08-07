@@ -7,6 +7,7 @@ interface PropertyData {
   id: string;
   title: string;
   price: string;
+  listingType: 'sale' | 'rent';
   type: string;
   location: string;
   province?: string;
@@ -17,7 +18,8 @@ interface PropertyData {
   agentName: string;
   agentPlan: string;
   createdAt: string;
-  image: string;
+  image: string | null;
+  images?: string[];
   imageCount: number;
 }
 
@@ -25,9 +27,11 @@ export default function AdminModerationPage() {
   const [properties, setProperties] = useState<PropertyData[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
+  const [listingTypeFilter, setListingTypeFilter] = useState<'all' | 'sale' | 'rent'>('all');
 
-  const fetchProperties = (status: string) => {
-    fetch(`/api/admin/moderation?status=${status}`)
+  const fetchProperties = (status: string, listingType: string) => {
+    const query = listingType === 'all' ? '' : `&listingType=${listingType}`;
+    fetch(`/api/admin/moderation?status=${status}${query}`)
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -42,8 +46,8 @@ export default function AdminModerationPage() {
   };
 
   useEffect(() => {
-    fetchProperties(activeTab);
-  }, [activeTab]);
+    fetchProperties(activeTab, listingTypeFilter);
+  }, [activeTab, listingTypeFilter]);
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     if (!confirm(`ยืนยันการ ${newStatus === 'approved' ? 'อนุมัติ' : 'ปฏิเสธ'} ประกาศนี้?`)) return;
@@ -57,7 +61,7 @@ export default function AdminModerationPage() {
       const data = await res.json();
       if (data.success) {
         alert("อัปเดตสถานะสำเร็จ");
-        fetchProperties(activeTab);
+        fetchProperties(activeTab, listingTypeFilter);
       } else {
         alert("เกิดข้อผิดพลาด: " + data.error);
       }
@@ -87,7 +91,15 @@ export default function AdminModerationPage() {
             </div>
             
             <div className="flex items-center gap-3">
-              <button className="bg-white border border-slate-200 text-slate-600 font-bold py-2 px-4 rounded-lg text-xs hover:bg-slate-50 transition shadow-sm">ทุกประเภทอสังหาฯ</button>
+              <select
+                value={listingTypeFilter}
+                onChange={(e) => { setListingTypeFilter(e.target.value as 'all' | 'sale' | 'rent'); setLoading(true); }}
+                className="bg-white border border-slate-200 text-slate-600 font-bold py-2 px-4 rounded-lg text-xs hover:bg-slate-50 transition shadow-sm cursor-pointer outline-none"
+              >
+                <option value="all">ขาย/เช่าทั้งหมด</option>
+                <option value="sale">เฉพาะขาย</option>
+                <option value="rent">เฉพาะเช่า</option>
+              </select>
               <button className="bg-white border border-slate-200 text-slate-600 font-bold py-2 px-4 rounded-lg text-xs hover:bg-slate-50 transition shadow-sm">เรียงตาม SLA (ด่วนสุด)</button>
             </div>
           </div>
@@ -106,29 +118,43 @@ export default function AdminModerationPage() {
           ) : (
             <div className="space-y-5">
               {properties.map((property) => (
-                <div key={property.id} className="bg-white rounded-2xl border border-red-500/30 shadow-[0_5px_15px_-5px_rgba(239,68,68,0.1)] overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+                <div key={property.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow">
                   {/* Left Color Bar */}
                   <div className="flex">
-                    <div className={`w-1 shrink-0 ${activeTab === 'pending' ? 'bg-red-500' : activeTab === 'approved' ? 'bg-emerald-500' : 'bg-slate-400'}`}></div>
+                    <div className={`w-1 shrink-0 ${activeTab === 'pending' ? 'bg-amber-500' : activeTab === 'approved' ? 'bg-emerald-500' : 'bg-slate-400'}`}></div>
                     
                     <div className="flex-1 p-5 flex flex-col xl:flex-row gap-6">
                       {/* Left: Images */}
                       <div className="xl:w-[280px] shrink-0 space-y-2">
-                        <div className="relative h-44 rounded-xl overflow-hidden bg-slate-100 group">
+                        <div className="relative h-44 rounded-xl overflow-hidden bg-slate-100 group border border-slate-100 flex items-center justify-center">
                            {property.image ? (
                              <Image src={property.image} alt={property.title} width={280} height={176} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                            ) : (
-                             <div className="w-full h-full flex items-center justify-center text-slate-300">ไม่มีรูปภาพ</div>
+                             <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-100 font-bold text-xs gap-1">
+                               <span>📷</span>
+                               <span>ไม่มีรูปภาพแนบมา</span>
+                             </div>
                            )}
-                           <div className="absolute top-2 right-2 bg-slate-900/80 backdrop-blur-sm text-amber-400 text-[9px] font-black px-2 py-1 rounded-md z-10 flex items-center gap-1">
-                             ⭐ Hot Listing
-                           </div>
+                           {property.image && (
+                             <div className="absolute top-2 right-2 bg-slate-900/80 backdrop-blur-sm text-amber-400 text-[9px] font-black px-2 py-1 rounded-md z-10 flex items-center gap-1">
+                               ⭐ มีรูปภาพแนบ
+                             </div>
+                           )}
                         </div>
-                        {property.imageCount > 1 && (
+                        {property.images && property.images.length > 1 && (
                           <div className="grid grid-cols-3 gap-2">
-                            <div className="h-16 rounded-lg bg-slate-100 overflow-hidden"><Image src={property.image} alt={property.title} width={90} height={64} className="w-full h-full object-cover opacity-70" /></div>
-                            <div className="h-16 rounded-lg bg-slate-100 overflow-hidden"><Image src={property.image} alt={property.title} width={90} height={64} className="w-full h-full object-cover opacity-70" /></div>
-                            <div className="h-16 rounded-lg bg-slate-100 flex items-center justify-center font-bold text-slate-500 text-xs shadow-inner">+{property.imageCount - 3 > 0 ? property.imageCount - 3 : 'รูป'}</div>
+                            {property.images.slice(1, 3).map((subImg, idx) => (
+                              <div key={idx} className="h-16 rounded-lg bg-slate-100 overflow-hidden border border-slate-100">
+                                <Image src={subImg} alt={`${property.title}-${idx}`} width={90} height={64} className="w-full h-full object-cover opacity-80" />
+                              </div>
+                            ))}
+                            {property.imageCount > 3 ? (
+                              <div className="h-16 rounded-lg bg-slate-100 flex items-center justify-center font-bold text-slate-500 text-xs shadow-inner border border-slate-200">
+                                +{property.imageCount - 3} รูป
+                              </div>
+                            ) : property.images.length === 2 ? (
+                              <div className="h-16 rounded-lg bg-slate-50 border border-dashed border-slate-200" />
+                            ) : null}
                           </div>
                         )}
                       </div>
@@ -138,7 +164,9 @@ export default function AdminModerationPage() {
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex items-center gap-2 mb-2">
                              <span className="bg-blue-50 text-blue-600 text-[10px] font-black px-2.5 py-1 rounded-md border border-blue-100">{property.type || 'HOUSE'}</span>
-                             <span className="bg-emerald-50 text-emerald-600 text-[10px] font-black px-2.5 py-1 rounded-md border border-emerald-100">ขาย (Sale)</span>
+                             <span className={`text-[10px] font-black px-2.5 py-1 rounded-md border ${property.listingType === 'rent' ? 'bg-violet-50 text-violet-600 border-violet-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+                               {property.listingType === 'rent' ? 'ให้เช่า (Rent)' : 'ขาย (Sale)'}
+                             </span>
                           </div>
                           <div className="flex flex-col items-end gap-1.5">
                              <span className="text-[10px] text-slate-400 font-bold uppercase">ID: {property.id.slice(0, 8)}</span>

@@ -109,6 +109,7 @@ model properties {
   id                     String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   title                  String                   @db.VarChar(150) // หัวข้อ/ชื่อประกาศ
   price                  Decimal                  @db.Decimal(12, 2) // ราคาขาย/เช่า
+  listing_type           String                   @default("sale") @db.VarChar(10) // ประเภทประกาศ: sale (ขาย) หรือ rent (เช่า)
   type_id                Int?                     // ประเภทอสังหาฯ (เชื่อมกับ property_types)
   location               String                   // ที่อยู่/ข้อความทำเล
   latitude               Decimal?                 @db.Decimal(10, 8) // พิกัดละติจูด
@@ -145,6 +146,7 @@ model properties {
 
   @@index([agent_id], map: "idx_properties_agent")
   @@index([status], map: "idx_properties_status")
+  @@index([listing_type], map: "idx_properties_listing_type")
   @@index([province_id], map: "idx_properties_province")
   @@index([amphure_id], map: "idx_properties_amphure")
   @@index([district_id], map: "idx_properties_district")

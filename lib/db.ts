@@ -18,10 +18,11 @@ const adapter = new PrismaPg(pool);
 // โค้ดจะเช็คก่อนว่ามีอินสแตนซ์เดิมรันอยู่ในหน่วยความจำส่วนกลาง (globalForPrisma) หรือไม่
 // ถ้ามี: จะนำตัวเดิมมาใช้งานต่อทันที
 // ถ้าไม่มี: จะสร้างอินสแตนซ์ตัวใหม่ขึ้นมาผ่าน adapter
-export const db = globalForPrisma.prisma ?? new PrismaClient({ adapter });
+// บังคับรีเซ็ตอินสแตนซ์เดิมในหน่วยความจำ เพื่อโหลด Prisma Client เวอร์ชันอัปเดตล่าสุด
+globalForPrisma.prisma = undefined;
 
-// หากไม่ได้อยู่ในโหมดโปรดักชัน (อยู่ในโหมดพัฒนา) ให้บันทึกอินสแตนซ์ db ไว้ในตัวแปร global
-// เพื่อนำกลับมาใช้ใหม่เมื่อ Next.js ทำการ Hot-Reload โค้ด
+export const db = new PrismaClient({ adapter });
+
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db;
 
 

@@ -9,6 +9,7 @@ export type { Property, Appointment, ChatSession, Profile };
 
 interface AppContextType {
   properties: Property[];
+  propertiesLoading: boolean;
   favorites: (string | number)[];
   appointments: Appointment[];
   chatSessions: ChatSession[];
@@ -30,6 +31,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
 
   const [properties, setProperties] = useState<Property[]>([]);
+  const [propertiesLoading, setPropertiesLoading] = useState(true);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [favorites, setFavorites] = useState<(string | number)[]>([]);
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
@@ -69,7 +71,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     fetch('/api/properties')
       .then(res => res.json())
       .then(data => Array.isArray(data) && setProperties(data))
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setPropertiesLoading(false));
 
     if (session?.user) {
       fetch('/api/appointments')
@@ -203,6 +206,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider value={{
       properties,
+      propertiesLoading,
       favorites,
       appointments,
       chatSessions,

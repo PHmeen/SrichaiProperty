@@ -2,6 +2,7 @@ export interface Property {
   id: string | number;
   title: string;
   price: string;
+  listingType: 'sale' | 'rent';
   type: string;
   tag: string;
   tagBg: string;

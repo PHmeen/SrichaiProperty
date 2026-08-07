@@ -30,7 +30,7 @@ export default function AgentEditPropertyPage() {
 
   // === Form State ===
   const [f, setF] = useState({
-    title: '', typeId: '1', description: '',
+    title: '', typeId: '1', listingType: 'sale', description: '',
     price: '', bedrooms: '0', bathrooms: '0',
     usableArea: '',
     provinceId: '', amphureId: '', districtId: '',
@@ -82,6 +82,7 @@ export default function AgentEditPropertyPage() {
         setF({
           title: p.title || '',
           typeId: String(p.type_id || '1'),
+          listingType: p.listing_type === 'rent' ? 'rent' : 'sale',
           description: p.description || '',
           price: p.price !== null && p.price !== undefined ? String(p.price) : '',
           bedrooms: String(p.bedrooms ?? 0),
@@ -194,6 +195,7 @@ export default function AgentEditPropertyPage() {
         body: JSON.stringify({
           title: f.title,
           type_id: parseInt(f.typeId),
+          listing_type: f.listingType,
           price: parseFloat(f.price) || 0,
           description: f.description,
           bedrooms: parseInt(f.bedrooms) || 0,
@@ -289,13 +291,22 @@ export default function AgentEditPropertyPage() {
               <input type="text" value={f.title} onChange={e => setF({ ...f, title: e.target.value })} className="w-full p-2.5 bg-slate-50 border rounded-xl outline-none focus:bg-white focus:border-blue-500 font-medium text-xs" required />
             </div>
 
-            <div>
-              <label className="block font-bold mb-1 text-slate-700">ประเภทอสังหาฯ <span className="text-red-500">*</span></label>
-              <select value={f.typeId} onChange={e => setF({ ...f, typeId: e.target.value })} className="w-full p-2.5 bg-slate-50 border rounded-xl font-bold text-xs">
-                <option value="1">บ้านเดี่ยว</option>
-                <option value="2">ทาวน์โฮม</option>
-                <option value="3">คอนโดมิเนียม</option>
-              </select>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block font-bold mb-1 text-slate-700">ประเภทอสังหาฯ <span className="text-red-500">*</span></label>
+                <select value={f.typeId} onChange={e => setF({ ...f, typeId: e.target.value })} className="w-full p-2.5 bg-slate-50 border rounded-xl font-bold text-xs">
+                  <option value="1">บ้านเดี่ยว</option>
+                  <option value="2">ทาวน์โฮม</option>
+                  <option value="3">คอนโดมิเนียม</option>
+                </select>
+              </div>
+              <div>
+                <label className="block font-bold mb-1 text-slate-700">ประเภทการลงประกาศ <span className="text-red-500">*</span></label>
+                <select value={f.listingType} onChange={e => setF({ ...f, listingType: e.target.value })} className="w-full p-2.5 bg-slate-50 border rounded-xl font-bold text-xs">
+                  <option value="sale">ขาย</option>
+                  <option value="rent">ให้เช่า</option>
+                </select>
+              </div>
             </div>
 
             <div>

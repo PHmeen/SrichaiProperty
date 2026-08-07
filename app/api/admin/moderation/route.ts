@@ -20,10 +20,12 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status') || 'pending';
+    const listingType = searchParams.get('listingType');
 
     const properties = await db.properties.findMany({
       where: {
         status: status,
+        ...(listingType === 'sale' || listingType === 'rent' ? { listing_type: listingType } : {})
       },
       include: {
         users: {
@@ -49,23 +51,27 @@ export async function GET(req: Request) {
     });
 
     const formattedProperties = properties.map((p) => {
-      const mainImage = p.property_images[0]?.image_url || "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80";
+      const allImages = p.property_images.map((img) => img.image_url);
+      const mainImage = allImages[0] || null;
+
       return {
         id: p.id,
         title: p.title,
         price: p.price.toString(),
-        type: p.property_types?.name,
+        listingType: p.listing_type === "rent" ? "rent" : "sale",
+        type: p.property_types?.name || "ไม่ระบุประเภท",
         location: p.location,
-        province: p.provinces?.name_th,
-        amphure: p.amphures?.name_th,
-        bedrooms: p.bedrooms,
-        bathrooms: p.bathrooms,
-        area: p.area_sqm,
-        agentName: p.users ? `${p.users.first_name} ${p.users.last_name}` : "Unknown",
-        agentPlan: p.users?.plan_type,
+        province: p.provinces?.name_th || "",
+        amphure: p.amphures?.name_th || "",
+        bedrooms: p.bedrooms || 0,
+        bathrooms: p.bathrooms || 0,
+        area: p.area_sqm ? p.area_sqm.toString() : "0",
+        agentName: p.users ? `${p.users.first_name} ${p.users.last_name}` : "ไม่ระบุตัวแทน",
+        agentPlan: p.users?.plan_type || "basic",
         createdAt: p.created_at,
         image: mainImage,
-        imageCount: p.property_images.length
+        images: allImages,
+        imageCount: allImages.length
       };
     });
 

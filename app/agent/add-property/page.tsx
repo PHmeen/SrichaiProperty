@@ -98,6 +98,7 @@ export default function AgentAddPropertyPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: f.title, type_id: parseInt(f.typeId), price: parseFloat(f.price) || 0,
+          listing_type: f.listingType === 'เช่า' ? 'rent' : 'sale',
           location: `${f.address ? f.address + ', ' : ''}${amp}, ${prov}`,
           province_id: parseInt(f.provinceId), amphure_id: parseInt(f.amphureId), district_id: districts[0]?.id || null,
           description: f.description, bedrooms: parseInt(f.bedrooms), bathrooms: parseInt(f.bathrooms),

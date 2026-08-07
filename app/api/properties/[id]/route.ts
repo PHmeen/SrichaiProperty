@@ -87,6 +87,7 @@ export async function GET(
       id: property.id,
       title: property.title,
       type_id: property.type_id,
+      listing_type: property.listing_type === "rent" ? "rent" : "sale",
       price: Number(property.price),
       description: property.description || "",
       bedrooms: property.bedrooms || 0,
@@ -137,11 +138,13 @@ export async function PATCH(
 
     const body = await req.json();
     const {
-      title, type_id, price, description,
+      title, type_id, price, description, listing_type, listingType,
       bedrooms, bathrooms, area_sqm,
       location, province_id, amphure_id, district_id,
       images, viewingSlots, status: newStatus
     } = body;
+
+    const resolvedListingType = listing_type ?? listingType;
 
     if (!title || !price || !location) {
       return NextResponse.json(
@@ -176,6 +179,7 @@ export async function PATCH(
     const updateData: Record<string, unknown> = {};
     if (title) updateData.title = title;
     if (type_id) updateData.type_id = parseInt(String(type_id));
+    if (resolvedListingType) updateData.listing_type = resolvedListingType === "rent" ? "rent" : "sale";
     if (price) updateData.price = parseFloat(String(price));
     if (description !== undefined) updateData.description = description;
     if (bedrooms !== undefined && bedrooms !== null && bedrooms !== "") updateData.bedrooms = parseInt(String(bedrooms));

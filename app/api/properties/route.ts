@@ -56,6 +56,7 @@ export async function GET() {
         id: p.id,
         title: p.title,
         price: "฿" + Number(p.price).toLocaleString(),
+        listingType: p.listing_type === "rent" ? "rent" : "sale",
         type: p.property_types?.name || "อสังหาริมทรัพย์",
         tag: isPremium ? "ทรัพย์พรีเมียม" : "ทรัพย์ทั่วไป",
         tagBg: isPremium ? "bg-amber-600" : "bg-blue-600",
@@ -123,11 +124,13 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const {
-      title, price, type_id, type, location, description,
+      title, price, listing_type, listingType, type_id, type, location, description,
       bedrooms, bathrooms, area_sqm, areaSqm,
       province_id, amphure_id, district_id, latitude, longitude, images,
       viewingSlots
     } = body;
+
+    const resolvedListingType = (listing_type ?? listingType) === "rent" ? "rent" : "sale";
 
     if (!title || !price || (!type_id && !type) || !location) {
       return NextResponse.json(
@@ -171,6 +174,7 @@ export async function POST(request: Request) {
       data: {
         title,
         price: parseFloat(price),
+        listing_type: resolvedListingType,
         type_id: resolvedTypeId,
         location,
         description: description || "",

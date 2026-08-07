@@ -7,14 +7,14 @@ import { useApp } from '@/context/AppContext';
 import PropertyCard from '@/components/customer/PropertyCard';
 
 export default function CustomerHomePage() {
-  const [activeTab, setActiveTab] = useState<'buy' | 'rent' | 'sell'>('buy');
+  const [activeTab, setActiveTab] = useState<'buy' | 'rent'>('buy');
   const [locationInput, setLocationInput] = useState('');
   const [propertyType, setPropertyType] = useState('');
   const [isTypeOpen, setIsTypeOpen] = useState(false);
 
-  const { properties, favorites, toggleFavorite, profile, appointments } = useApp();
+  const { properties, propertiesLoading, favorites, toggleFavorite, profile, appointments } = useApp();
 
-  const featuredProperties = properties;
+  const featuredProperties = properties.slice(0, 6);
 
   const getPropertyCountForLocation = (locName: string) => {
     return properties.filter(p => p.location.includes(locName)).length;
@@ -41,7 +41,7 @@ export default function CustomerHomePage() {
 
           {appointments.length > 0 && (
             <div className="mb-5 bg-white/10 backdrop-blur-md border border-white/20 text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-3 shadow cursor-pointer hover:bg-white/20 transition max-w-xl w-full">
-              <span className="text-xl"></span>
+              <span className="text-xl">📅</span>
               <div className="text-left">
                 <p className="font-bold text-xs sm:text-sm text-blue-200">คุณมี {appointments.length} นัดหมายที่กำลังจะมาถึง</p>
               </div>
@@ -68,11 +68,11 @@ export default function CustomerHomePage() {
               >
                 ซื้อ
               </button>
-              <button 
-                onClick={() => setActiveTab("rent")} 
+              <button
+                onClick={() => setActiveTab("rent")}
                 className={`px-5 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 ${
-                  activeTab === "rent" 
-                    ? "bg-white text-blue-700 shadow-sm" 
+                  activeTab === "rent"
+                    ? "bg-white text-blue-700 shadow-sm"
                     : "text-slate-500 hover:text-slate-800"
                 }`}
               >
@@ -83,7 +83,7 @@ export default function CustomerHomePage() {
             <div className="flex flex-col md:flex-row items-stretch bg-slate-50 rounded-xl border border-slate-200 p-1 gap-1.5 transition-all duration-200">
               
               <div className="flex-1 flex items-center px-4 py-2 rounded-lg transition-all duration-200 group">
-                <span className="text-xl mr-3 text-slate-400"></span>
+                <span className="text-xl mr-3 text-slate-400">📍</span>
                 <div className="flex flex-col text-left w-full">
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">ทำเลที่ตั้ง</span>
                   <input 
@@ -99,7 +99,7 @@ export default function CustomerHomePage() {
               <div className="hidden md:block w-px h-10 bg-slate-200 self-center" />
               
               <div id="property-type-dropdown" className="relative md:w-48 flex items-center px-4 py-2 rounded-lg transition-all duration-200 group cursor-pointer select-none" onClick={() => setIsTypeOpen(!isTypeOpen)}>
-                <span className="text-lg mr-3 text-slate-400"></span>
+                <span className="text-lg mr-3 text-slate-400">🏠</span>
                 <div className="flex flex-col text-left w-full">
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">ประเภทอสังหาฯ</span>
                   <div className="text-slate-800 font-semibold text-sm flex items-center justify-between">
@@ -131,28 +131,28 @@ export default function CustomerHomePage() {
                         onClick={() => { setPropertyType(""); setIsTypeOpen(false); }}
                         className={`w-full text-left px-4 py-2.5 text-xs font-bold transition flex items-center gap-2.5 ${propertyType === "" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"}`}
                       >
-                        <span className="text-sm"></span> ทุกประเภท
+                        <span className="text-sm">✨</span> ทุกประเภท
                       </button>
                       <button
                         type="button"
                         onClick={() => { setPropertyType("house"); setIsTypeOpen(false); }}
                         className={`w-full text-left px-4 py-2.5 text-xs font-bold transition flex items-center gap-2.5 ${propertyType === "house" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"}`}
                       >
-                        <span className="text-sm"></span> บ้านเดี่ยว
+                        <span className="text-sm">🏡</span> บ้านเดี่ยว
                       </button>
                       <button
                         type="button"
                         onClick={() => { setPropertyType("townhome"); setIsTypeOpen(false); }}
                         className={`w-full text-left px-4 py-2.5 text-xs font-bold transition flex items-center gap-2.5 ${propertyType === "townhome" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"}`}
                       >
-                        <span className="text-sm"></span> ทาวน์โฮม
+                        <span className="text-sm">🏘️</span> ทาวน์โฮม
                       </button>
                       <button
                         type="button"
                         onClick={() => { setPropertyType("condo"); setIsTypeOpen(false); }}
                         className={`w-full text-left px-4 py-2.5 text-xs font-bold transition flex items-center gap-2.5 ${propertyType === "condo" ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"}`}
                       >
-                        <span className="text-sm"></span> คอนโดมิเนียม
+                        <span className="text-sm">🏢</span> คอนโดมิเนียม
                       </button>
                     </div>
                   </>
@@ -205,8 +205,6 @@ export default function CustomerHomePage() {
         </div>
       </section>
 
-
-
       <section className="py-10 bg-slate-50 border-t border-slate-200">
         <div className="max-w-5xl mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-end mb-6 gap-2">
@@ -223,19 +221,38 @@ export default function CustomerHomePage() {
           </div>
 
           {/* Properties Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {featuredProperties.map((prop) => {
-              const isFav = favorites.includes(prop.id);
-              return (
-                <PropertyCard 
-                  key={prop.id}
-                  prop={prop}
-                  isFav={isFav}
-                  toggleFavorite={toggleFavorite}
-                />
-              );
-            })}
-          </div>
+          {propertiesLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="rounded-2xl border border-slate-200 bg-white overflow-hidden animate-pulse">
+                  <div className="h-44 bg-slate-200" />
+                  <div className="p-4 space-y-2">
+                    <div className="h-3 bg-slate-200 rounded w-3/4" />
+                    <div className="h-3 bg-slate-200 rounded w-1/2" />
+                    <div className="h-3 bg-slate-200 rounded w-1/3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : featuredProperties.length === 0 ? (
+            <div className="text-center py-16 bg-white rounded-2xl border border-slate-200">
+              <p className="text-slate-500 text-sm font-medium">ยังไม่มีประกาศแนะนำในขณะนี้</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {featuredProperties.map((prop) => {
+                const isFav = favorites.includes(prop.id);
+                return (
+                  <PropertyCard
+                    key={prop.id}
+                    prop={prop}
+                    isFav={isFav}
+                    toggleFavorite={toggleFavorite}
+                  />
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
     </div>

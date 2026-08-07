@@ -111,9 +111,8 @@ function SearchPageContent() {
   };
 
   const filteredProperties = properties.filter((prop) => {
-    const isRentProp = prop.title.includes('เช่า') || prop.description?.includes('เช่า') || prop.price.includes('เดือน');
-    if (activeTab === 'rent' && !isRentProp) return false;
-    if (activeTab === 'buy' && isRentProp) return false;
+    if (activeTab === 'rent' && prop.listingType !== 'rent') return false;
+    if (activeTab === 'buy' && prop.listingType !== 'sale') return false;
 
     const matchesSearch = prop.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           prop.location.toLowerCase().includes(searchTerm.toLowerCase());
