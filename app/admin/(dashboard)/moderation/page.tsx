@@ -49,14 +49,12 @@ export default function AdminModerationPage() {
     fetchProperties(activeTab, listingTypeFilter);
   }, [activeTab, listingTypeFilter]);
 
-  const handleUpdateStatus = async (id: string, newStatus: string) => {
-    if (!confirm(`ยืนยันการ ${newStatus === 'approved' ? 'อนุมัติ' : 'ปฏิเสธ'} ประกาศนี้?`)) return;
-
+  const updateStatus = async (id: string, newStatus: string, reason?: string) => {
     try {
       const res = await fetch('/api/properties', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status: newStatus })
+        body: JSON.stringify({ id, status: newStatus, ...(reason ? { reason } : {}) })
       });
       const data = await res.json();
       if (data.success) {
@@ -69,6 +67,42 @@ export default function AdminModerationPage() {
       console.error(err);
       alert("เกิดข้อผิดพลาดในการอัปเดตสถานะ");
     }
+  };
+
+  const handleApprove = async (id: string) => {
+    if (!confirm('ยืนยันการอนุมัติประกาศนี้?')) return;
+    await updateStatus(id, 'approved');
+  };
+
+  // === ระบบ "ปฏิเสธประกาศระบุเหตุผล" (Reject Modal) ===
+  const [rejectingProperty, setRejectingProperty] = useState<PropertyData | null>(null);
+  const [rejectReasonOption, setRejectReasonOption] = useState<string>('ข้อมูล/รูปภาพไม่ครบถ้วนหรือไม่ชัดเจน');
+  const [customRejectReason, setCustomRejectReason] = useState<string>('');
+  const [submittingReject, setSubmittingReject] = useState(false);
+
+  const openRejectModal = (property: PropertyData) => {
+    setRejectingProperty(property);
+    setRejectReasonOption('ข้อมูล/รูปภาพไม่ครบถ้วนหรือไม่ชัดเจน');
+    setCustomRejectReason('');
+  };
+
+  const closeRejectModal = () => {
+    setRejectingProperty(null);
+    setCustomRejectReason('');
+  };
+
+  const confirmReject = async () => {
+    if (!rejectingProperty) return;
+    const finalReason = rejectReasonOption === 'อื่นๆ' ? customRejectReason.trim() : rejectReasonOption;
+    if (rejectReasonOption === 'อื่นๆ' && !finalReason) {
+      alert('กรุณาระบุเหตุผลการปฏิเสธ');
+      return;
+    }
+
+    setSubmittingReject(true);
+    await updateStatus(rejectingProperty.id, 'rejected', finalReason);
+    setSubmittingReject(false);
+    closeRejectModal();
   };
 
   return (
@@ -213,10 +247,10 @@ export default function AdminModerationPage() {
                               
                               {activeTab === 'pending' && (
                                 <>
-                                  <button onClick={() => handleUpdateStatus(property.id, 'rejected')} className="px-6 py-2.5 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-600 font-bold rounded-xl transition-all shadow-sm flex items-center gap-2">
+                                  <button onClick={() => openRejectModal(property)} className="px-6 py-2.5 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-600 font-bold rounded-xl transition-all shadow-sm flex items-center gap-2">
                                     ✕ ปฏิเสธการลง
                                   </button>
-                                  <button onClick={() => handleUpdateStatus(property.id, 'approved')} className="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl transition-all shadow-lg shadow-blue-600/30 active:scale-95 flex items-center gap-2">
+                                  <button onClick={() => handleApprove(property.id)} className="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl transition-all shadow-lg shadow-blue-600/30 active:scale-95 flex items-center gap-2">
                                     ✓ อนุมัติและเผยแพร่
                                   </button>
                                 </>
@@ -231,6 +265,78 @@ export default function AdminModerationPage() {
             </div>
           )}
         </div>
+
+        {/* Reject Modal (ระบุเหตุผลก่อนตีกลับ) */}
+        {rejectingProperty && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 border border-slate-100">
+              <div className="flex items-center justify-between border-b pb-3">
+                <h3 className="font-extrabold text-red-600 text-base flex items-center gap-1.5">
+                  <span>🚨</span> ยืนยันการปฏิเสธประกาศ
+                </h3>
+                <button onClick={closeRejectModal} className="text-slate-400 hover:text-slate-600 font-bold text-lg cursor-pointer">✕</button>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold text-slate-500">ประกาศที่จะปฏิเสธ:</p>
+                <p className="text-sm font-extrabold text-slate-900 line-clamp-1">{rejectingProperty.title}</p>
+                <p className="text-xs font-medium text-slate-500 mt-0.5">นายหน้า: {rejectingProperty.agentName}</p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-extrabold text-slate-700">กรุณาเลือกเหตุผลในการปฏิเสธ:</label>
+
+                {[
+                  'ข้อมูล/รูปภาพไม่ครบถ้วนหรือไม่ชัดเจน',
+                  'ราคาหรือรายละเอียดดูผิดปกติ ต้องตรวจสอบเพิ่มเติม',
+                  'ข้อมูลไม่ตรงกับความเป็นจริง',
+                  'เอกสารสิทธิ์ไม่ครบถ้วน',
+                  'อื่นๆ'
+                ].map((reasonOpt, idx) => (
+                  <label key={idx} className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white transition cursor-pointer text-xs font-bold text-slate-700">
+                    <input
+                      type="radio"
+                      name="rejectReasonOption"
+                      value={reasonOpt}
+                      checked={rejectReasonOption === reasonOpt}
+                      onChange={(e) => setRejectReasonOption(e.target.value)}
+                      className="accent-red-600"
+                    />
+                    <span>{reasonOpt}</span>
+                  </label>
+                ))}
+
+                {rejectReasonOption === 'อื่นๆ' && (
+                  <textarea
+                    rows={2}
+                    placeholder="พิมพ์ระบุเหตุผลเพิ่มเติม..."
+                    value={customRejectReason}
+                    onChange={(e) => setCustomRejectReason(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-red-500 mt-2"
+                  />
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 border-t pt-3">
+                <button
+                  type="button"
+                  onClick={closeRejectModal}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs cursor-pointer"
+                >
+                  ย้อนกลับ
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmReject}
+                  disabled={submittingReject}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs cursor-pointer shadow disabled:opacity-50"
+                >
+                  {submittingReject ? 'กำลังปฏิเสธ...' : 'ยืนยันปฏิเสธ'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
     </>
   );
 }
