@@ -1,17 +1,23 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import SearchSidebar from '@/components/customer/SearchSidebar';
 import PropertyCard from '@/components/customer/PropertyCard';
 
 function SearchPageContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const resultsRef = React.useRef<HTMLDivElement>(null);
+
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
 
   const triggerSearch = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    setDebouncedSearchTerm(searchTerm);
     if (resultsRef.current) {
       resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -74,21 +80,94 @@ function SearchPageContent() {
   }, [selectedAmphure]);
 
   useEffect(() => {
+    if (isInitialized) return;
+    
     const q = searchParams.get('q');
     const tab = searchParams.get('tab');
     const type = searchParams.get('type');
     const price = searchParams.get('price');
+    const pMin = searchParams.get('priceMin');
+    const pMax = searchParams.get('priceMax');
+    const beds = searchParams.get('bedrooms');
+    const prov = searchParams.get('province');
+    const amph = searchParams.get('amphure');
+    const dist = searchParams.get('district');
+    const facs = searchParams.get('facilities');
 
     const timer = setTimeout(() => {
-      if (q) setSearchTerm(q);
+      if (q) { setSearchTerm(q); setDebouncedSearchTerm(q); }
       if (tab === 'rent') setActiveTab('rent');
       if (tab === 'buy') setActiveTab('buy');
       if (type && type !== 'undefined') setPropertyType(type);
       if (price && price !== 'undefined') setPriceRange(price);
+      if (pMin) setPriceMin(pMin);
+      if (pMax) setPriceMax(pMax);
+      if (beds) setBedrooms(beds);
+      if (prov) setSelectedProvince(prov);
+      if (amph) setSelectedAmphure(amph);
+      if (dist) setSelectedDistrict(dist);
+      
+      if (facs) {
+        const activeFacs = facs.split(',');
+        setFacilities({
+          pool: activeFacs.includes('pool'),
+          gym: activeFacs.includes('gym'),
+          parking: activeFacs.includes('parking'),
+          security: activeFacs.includes('security'),
+        });
+      }
+      setIsInitialized(true);
     }, 0);
 
     return () => clearTimeout(timer);
-  }, [searchParams]);
+  }, [searchParams, isInitialized]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    if (!isInitialized) return;
+    
+    const params = new URLSearchParams(searchParams.toString());
+    let hasChanges = false;
+
+    const updateParam = (key: string, value: string, defaultValue: string = '') => {
+      if (value && value !== defaultValue && value !== 'all') {
+        if (params.get(key) !== value) {
+          params.set(key, value);
+          hasChanges = true;
+        }
+      } else {
+        if (params.has(key)) {
+          params.delete(key);
+          hasChanges = true;
+        }
+      }
+    };
+
+    updateParam('q', debouncedSearchTerm);
+    updateParam('tab', activeTab);
+    updateParam('type', propertyType, 'all');
+    updateParam('price', priceRange, 'all');
+    updateParam('priceMin', priceMin);
+    updateParam('priceMax', priceMax);
+    updateParam('bedrooms', bedrooms, 'any');
+    updateParam('province', selectedProvince);
+    updateParam('amphure', selectedAmphure);
+    updateParam('district', selectedDistrict);
+    
+    const activeFacilities = Object.entries(facilities)
+      .filter(([, isActive]) => isActive)
+      .map(([key]) => key)
+      .join(',');
+    updateParam('facilities', activeFacilities);
+
+    if (hasChanges) {
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
+  }, [debouncedSearchTerm, activeTab, propertyType, priceRange, priceMin, priceMax, bedrooms, selectedProvince, selectedAmphure, selectedDistrict, facilities, isInitialized, pathname, router, searchParams]);
 
   const handleClearFilters = () => {
     setSearchTerm('');
@@ -117,7 +196,7 @@ function SearchPageContent() {
     if (activeTab === 'rent' && prop.listingType !== 'rent') return false;
     if (activeTab === 'buy' && prop.listingType !== 'sale') return false;
 
-    const searchLower = searchTerm.toLowerCase().trim();
+    const searchLower = debouncedSearchTerm.toLowerCase().trim();
     const matchesSearch = !searchLower || 
                           prop.title.toLowerCase().includes(searchLower) || 
                           prop.location.toLowerCase().includes(searchLower) ||
