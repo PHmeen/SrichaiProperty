@@ -16,16 +16,27 @@ export default function CustomerHomePage() {
 
   const featuredProperties = properties.slice(0, 6);
 
-  const getPropertyCountForLocation = (locName: string) => {
-    return properties.filter(p => p.location.includes(locName)).length;
-  };
+  // ดึงและจัดกลุ่มทำเลที่ตั้งที่มีประกาศจริงๆ จาก Database
+  const locationGroupsMap: Record<string, { count: number; image: string }> = {};
 
-  const locations = [
-    { name: "หาดใหญ่", count: getPropertyCountForLocation("หาดใหญ่"), image: "https://images.unsplash.com/photo-1563492065599-3520f775eeed?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" },
-    { name: "เมืองสงขลา", count: getPropertyCountForLocation("สงขลา"), image: "https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" },
-    { name: "สะเดา", count: getPropertyCountForLocation("สะเดา"), image: "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" },
-    { name: "ระโนด", count: getPropertyCountForLocation("ระโนด"), image: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80" },
-  ];
+  properties.forEach((p) => {
+    const locName = p.amphureName || p.provinceName || (p.location ? p.location.replace(/📍/g, '').split(',')[0].trim() : '');
+    if (!locName) return;
+
+    if (!locationGroupsMap[locName]) {
+      locationGroupsMap[locName] = {
+        count: 1,
+        image: p.image || p.images?.[0] || 'https://images.unsplash.com/photo-1563492065599-3520f775eeed?w=400'
+      };
+    } else {
+      locationGroupsMap[locName].count += 1;
+    }
+  });
+
+  const locations = Object.entries(locationGroupsMap)
+    .map(([name, data]) => ({ name, count: data.count, image: data.image }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 4);
 
   return (
     <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm">
