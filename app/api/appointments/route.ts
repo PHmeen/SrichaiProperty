@@ -118,6 +118,24 @@ export async function POST(request: Request) {
 
     const dbTimeSlot = timeSlot.includes("13:") || timeSlot.includes("15:") || timeSlot.includes("บ่าย") || timeSlot.toLowerCase().includes("afternoon") ? "afternoon" : "morning";
 
+    // ต้องเป็นรอบที่นายหน้าเปิดว่างจริงสำหรับบ้านหลังนี้ และยังไม่มีใครจอง
+    // (เช็คแบบเดียวกับตอนลูกค้าแก้วัน-รอบใน PATCH ด้านล่าง)
+    const targetSlot = await db.property_viewing_slots.findUnique({
+      where: {
+        property_id_available_date_time_slot: {
+          property_id: property.id,
+          available_date: new Date(date),
+          time_slot: dbTimeSlot
+        }
+      }
+    });
+    if (!targetSlot) {
+      return NextResponse.json({ error: "ไม่พบรอบเข้าชมนี้ กรุณาเลือกวันและช่วงเวลาที่นายหน้าเปิดไว้" }, { status: 400 });
+    }
+    if (targetSlot.is_booked) {
+      return NextResponse.json({ error: "ช่วงเวลานี้ถูกจองไปแล้ว" }, { status: 400 });
+    }
+
     const newAppointment = await db.appointments.create({
       data: {
         customer_id: user.id,
@@ -295,6 +313,17 @@ export async function DELETE(request: Request) {
 
     const isCustomer = appointment.customer_id === user.id;
     const isAgent = appointment.agent_id === user.id;
+
+    // ต้องเป็นลูกค้าเจ้าของนัด หรือนายหน้าผู้ดูแลนัดนี้เท่านั้น
+    if (!isCustomer && !isAgent) {
+      return NextResponse.json({ error: "คุณไม่มีสิทธิ์ยกเลิกนัดหมายนี้" }, { status: 403 });
+    }
+
+    // นัดที่ปิดงาน/ยกเลิก/ถูกปฏิเสธไปแล้ว ยกเลิกซ้ำไม่ได้
+    // (ถ้าปล่อยผ่าน จะไปปลดล็อก is_booked ของรอบที่ใช้งานจบไปแล้วคืนผิดๆ)
+    if (["completed", "cancelled", "rejected"].includes(appointment.status || "")) {
+      return NextResponse.json({ error: "นัดหมายนี้ถูกปิดไปแล้ว ไม่สามารถยกเลิกซ้ำได้" }, { status: 400 });
+    }
 
     // 1) ปลดล็อกวันว่างคืน
     if (appointment.property_id && appointment.appointment_date) {
