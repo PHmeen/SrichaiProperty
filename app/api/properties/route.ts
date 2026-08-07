@@ -215,6 +215,26 @@ export async function POST(request: Request) {
       });
     }
 
+    // แจ้งเตือนแอดมินทุกคนให้เข้ามาตรวจสอบประกาศใหม่ที่รออนุมัติ
+    const admins = await db.users.findMany({
+      where: { role_id: "admin" },
+      select: { id: true }
+    });
+
+    await Promise.allSettled(
+      admins.map(admin =>
+        db.notifications.create({
+          data: {
+            user_id: admin.id,
+            title: "📋 มีประกาศใหม่รออนุมัติ",
+            content: `ประกาศ "${title}" ถูกส่งเข้าคิวตรวจสอบ`,
+            type: "property_pending",
+            is_read: false
+          }
+        })
+      )
+    );
+
     return NextResponse.json({ success: true, data: newProperty });
   } catch (error) {
     const err = error as Error;
