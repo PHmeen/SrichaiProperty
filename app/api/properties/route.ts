@@ -260,7 +260,7 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json();
-    const { id, status } = body;
+    const { id, status, reason } = body;
 
     if (!id || !status) {
       return NextResponse.json(
@@ -269,20 +269,27 @@ export async function PATCH(request: Request) {
       );
     }
 
+    const isApproved = status === "approved";
+    const isRejected = status === "rejected";
+
     const updatedProperty = await db.properties.update({
       where: { id },
-      data: { status }
+      data: {
+        status,
+        // ตีกลับ → บันทึกเหตุผลไว้ให้นายหน้าเห็น / อนุมัติ → ล้างเหตุผลเก่าทิ้ง (เผื่อเคยตีกลับมาก่อนแล้วแก้จนผ่าน)
+        reject_reason: isRejected ? (reason || null) : isApproved ? null : undefined
+      }
     });
 
     if (updatedProperty.agent_id) {
-      const isApproved = status === "approved";
+      const reasonText = isRejected && reason ? `\nเหตุผล: ${reason}` : "";
       await db.notifications.create({
         data: {
           user_id: updatedProperty.agent_id,
           title: isApproved ? "✅ ประกาศของคุณได้รับการอนุมัติแล้ว" : "❌ ประกาศของคุณไม่ผ่านการอนุมัติ",
           content: isApproved
             ? `ประกาศ "${updatedProperty.title}" ผ่านการตรวจสอบและแสดงบนเว็บไซต์เรียบร้อยแล้ว`
-            : `ประกาศ "${updatedProperty.title}" ไม่ผ่านการอนุมัติจากทีมงาน กรุณาตรวจสอบข้อมูลอีกครั้ง`,
+            : `ประกาศ "${updatedProperty.title}" ไม่ผ่านการอนุมัติจากทีมงาน กรุณาตรวจสอบข้อมูลอีกครั้ง${reasonText}`,
           type: "property",
           is_read: false
         }
