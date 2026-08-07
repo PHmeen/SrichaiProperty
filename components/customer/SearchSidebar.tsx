@@ -20,6 +20,14 @@ interface SearchSidebarProps {
   setPriceMax: (val: string) => void;
   bedrooms: string;
   setBedrooms: (val: string) => void;
+  bathrooms: string;
+  setBathrooms: (val: string) => void;
+  areaMin: string;
+  setAreaMin: (val: string) => void;
+  areaMax: string;
+  setAreaMax: (val: string) => void;
+  isMobileDrawerOpen?: boolean;
+  setIsMobileDrawerOpen?: (val: boolean) => void;
   facilities: {
     pool: boolean;
     gym: boolean;
@@ -53,21 +61,51 @@ export default function SearchSidebar({
   setPriceMax,
   bedrooms,
   setBedrooms,
+  bathrooms,
+  setBathrooms,
+  areaMin,
+  setAreaMin,
+  areaMax,
+  setAreaMax,
+  isMobileDrawerOpen,
+  setIsMobileDrawerOpen,
   facilities,
   setFacilities,
   handleClearFilters
 }: SearchSidebarProps) {
   return (
-    <aside className="lg:col-span-1 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-6 lg:sticky lg:top-24">
-      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-        <h2 className="font-extrabold text-slate-900 text-sm">ตัวกรองขั้นสูง</h2>
-        <button 
-          onClick={handleClearFilters}
-          className="text-[10px] text-blue-600 font-bold hover:underline cursor-pointer"
-        >
-          ล้างค่า
-        </button>
-      </div>
+    <>
+      {/* Overlay สำหรับ Mobile Drawer */}
+      {isMobileDrawerOpen && setIsMobileDrawerOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 lg:hidden transition-opacity" 
+          onClick={() => setIsMobileDrawerOpen(false)} 
+        />
+      )}
+      
+      <aside className={`bg-white p-5 rounded-t-3xl lg:rounded-2xl border border-slate-200/80 shadow-lg lg:shadow-sm space-y-6 lg:sticky lg:top-24
+        fixed lg:relative inset-x-0 bottom-0 z-50 lg:z-auto transition-transform duration-300 ease-in-out lg:transform-none overflow-y-auto max-h-[85vh] lg:max-h-none lg:block
+        ${isMobileDrawerOpen ? 'translate-y-0' : 'translate-y-full'} lg:translate-y-0
+      `}>
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <h2 className="font-extrabold text-slate-900 text-sm">ตัวกรองขั้นสูง</h2>
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={handleClearFilters}
+              className="text-[10px] text-blue-600 font-bold hover:underline cursor-pointer"
+            >
+              ล้างค่า
+            </button>
+            {setIsMobileDrawerOpen && (
+              <button 
+                onClick={() => setIsMobileDrawerOpen(false)} 
+                className="lg:hidden w-8 h-8 flex items-center justify-center bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 font-bold"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
 
       {/* ทำเลที่ตั้งแบบขั้นบันได */}
       <div className="space-y-3 pb-3 border-b border-slate-100">
@@ -187,6 +225,54 @@ export default function SearchSidebar({
         </div>
       </div>
 
+      {/* ห้องน้ำ */}
+      <div className="space-y-2.5">
+        <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">ห้องน้ำ</label>
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            { value: 'any', label: 'ไม่ระบุ' },
+            { value: '1', label: '1+' },
+            { value: '2', label: '2+' },
+            { value: '3', label: '3+' },
+            { value: '4+', label: '4+' },
+          ].map((item) => (
+            <button
+              key={item.value}
+              onClick={() => setBathrooms(item.value)}
+              className={`px-3 py-2 text-[11px] font-bold rounded-xl border transition-all cursor-pointer ${
+                bathrooms === item.value 
+                  ? 'bg-blue-600 border-blue-600 text-white shadow-sm' 
+                  : 'border-slate-200 hover:border-slate-300 text-slate-600 bg-white'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ขนาดพื้นที่ */}
+      <div className="space-y-2">
+        <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">พื้นที่ (ตร.ม.)</label>
+        <div className="flex items-center gap-2">
+          <input 
+            type="number" 
+            value={areaMin}
+            onChange={(e) => setAreaMin(e.target.value)}
+            placeholder="ต่ำสุด" 
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none"
+          />
+          <span className="text-slate-400 text-xs">-</span>
+          <input 
+            type="number" 
+            value={areaMax}
+            onChange={(e) => setAreaMax(e.target.value)}
+            placeholder="สูงสุด" 
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none"
+          />
+        </div>
+      </div>
+
       {/* สิ่งอำนวยความสะดวก */}
       <div className="space-y-3">
         <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">สิ่งอำนวยความสะดวก</label>
@@ -230,5 +316,6 @@ export default function SearchSidebar({
         </div>
       </div>
     </aside>
+    </>
   );
 }
