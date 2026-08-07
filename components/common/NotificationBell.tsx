@@ -19,6 +19,9 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
+  // id ของรายการที่กำลังถามยืนยันการลบอยู่ ('all' = กำลังยืนยันลบทั้งหมด)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | 'all' | null>(null);
+
   // ดึงข้อมูลการแจ้งเตือนจาก DB
   const loadData = React.useCallback(() => {
     if (status !== 'authenticated') return;
@@ -64,6 +67,25 @@ export default function NotificationBell() {
     });
   };
 
+  // ลบการแจ้งเตือน (id ระบุ = ลบทีละอัน, ไม่ระบุ = ลบทั้งหมด)
+  const deleteNotification = (id?: string) => {
+    const wasUnread = id ? notifications.find(n => n.id === id)?.isRead === false : false;
+    fetch('/api/notifications', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(id ? { notificationId: id } : { deleteAll: true })
+    }).then(() => {
+      if (id) {
+        setNotifications(prev => prev.filter(n => n.id !== id));
+        if (wasUnread) setUnreadCount(prev => Math.max(0, prev - 1));
+      } else {
+        setNotifications([]);
+        setUnreadCount(0);
+      }
+      setConfirmDeleteId(null);
+    });
+  };
+
   if (status !== 'authenticated') return null;
 
   return (
@@ -89,19 +111,50 @@ export default function NotificationBell() {
         <div className="absolute right-0 mt-2 w-80 sm:w-88 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden text-left">
           
           {/* Header */}
-          <div className="px-4 py-3 bg-slate-900 text-white flex items-center justify-between">
+          <div className="px-4 py-3 bg-slate-900 text-white flex items-center justify-between gap-2">
             <h3 className="font-extrabold text-xs flex items-center gap-1.5">
               <span>🔔</span> การแจ้งเตือน ({unreadCount})
             </h3>
-            {unreadCount > 0 && (
-              <button
-                onClick={() => markRead()}
-                className="text-[10px] font-bold text-blue-400 hover:text-white transition cursor-pointer"
-              >
-                อ่านทั้งหมด
-              </button>
-            )}
+            <div className="flex items-center gap-2.5 shrink-0">
+              {unreadCount > 0 && (
+                <button
+                  onClick={() => markRead()}
+                  className="text-[10px] font-bold text-blue-400 hover:text-white transition cursor-pointer"
+                >
+                  อ่านทั้งหมด
+                </button>
+              )}
+              {notifications.length > 0 && (
+                <button
+                  onClick={() => setConfirmDeleteId('all')}
+                  className="text-[10px] font-bold text-rose-400 hover:text-rose-300 transition cursor-pointer"
+                >
+                  ลบทั้งหมด
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* แถบยืนยันการลบทั้งหมด */}
+          {confirmDeleteId === 'all' && (
+            <div className="px-3.5 py-2.5 bg-rose-50 border-b border-rose-100 flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold text-rose-700">ลบการแจ้งเตือนทั้งหมด {notifications.length} รายการ?</span>
+              <div className="flex gap-1.5 shrink-0">
+                <button
+                  onClick={() => deleteNotification()}
+                  className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-bold transition cursor-pointer"
+                >
+                  ยืนยัน
+                </button>
+                <button
+                  onClick={() => setConfirmDeleteId(null)}
+                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-[10px] font-bold transition cursor-pointer"
+                >
+                  ยกเลิก
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* รายการการแจ้งเตือน */}
           <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
@@ -113,22 +166,55 @@ export default function NotificationBell() {
               notifications.map(n => (
                 <div
                   key={n.id}
-                  onClick={() => !n.isRead && markRead(n.id)}
-                  className={`p-3.5 transition cursor-pointer hover:bg-slate-50 ${
+                  className={`p-3.5 transition ${
                     !n.isRead ? 'bg-blue-50/50 border-l-4 border-blue-600' : 'opacity-75'
                   }`}
                 >
-                  <div className="flex justify-between items-start mb-1 gap-2">
-                    <h4 className={`text-xs ${!n.isRead ? 'font-extrabold text-slate-900' : 'font-bold text-slate-700'}`}>
-                      {n.title}
-                    </h4>
-                    <span className="text-[9px] text-slate-400 font-medium shrink-0">
-                      {new Date(n.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-600 font-medium leading-relaxed">
-                    {n.content}
-                  </p>
+                  {confirmDeleteId === n.id ? (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-bold text-rose-700">ลบการแจ้งเตือนนี้?</span>
+                      <div className="flex gap-1.5 shrink-0">
+                        <button
+                          onClick={() => deleteNotification(n.id)}
+                          className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-bold transition cursor-pointer"
+                        >
+                          ยืนยัน
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteId(null)}
+                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-[10px] font-bold transition cursor-pointer"
+                        >
+                          ยกเลิก
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-2">
+                      <div
+                        onClick={() => !n.isRead && markRead(n.id)}
+                        className="flex-1 min-w-0 cursor-pointer"
+                      >
+                        <div className="flex justify-between items-start mb-1 gap-2">
+                          <h4 className={`text-xs ${!n.isRead ? 'font-extrabold text-slate-900' : 'font-bold text-slate-700'}`}>
+                            {n.title}
+                          </h4>
+                          <span className="text-[9px] text-slate-400 font-medium shrink-0">
+                            {new Date(n.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 font-medium leading-relaxed">
+                          {n.content}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setConfirmDeleteId(n.id)}
+                        aria-label="ลบการแจ้งเตือนนี้"
+                        className="shrink-0 p-1 rounded-lg text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))
             )}
