@@ -110,12 +110,20 @@ function SearchPageContent() {
     setDistrictsList([]);
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
+
   const filteredProperties = properties.filter((prop) => {
     if (activeTab === 'rent' && prop.listingType !== 'rent') return false;
     if (activeTab === 'buy' && prop.listingType !== 'sale') return false;
 
-    const matchesSearch = prop.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          prop.location.toLowerCase().includes(searchTerm.toLowerCase());
+    const searchLower = searchTerm.toLowerCase().trim();
+    const matchesSearch = !searchLower || 
+                          prop.title.toLowerCase().includes(searchLower) || 
+                          prop.location.toLowerCase().includes(searchLower) ||
+                          (prop.amphureName || '').toLowerCase().includes(searchLower) ||
+                          (prop.provinceName || '').toLowerCase().includes(searchLower) ||
+                          (prop.districtName || '').toLowerCase().includes(searchLower);
     if (!matchesSearch) return false;
 
     if (selectedProvince && prop.province_id !== parseInt(selectedProvince)) return false;
@@ -125,7 +133,8 @@ function SearchPageContent() {
     const matchesType = propertyType === 'all' || 
                         (propertyType === 'house' && prop.type.includes('บ้าน')) ||
                         (propertyType === 'condo' && prop.type.includes('คอนโด')) ||
-                        (propertyType === 'townhome' && prop.type.includes('ทาวน์โฮม'));
+                        (propertyType === 'townhome' && prop.type.includes('ทาวน์โฮม')) ||
+                        (propertyType === 'land' && (prop.type.includes('ที่ดิน') || prop.type.includes('land')));
     if (!matchesType) return false;
 
     const rawPrice = parseInt(prop.price.replace(/[^\d]/g, ''));
@@ -157,6 +166,10 @@ function SearchPageContent() {
     if (sortBy === 'price_desc') return priceB - priceA;
     return 0;
   });
+
+  const totalPages = Math.max(1, Math.ceil(sortedProperties.length / itemsPerPage));
+  const validCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedProperties = sortedProperties.slice((validCurrentPage - 1) * itemsPerPage, validCurrentPage * itemsPerPage);
 
   return (
     <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm pb-16">
@@ -288,7 +301,7 @@ function SearchPageContent() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {sortedProperties.map((prop) => {
+                {paginatedProperties.map((prop) => {
                   const isFav = favorites.includes(prop.id);
                   return (
                     <PropertyCard 
@@ -302,12 +315,37 @@ function SearchPageContent() {
               </div>
             )}
 
-            {sortedProperties.length > 0 && (
+            {totalPages > 1 && (
               <div className="flex items-center justify-center gap-1.5 pt-6 text-xs font-bold">
-                <button className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 text-slate-500 cursor-pointer">&lt;</button>
-                <button className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-sm shadow-blue-500/20 cursor-pointer">1</button>
-                <button className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 text-slate-700 cursor-pointer">2</button>
-                <button className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 text-slate-500 cursor-pointer">&gt;</button>
+                <button 
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={validCurrentPage === 1}
+                  className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 text-slate-500 disabled:opacity-40 cursor-pointer"
+                >
+                  &lt;
+                </button>
+                
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`w-8 h-8 rounded-lg font-bold transition cursor-pointer flex items-center justify-center ${
+                      validCurrentPage === pageNum
+                        ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
+                        : 'border border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
+
+                <button 
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={validCurrentPage === totalPages}
+                  className="w-8 h-8 rounded-lg border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 text-slate-500 disabled:opacity-40 cursor-pointer"
+                >
+                  &gt;
+                </button>
               </div>
             )}
           </div>
