@@ -116,6 +116,21 @@ export async function POST(request: Request) {
     const property = await db.properties.findUnique({ where: { id: propertyId } });
     if (!property) return NextResponse.json({ error: "ไม่พบข้อมูลอสังหาริมทรัพย์นี้" }, { status: 404 });
 
+    // กฎ 1 ลูกค้า : 1 บ้าน จองค้างได้ทีละ 1 นัด (ต้อง completed/rejected/cancelled ก่อนถึงจะจองใหม่ได้)
+    const existingAppointment = await db.appointments.findFirst({
+      where: {
+        customer_id: user.id,
+        property_id: property.id,
+        status: { in: ["pending", "approved"] }
+      }
+    });
+    if (existingAppointment) {
+      return NextResponse.json(
+        { error: "คุณมีนัดหมายค้างอยู่สำหรับบ้านหลังนี้แล้ว กรุณารอผลหรือยกเลิกนัดเดิมก่อนจองใหม่" },
+        { status: 400 }
+      );
+    }
+
     const dbTimeSlot = timeSlot.includes("13:") || timeSlot.includes("15:") || timeSlot.includes("บ่าย") || timeSlot.toLowerCase().includes("afternoon") ? "afternoon" : "morning";
 
     // ต้องเป็นรอบที่นายหน้าเปิดว่างจริงสำหรับบ้านหลังนี้ และยังไม่มีใครจอง
