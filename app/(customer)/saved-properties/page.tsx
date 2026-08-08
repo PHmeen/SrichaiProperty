@@ -129,10 +129,10 @@ export default function SavedPropertiesPage() {
                   </div>
 
                   <div className="pt-2 flex gap-2">
-                    <Link href={`/properties/${item.id}`} className="flex-1 text-center py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 font-extrabold rounded-xl text-xs transition">
+                    <Link href={`/property/${item.id}`} className="flex-1 text-center py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 font-extrabold rounded-xl text-xs transition">
                       ดูรายละเอียด
                     </Link>
-                    <Link href={`/properties/${item.id}/book-appointment`} className="flex-1 text-center py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs transition shadow-sm">
+                    <Link href={`/book-appointment?propertyId=${item.id}`} className="flex-1 text-center py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs transition shadow-sm">
                       📅 จองนัดดูบ้าน
                     </Link>
                   </div>
