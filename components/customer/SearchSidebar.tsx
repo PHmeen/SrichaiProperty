@@ -1,39 +1,65 @@
 'use client';
 
+/**
+ * ==============================================================================
+ * หน้าจอแถบตัวกรองการค้นหาอสังหาริมทรัพย์ฝั่งซ้าย (Search Sidebar Component)
+ * ==============================================================================
+ * หน้าที่หลัก:
+ * 1. รับค่าตัวกรองทั้งหมด (`filters`) และฟังก์ชันสำหรับอัปเดต (`setFilters`) จากหน้าแม่ (search/page.tsx)
+ * 2. ทำหน้าที่ดึงข้อมูลทำเลที่ตั้งแบบลำดับขั้น (จังหวัด -> อำเภอ -> ตำบล) ผ่าน API `/api/locations`
+ * 3. เป็นส่วนที่ให้ผู้ใช้งานกรอก/เลือกเงื่อนไขต่างๆ เช่น ช่วงราคา, จำนวนห้องนอน, ห้องน้ำ, พื้นที่ และสิ่งอำนวยความสะดวก
+ * ==============================================================================
+ */
+
 import React, { useState, useEffect } from 'react';
 
+/**
+ * ------------------------------------------------------------------------------
+ * โครงสร้างข้อมูลประเภทตัวกรองทั้งหมด (Filter State Interface)
+ * ------------------------------------------------------------------------------
+ * รวบรวมฟิลด์เงื่อนไขทั้งหมดที่ผู้ใช้สามารถเลือกหรือกรอกได้ใน Sidebar
+ */
 export interface FilterState {
-  province: string;
-  amphure: string;
-  district: string;
-  priceMin: string;
-  priceMax: string;
-  bedrooms: string;
-  bathrooms: string;
-  areaMin: string;
-  areaMax: string;
-  facilities: {
-    pool: boolean;
-    gym: boolean;
-    parking: boolean;
-    security: boolean;
+  province: string;  // ID จังหวัดที่เลือก (เช่น '90' สำหรับสงขลา)
+  amphure: string;   // ID อำเภอที่เลือก (เช่น '9001' สำหรับหาดใหญ่)
+  district: string;  // ID ตำบลที่เลือก
+  priceMin: string;  // ราคาต่ำสุดที่ต้องการค้นหา (บาท)
+  priceMax: string;  // ราคาสูงสุดที่ต้องการค้นหา (บาท)
+  bedrooms: string;  // จำนวนห้องนอนขั้นต่ำ ('any', '1', '2', '3', '4+')
+  bathrooms: string; // จำนวนห้องน้ำขั้นต่ำ ('any', '1', '2', '3', '4+')
+  areaMin: string;   // ขนาดพื้นที่ต่ำสุด (ตารางเมตร)
+  areaMax: string;   // ขนาดพื้นที่สูงสุด (ตารางเมตร)
+  facilities: {      // สิ่งอำนวยความสะดวกที่ต้องการ (เปิดเป็น true, ปิดเป็น false)
+    pool: boolean;     // สระว่ายน้ำ
+    gym: boolean;      // ฟิตเนส / ยิม
+    parking: boolean;  // ที่จอดรถ
+    security: boolean; // ระบบรักษาความปลอดภัย / CCTV
   };
 }
 
+/**
+ * โครงสร้างข้อมูลสถานที่ (จังหวัด / อำเภอ / ตำบล) ที่ส่งกลับมาจาก API หลังบ้าน
+ */
 interface LocationItem {
-  id: number;
-  name_th: string;
-  name_en: string;
+  id: number;        // รหัสประจำสถานที่ในฐานข้อมูล
+  name_th: string;   // ชื่อสถานที่ภาษาไทย (เช่น "สงขลา", "หาดใหญ่")
+  name_en: string;   // ชื่อสถานที่ภาษาอังกฤษ
 }
 
+/**
+ * Props ที่รับมาจากคอมโพเนนต์แม่ (search/page.tsx)
+ */
 interface SearchSidebarProps {
-  filters: FilterState;
-  setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
-  isMobileDrawerOpen?: boolean;
-  setIsMobileDrawerOpen?: (val: boolean) => void;
-  handleClearFilters: () => void;
+  filters: FilterState;                                           // วัตถุเก็บค่าตัวกรองปัจจุบัน
+  setFilters: React.Dispatch<React.SetStateAction<FilterState>>;  // ฟังก์ชันสำหรับอัปเดตตัวกรอง
+  isMobileDrawerOpen?: boolean;                                   // สถานะเปิด/ปิดแถบตัวกรองบนจอมือถือ
+  setIsMobileDrawerOpen?: (val: boolean) => void;                // ฟังก์ชันปิดแถบตัวกรองบนจอมือถือ
+  handleClearFilters: () => void;                                 // ฟังก์ชันล้างค่าตัวกรองทั้งหมด
 }
 
+/**
+ * รายการตัวเลือกสำหรับปุ่มกดเลือกจำนวนห้องนอน / ห้องน้ำ
+ */
 const ROOM_OPTIONS = [
   { value: 'any', label: 'ไม่ระบุ' },
   { value: '1', label: '1+' },
@@ -49,33 +75,41 @@ export default function SearchSidebar({
   setIsMobileDrawerOpen,
   handleClearFilters,
 }: SearchSidebarProps) {
-  const [provincesList, setProvincesList] = useState<LocationItem[]>([]);
-  const [amphuresList, setAmphuresList] = useState<LocationItem[]>([]);
-  const [districtsList, setDistrictsList] = useState<LocationItem[]>([]);
+  // ---- State สำหรับเก็บรายการตัวเลือกใน Dropdowns ที่ดึงมาจาก API ----
+  const [provincesList, setProvincesList] = useState<LocationItem[]>([]); // รายชื่อจังหวัดทั้งหมด
+  const [amphuresList, setAmphuresList] = useState<LocationItem[]>([]);   // รายชื่ออำเภอในจังหวัดที่เลือก
+  const [districtsList, setDistrictsList] = useState<LocationItem[]>([]); // รายชื่อตำบลในอำเภอที่เลือก
 
-  // โหลดรายชื่อจังหวัด
+  // ============================================================================
+  // 1: โหลดรายชื่อจังหวัดทั้งหมดจาก API เมื่อเปิดหน้าเว็บครั้งแรก
+  // ============================================================================
   useEffect(() => {
     async function loadProvinces() {
       try {
         const res = await fetch('/api/locations?type=provinces');
         const data = await res.json();
+        // ตรวจสอบว่าเป็น Array แล้วอัปเดตลง State รายชื่อจังหวัด
         if (Array.isArray(data)) setProvincesList(data);
       } catch (err) {
         console.error('Failed to load provinces:', err);
       }
     }
     loadProvinces();
-  }, []);
+  }, []); // [] = ทำงานแค่ครั้งเดียวเมื่อคอมโพเนนต์แสดงผลครั้งแรก
 
-  // โหลดรายชื่ออำเภอเมื่อเลือกจังหวัด
+  // ============================================================================
+  // 2: โหลดรายชื่ออำเภอเฉพาะเมื่อผู้ใช้เลือก "จังหวัด" (filters.province เปลี่ยน)
+  // ============================================================================
   useEffect(() => {
+    // ถ้ายังไม่ได้เลือกจังหวัด ให้ข้าม ไม่ต้องยิง API
     if (!filters.province) return;
 
-    let active = true;
+    let active = true; // ตัวแปรเช็คสถานะการทำ async ป้องกัน race condition
     async function loadAmphures() {
       try {
         const res = await fetch(`/api/locations?type=amphures&provinceId=${filters.province}`);
         const data = await res.json();
+        // ถ้าคอมโพเนนต์ยังอยู่ และข้อมูลเป็น Array ให้อัปเดตรายการอำเภอ
         if (active && Array.isArray(data)) setAmphuresList(data);
       } catch (err) {
         console.error('Failed to load amphures:', err);
@@ -84,12 +118,15 @@ export default function SearchSidebar({
 
     loadAmphures();
     return () => {
-      active = false;
+      active = false; // ยกเลิกการอัปเดตผลลัพธ์ถ้าผู้ใช้เปลี่ยนจังหวัดไวกว่า API คืนค่า
     };
-  }, [filters.province]);
+  }, [filters.province]); // ทำงานใหม่ทุกครั้งที่ผู้ใช้เลือกจังหวัดใหม่
 
-  // โหลดรายชื่อตำบลเมื่อเลือกอำเภอ
+  // ============================================================================
+  // 3: โหลดรายชื่อตำบลเฉพาะเมื่อผู้ใช้เลือก "อำเภอ" (filters.amphure เปลี่ยน)
+  // ============================================================================
   useEffect(() => {
+    // ถ้ายังไม่ได้เลือกอำเภอ ให้ข้าม ไม่ต้องยิง API
     if (!filters.amphure) return;
 
     let active = true;
@@ -107,12 +144,23 @@ export default function SearchSidebar({
     return () => {
       active = false;
     };
-  }, [filters.amphure]);
+  }, [filters.amphure]); // ทำงานใหม่ทุกครั้งที่ผู้ใช้เลือกอำเภอใหม่
 
+  // ============================================================================
+  // ฟังก์ชันจัดการการเปลี่ยนค่า
+  // ============================================================================
+
+  /**
+   * ฟังก์ชันช่วยอัปเดตค่าใน `filters` ทีละฟิลด์อย่างปลอดภัย (Generics Type-Safe)
+   */
   const updateFilter = <K extends keyof FilterState>(key: K, val: FilterState[K]) => {
     setFilters((prev) => ({ ...prev, [key]: val }));
   };
 
+  /**
+   * ฟังก์ชันเมื่อผู้ใช้เปลี่ยน "จังหวัด"
+   * -> ตั้งค่าจังหวัดใหม่ และรีเซ็ตค่าอำเภอ/ตำบลย่อยให้เป็นค่าว่าง พร้อมล้าง Dropdown
+   */
   const handleProvinceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
     setFilters((prev) => ({ ...prev, province: val, amphure: '', district: '' }));
@@ -120,20 +168,28 @@ export default function SearchSidebar({
     setDistrictsList([]);
   };
 
+  /**
+   * ฟังก์ชันเมื่อผู้ใช้เปลี่ยน "อำเภอ"
+   * -> ตั้งค่าอำเภอใหม่ และรีเซ็ตค่าตำบลย่อยให้เป็นค่าว่าง
+   */
   const handleAmphureChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
     setFilters((prev) => ({ ...prev, amphure: val, district: '' }));
     setDistrictsList([]);
   };
 
+  /**
+   * ฟังก์ชันเมื่อกดปุ่ม "ล้างค่าตัวกรองทั้งหมด"
+   */
   const onResetAll = () => {
     setAmphuresList([]);
     setDistrictsList([]);
-    handleClearFilters();
+    handleClearFilters(); // เรียกฟังก์ชันล้างค่าใน page.tsx
   };
 
   return (
     <>
+      {/* -------------------- Mobile Backdrop Overlay (ฉากหลังสีดำเมื่อเปิดบนมือถือ) -------------------- */}
       {isMobileDrawerOpen && setIsMobileDrawerOpen && (
         <div 
           className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 lg:hidden transition-opacity" 
@@ -141,10 +197,12 @@ export default function SearchSidebar({
         />
       )}
       
+      {/* -------------------- กล่องหลักของ Sidebar (รองรับทั้ง Responsive & Mobile Drawer) -------------------- */}
       <aside className={`bg-white p-5 rounded-t-3xl lg:rounded-2xl border border-slate-200/80 shadow-lg lg:shadow-sm space-y-6 lg:sticky lg:top-24
         fixed lg:relative inset-x-0 bottom-0 z-50 lg:z-auto transition-transform duration-300 ease-in-out lg:transform-none overflow-y-auto max-h-[85vh] lg:max-h-none lg:block
         ${isMobileDrawerOpen ? 'translate-y-0' : 'translate-y-full'} lg:translate-y-0
       `}>
+        {/* หัวข้อ Sidebar + ปุ่มล้างค่า */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <h2 className="font-extrabold text-slate-900 text-sm">ตัวกรองขั้นสูง</h2>
           <div className="flex items-center gap-4">
@@ -165,7 +223,7 @@ export default function SearchSidebar({
           </div>
         </div>
 
-        {/* ทำเลที่ตั้งแบบขั้นบันได */}
+        {/* -------------------- 1. ส่วนเลือกทำเลที่ตั้ง (จังหวัด -> อำเภอ -> ตำบล) -------------------- */}
         <div className="space-y-3 pb-3 border-b border-slate-100">
           <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">ทำเลที่ตั้ง (ระบุตามเขตพื้นที่)</label>
           
@@ -185,7 +243,7 @@ export default function SearchSidebar({
               </select>
             </div>
 
-            {/* เลือกอำเภอ */}
+            {/* เลือกอำเภอ (ปิดไม่ให้กดเลือกจนกว่าจะเลือกจังหวัดก่อน) */}
             <div className="flex flex-col gap-1 text-xs">
               <span className={`font-bold ${filters.province ? 'text-slate-500' : 'text-slate-300'}`}>อำเภอ / เขต</span>
               <select 
@@ -201,7 +259,7 @@ export default function SearchSidebar({
               </select>
             </div>
 
-            {/* เลือกตำบล */}
+            {/* เลือกตำบล (ปิดไม่ให้กดเลือกจนกว่าจะเลือกอำเภอก่อน) */}
             <div className="flex flex-col gap-1 text-xs">
               <span className={`font-bold ${filters.amphure ? 'text-slate-500' : 'text-slate-300'}`}>ตำบล / แขวง</span>
               <select 
@@ -219,7 +277,7 @@ export default function SearchSidebar({
           </div>
         </div>
 
-        {/* ช่วงราคา */}
+        {/* -------------------- 2. ส่วนกรอกช่วงราคา (ต่ำสุด - สูงสุด) -------------------- */}
         <div className="space-y-2">
           <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">ช่วงราคา (บาท)</label>
           <div className="flex items-center gap-2">
@@ -241,7 +299,7 @@ export default function SearchSidebar({
           </div>
         </div>
 
-        {/* ห้องนอน */}
+        {/* -------------------- 3. ส่วนเลือกจำนวนห้องนอน -------------------- */}
         <div className="space-y-2.5">
           <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">ห้องนอน</label>
           <div className="flex flex-wrap gap-1.5">
@@ -261,7 +319,7 @@ export default function SearchSidebar({
           </div>
         </div>
 
-        {/* ห้องน้ำ */}
+        {/* -------------------- 4. ส่วนเลือกจำนวนห้องน้ำ -------------------- */}
         <div className="space-y-2.5">
           <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">ห้องน้ำ</label>
           <div className="flex flex-wrap gap-1.5">
@@ -281,7 +339,7 @@ export default function SearchSidebar({
           </div>
         </div>
 
-        {/* ขนาดพื้นที่ */}
+        {/* -------------------- 5. ส่วนกรอกขนาดพื้นที่ (ตร.ม.) -------------------- */}
         <div className="space-y-2">
           <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">พื้นที่ (ตร.ม.)</label>
           <div className="flex items-center gap-2">
@@ -303,15 +361,15 @@ export default function SearchSidebar({
           </div>
         </div>
 
-        {/* สิ่งอำนวยความสะดวก */}
+        {/* -------------------- 6. ส่วนติ๊กเลือกสิ่งอำนวยความสะดวก -------------------- */}
         <div className="space-y-3">
           <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">สิ่งอำนวยความสะดวก</label>
           <div className="space-y-2 text-xs font-bold text-slate-600">
             {[
-              { key: 'pool', label: '🏊 สระว่ายน้ำ' },
-              { key: 'gym', label: '🏋️ ฟิตเนส / ยิม' },
-              { key: 'parking', label: '🚗 ที่จอดรถ' },
-              { key: 'security', label: '🛡️ รักษาความปลอดภัย / CCTV' },
+              { key: 'pool', label: 'สระว่ายน้ำ' },
+              { key: 'gym', label: 'ฟิตเนส / ยิม' },
+              { key: 'parking', label: 'ที่จอดรถ' },
+              { key: 'security', label: 'รักษาความปลอดภัย / CCTV' },
             ].map(({ key, label }) => (
               <label key={key} className="flex items-center gap-2 cursor-pointer hover:text-slate-900 transition-colors">
                 <input 
