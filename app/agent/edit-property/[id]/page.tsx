@@ -42,6 +42,7 @@ export default function AgentEditPropertyPage() {
   const [districts, setDistricts] = useState<{ id: number; name_th: string }[]>([]);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [propertyStatus, setPropertyStatus] = useState<string>('');
+  const [rejectReason, setRejectReason] = useState<string>('');
 
   const [loadingPage, setLoadingPage] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -95,6 +96,7 @@ export default function AgentEditPropertyPage() {
         });
 
         setPropertyStatus(p.status || '');
+        setRejectReason(p.rejectReason || '');
         setUploadedImages(Array.isArray(p.images) ? p.images : []);
 
         const loadedSlots: ViewingSlot[] = Array.isArray(data.slots)
@@ -270,12 +272,25 @@ export default function AgentEditPropertyPage() {
             <span className={`text-[10px] font-black px-3 py-1.5 rounded-full border ${
               propertyStatus === 'approved' || propertyStatus === 'active'
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-amber-50 text-amber-700 border-amber-200'
+                : propertyStatus === 'rejected'
+                  ? 'bg-red-50 text-red-700 border-red-200'
+                  : 'bg-amber-50 text-amber-700 border-amber-200'
             }`}>
-              สถานะประกาศ: {propertyStatus === 'approved' || propertyStatus === 'active' ? 'อนุมัติแล้ว' : 'รอตรวจสอบ'}
+              สถานะประกาศ: {propertyStatus === 'approved' || propertyStatus === 'active' ? 'อนุมัติแล้ว' : propertyStatus === 'rejected' ? '🔴 ถูกตีกลับ' : 'รอตรวจสอบ'}
             </span>
           )}
         </div>
+
+        {/* กล่องแจ้งเหตุผลที่ถูกตีกลับ + คำแนะนำให้แก้ไขแล้วส่งใหม่ */}
+        {propertyStatus === 'rejected' && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 space-y-1.5">
+            <p className="text-xs font-black text-red-700 flex items-center gap-1.5">💬 เหตุผลที่แอดมินตีกลับ</p>
+            <p className="text-xs text-red-600 font-medium">{rejectReason || 'ไม่ได้ระบุเหตุผลเพิ่มเติม'}</p>
+            <p className="text-[11px] text-red-500 font-bold pt-1 border-t border-red-100 mt-2">
+              แก้ไขข้อมูลด้านล่างให้ถูกต้องตามคำแนะนำ แล้วกด &quot;บันทึกการแก้ไข&quot; ระบบจะส่งประกาศนี้กลับเข้าคิวตรวจสอบใหม่ให้อัตโนมัติ
+            </p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
 

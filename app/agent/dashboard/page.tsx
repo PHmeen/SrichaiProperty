@@ -31,7 +31,8 @@ interface PropertyData {
   title: string;
   price: string;
   type: string;
-  status: 'approved' | 'pending';
+  status: 'approved' | 'pending' | 'rejected';
+  rejectReason?: string | null;
   image: string;
   location?: string;
   bedrooms?: number;
@@ -220,7 +221,8 @@ export default function AgentDashboardPage() {
   const filteredProperties = (dbData?.properties || []).filter(p => {
     const matchesStatus = filterType === 'all' ? true :
                           filterType === 'approved' ? p.status === 'approved' :
-                          filterType === 'pending' ? p.status === 'pending' : true;
+                          filterType === 'pending' ? p.status === 'pending' :
+                          filterType === 'rejected' ? p.status === 'rejected' : true;
     const matchesSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesStatus && matchesSearch;
   });
@@ -328,6 +330,7 @@ export default function AgentDashboardPage() {
                   <option value="all">ทั้งหมด ({dbData?.properties.length || 0})</option>
                   <option value="approved">อนุมัติแล้ว</option>
                   <option value="pending">รอการตรวจสอบ</option>
+                  <option value="rejected">ถูกตีกลับ</option>
                 </select>
               </div>
             </div>
@@ -371,9 +374,18 @@ export default function AgentDashboardPage() {
                         </td>
 
                         <td className="py-3 px-2 text-center">
-                          <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full border ${p.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80' : 'bg-amber-50 text-amber-700 border-amber-200/80'}`}>
-                            {p.status === 'approved' ? 'อนุมัติแล้ว' : 'รอตรวจสอบ'}
+                          <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full border ${
+                            p.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80' :
+                            p.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200/80' :
+                            'bg-amber-50 text-amber-700 border-amber-200/80'
+                          }`}>
+                            {p.status === 'approved' ? 'อนุมัติแล้ว' : p.status === 'rejected' ? '🔴 ถูกตีกลับ' : 'รอตรวจสอบ'}
                           </span>
+                          {p.status === 'rejected' && p.rejectReason && (
+                            <p className="text-[9px] text-red-500 font-bold mt-1 line-clamp-2 max-w-[140px] mx-auto" title={p.rejectReason}>
+                              {p.rejectReason}
+                            </p>
+                          )}
                         </td>
 
                         <td className="py-3 px-2 text-right">
@@ -457,8 +469,12 @@ export default function AgentDashboardPage() {
                 <Image src={selectedProperty.image} alt="prop" width={96} height={64} className="w-24 h-16 rounded-2xl object-cover border shrink-0 shadow-sm" unoptimized />
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${selectedProperty.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
-                      {selectedProperty.status === 'approved' ? 'อนุมัติแล้ว' : 'รอตรวจสอบ'}
+                    <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${
+                      selectedProperty.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                      selectedProperty.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
+                      'bg-amber-50 text-amber-700 border-amber-200'
+                    }`}>
+                      {selectedProperty.status === 'approved' ? 'อนุมัติแล้ว' : selectedProperty.status === 'rejected' ? '🔴 ถูกตีกลับ' : 'รอตรวจสอบ'}
                     </span>
                     <span className="text-xs text-slate-400 font-semibold">{selectedProperty.type}</span>
                   </div>
@@ -467,6 +483,11 @@ export default function AgentDashboardPage() {
                     <span className="text-blue-600 font-black text-sm">{selectedProperty.price}</span>
                     {selectedProperty.location && <span>📍 {selectedProperty.location}</span>}
                   </div>
+                  {selectedProperty.status === 'rejected' && selectedProperty.rejectReason && (
+                    <p className="text-xs text-red-600 font-bold mt-1.5 bg-red-50 border border-red-100 rounded-lg px-2.5 py-1.5">
+                      💬 เหตุผลที่ถูกตีกลับ: {selectedProperty.rejectReason}
+                    </p>
+                  )}
                 </div>
               </div>
 

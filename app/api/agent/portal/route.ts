@@ -186,6 +186,7 @@ export async function GET(request: Request) {
           rawPrice: Number(p.price),
           type: p.property_types?.name || 'บ้านเดี่ยว',
           status: p.status,
+          rejectReason: p.reject_reason || null,
           location: p.location,
           bedrooms: p.bedrooms || 0,
           bathrooms: p.bathrooms || 0,
