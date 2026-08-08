@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import StatCards from '@/components/admin/StatCards';
 import ModerationList from '@/components/admin/ModerationList';
+import NotificationBell from '@/components/common/NotificationBell';
 
 const REFRESH_INTERVAL_MS = 15000;
 
@@ -49,20 +50,6 @@ export default function AdminDashboardPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
-
-  // --- Notification dropdown ---
-  const [showNotifications, setShowNotifications] = useState(false);
-  const notificationsRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const onClickOutside = (e: MouseEvent) => {
-      if (notificationsRef.current && !notificationsRef.current.contains(e.target as Node)) {
-        setShowNotifications(false);
-      }
-    };
-    document.addEventListener('mousedown', onClickOutside);
-    return () => document.removeEventListener('mousedown', onClickOutside);
-  }, []);
 
   // --- Toast notifications (แทน alert()) ---
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -124,58 +111,6 @@ export default function AdminDashboardPage() {
       item.seller.toLowerCase().includes(q)
     );
   }, [moderationItems, searchQuery]);
-
-  interface NotificationItem {
-    id: string;
-    icon: string;
-    text: string;
-    href: string;
-    urgent?: boolean;
-  }
-
-  const notifications = useMemo<NotificationItem[]>(() => {
-    const items: NotificationItem[] = [];
-
-    moderationItems
-      .filter(m => m.slaUrgent)
-      .forEach(m => items.push({
-        id: `sla-${m.id}`,
-        icon: '⏱️',
-        text: `ประกาศ "${m.title}" ใกล้เกินกำหนด SLA (${m.sla})`,
-        href: '/admin/moderation',
-        urgent: true
-      }));
-
-    if (reportsCount > 0) {
-      items.push({
-        id: 'reports',
-        icon: '⚠️',
-        text: `มีรายงานปัญหาจากลูกค้ารอตรวจสอบ ${reportsCount} รายการ`,
-        href: '/admin/reports',
-        urgent: true
-      });
-    }
-
-    if (pendingCount > 0) {
-      items.push({
-        id: 'pending',
-        icon: '📋',
-        text: `มีประกาศรออนุมัติทั้งหมด ${pendingCount} รายการ`,
-        href: '/admin/moderation'
-      });
-    }
-
-    newAgents.slice(0, 3).forEach(a => items.push({
-      id: `agent-${a.id}`,
-      icon: '👤',
-      text: `นายหน้าใหม่ "${a.name}" สมัครเข้าระบบ (${a.timeAgo})`,
-      href: '/admin/users'
-    }));
-
-    return items;
-  }, [moderationItems, reportsCount, pendingCount, newAgents]);
-
-  const urgentNotificationCount = notifications.filter(n => n.urgent).length;
 
   // --- 3. ฟังก์ชันส่งคำขออนุมัติไปยังฐานข้อมูลจริง (PATCH) ---
   const handleApprove = async (id: string, title: string) => {
@@ -263,49 +198,7 @@ export default function AdminDashboardPage() {
             <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-[9px] font-black tracking-wide border border-slate-200">
               IP: {adminIp}
             </span>
-            <div className="relative" ref={notificationsRef}>
-              <button
-                type="button"
-                onClick={() => setShowNotifications(v => !v)}
-                aria-label={`การแจ้งเตือน (${notifications.length} รายการ)`}
-                className="relative w-8 h-8 rounded-full border border-slate-200 hover:bg-slate-50 flex items-center justify-center transition-colors"
-              >
-                🔔
-                {urgentNotificationCount > 0 && (
-                  <span className="absolute top-1 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-                )}
-              </button>
-
-              {showNotifications && (
-                <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl border border-slate-200 shadow-xl z-50 overflow-hidden">
-                  <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                    <span className="font-extrabold text-slate-800 text-sm">🔔 การแจ้งเตือน</span>
-                    <span className="text-[9px] text-slate-400 font-bold">{notifications.length} รายการ</span>
-                  </div>
-                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
-                    {notifications.length === 0 ? (
-                      <div className="p-6 text-center text-slate-400 font-bold text-sm">
-                        ไม่มีการแจ้งเตือนใหม่
-                      </div>
-                    ) : (
-                      notifications.map(n => (
-                        <Link
-                          key={n.id}
-                          href={n.href}
-                          onClick={() => setShowNotifications(false)}
-                          className="flex items-start gap-2.5 p-3 hover:bg-slate-50 transition-colors"
-                        >
-                          <span className="text-base shrink-0">{n.icon}</span>
-                          <span className={`text-xs font-semibold leading-relaxed ${n.urgent ? 'text-rose-600' : 'text-slate-700'}`}>
-                            {n.text}
-                          </span>
-                        </Link>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+            <NotificationBell />
           </div>
         </header>
 

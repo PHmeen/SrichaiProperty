@@ -99,3 +99,45 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "อัปเดตการแจ้งเตือนล้มเหลว: " + err.message }, { status: 500 });
   }
 }
+
+// DELETE: ลบการแจ้งเตือน (ทีละอัน หรือลบทั้งหมดของผู้ใช้ที่ล็อกอินอยู่)
+export async function DELETE(req: Request) {
+  try {
+    const session = (await getServerSession(authOptions)) as SessionUser | null;
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อน" }, { status: 401 });
+    }
+
+    const user = await db.users.findUnique({
+      where: { email: session.user.email },
+      select: { id: true }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "ไม่พบผู้ใช้ในระบบ" }, { status: 404 });
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const { notificationId, deleteAll } = body;
+
+    if (deleteAll) {
+      await db.notifications.deleteMany({
+        where: { user_id: user.id }
+      });
+      return NextResponse.json({ success: true, message: "ลบการแจ้งเตือนทั้งหมดแล้ว" });
+    }
+
+    if (notificationId) {
+      await db.notifications.deleteMany({
+        where: { id: notificationId, user_id: user.id }
+      });
+      return NextResponse.json({ success: true, message: "ลบการแจ้งเตือนสำเร็จ" });
+    }
+
+    return NextResponse.json({ error: "กรุณาระบุ notificationId หรือ deleteAll" }, { status: 400 });
+  } catch (error) {
+    const err = error as Error;
+    console.error("DELETE Notifications Error:", err);
+    return NextResponse.json({ error: "ลบการแจ้งเตือนล้มเหลว: " + err.message }, { status: 500 });
+  }
+}

@@ -84,7 +84,29 @@ export async function POST(request: Request) {
       }
     });
 
-    // 9. สมัครสำเร็จ -> ส่งข้อมูล user (บางส่วน ไม่ส่ง password กลับ) ให้ frontend
+    // 9. ถ้าสมัครเป็นนายหน้า แจ้งเตือนแอดมินทุกคนให้เข้ามาตรวจสอบ KYC
+    if (userRole === 'agent') {
+      const admins = await db.users.findMany({
+        where: { role_id: 'admin' },
+        select: { id: true }
+      });
+
+      await Promise.allSettled(
+        admins.map(admin =>
+          db.notifications.create({
+            data: {
+              user_id: admin.id,
+              title: '👤 มีนายหน้าสมัครใหม่',
+              content: `"${firstName} ${lastName}" สมัครเป็นนายหน้า รอตรวจสอบเอกสาร KYC`,
+              type: 'agent_register',
+              is_read: false
+            }
+          })
+        )
+      );
+    }
+
+    // 10. สมัครสำเร็จ -> ส่งข้อมูล user (บางส่วน ไม่ส่ง password กลับ) ให้ frontend
     return NextResponse.json({
       success: true,
       user: {

@@ -215,6 +215,26 @@ export async function POST(request: Request) {
       });
     }
 
+    // แจ้งเตือนแอดมินทุกคนให้เข้ามาตรวจสอบประกาศใหม่ที่รออนุมัติ
+    const admins = await db.users.findMany({
+      where: { role_id: "admin" },
+      select: { id: true }
+    });
+
+    await Promise.allSettled(
+      admins.map(admin =>
+        db.notifications.create({
+          data: {
+            user_id: admin.id,
+            title: "📋 มีประกาศใหม่รออนุมัติ",
+            content: `ประกาศ "${title}" ถูกส่งเข้าคิวตรวจสอบ`,
+            type: "property_pending",
+            is_read: false
+          }
+        })
+      )
+    );
+
     return NextResponse.json({ success: true, data: newProperty });
   } catch (error) {
     const err = error as Error;
@@ -228,6 +248,17 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    // เปลี่ยนสถานะประกาศ (อนุมัติ/ปฏิเสธ) ได้เฉพาะแอดมินเท่านั้น
+    // หมายเหตุ: route นี้ไม่ได้อยู่ใน matcher ของ proxy.ts จึงต้องเช็คสิทธิ์เองตรงนี้
+    const session = await getServerSession(authOptions);
+    const role = (session?.user as { role?: string })?.role;
+    if (!session || role !== "admin") {
+      return NextResponse.json(
+        { error: "อนุญาตเฉพาะผู้ดูแลระบบเท่านั้น" },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const { id, status } = body;
 
