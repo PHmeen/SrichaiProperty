@@ -1,6 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+
+interface LocationItem {
+  id: number;
+  name_th: string;
+  name_en: string;
+}
 
 interface SearchSidebarProps {
   selectedProvince: string;
@@ -9,11 +15,6 @@ interface SearchSidebarProps {
   setSelectedAmphure: (val: string) => void;
   selectedDistrict: string;
   setSelectedDistrict: (val: string) => void;
-  provincesList: { id: number; name_th: string; name_en: string }[];
-  amphuresList: { id: number; name_th: string; name_en: string }[];
-  districtsList: { id: number; name_th: string; name_en: string; zip_code: number }[];
-  setAmphuresList: React.Dispatch<React.SetStateAction<{ id: number; name_th: string; name_en: string }[]>>;
-  setDistrictsList: React.Dispatch<React.SetStateAction<{ id: number; name_th: string; name_en: string; zip_code: number }[]>>;
   priceMin: string;
   setPriceMin: (val: string) => void;
   priceMax: string;
@@ -50,11 +51,6 @@ export default function SearchSidebar({
   setSelectedAmphure,
   selectedDistrict,
   setSelectedDistrict,
-  provincesList,
-  amphuresList,
-  districtsList,
-  setAmphuresList,
-  setDistrictsList,
   priceMin,
   setPriceMin,
   priceMax,
@@ -71,11 +67,56 @@ export default function SearchSidebar({
   setIsMobileDrawerOpen,
   facilities,
   setFacilities,
-  handleClearFilters
+  handleClearFilters,
 }: SearchSidebarProps) {
+  const [provincesList, setProvincesList] = useState<LocationItem[]>([]);
+  const [amphuresList, setAmphuresList] = useState<LocationItem[]>([]);
+  const [districtsList, setDistrictsList] = useState<LocationItem[]>([]);
+
+  useEffect(() => {
+    fetch('/api/locations?type=provinces')
+      .then((res) => res.json())
+      .then((data) => Array.isArray(data) && setProvincesList(data))
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+    if (!selectedProvince) {
+      Promise.resolve().then(() => {
+        setAmphuresList([]);
+        setDistrictsList([]);
+      });
+      return;
+    }
+    fetch(`/api/locations?type=amphures&provinceId=${selectedProvince}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!ignore && Array.isArray(data)) setAmphuresList(data);
+      })
+      .catch(console.error);
+    return () => { ignore = true; };
+  }, [selectedProvince]);
+
+  useEffect(() => {
+    let ignore = false;
+    if (!selectedAmphure) {
+      Promise.resolve().then(() => {
+        setDistrictsList([]);
+      });
+      return;
+    }
+    fetch(`/api/locations?type=districts&amphureId=${selectedAmphure}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!ignore && Array.isArray(data)) setDistrictsList(data);
+      })
+      .catch(console.error);
+    return () => { ignore = true; };
+  }, [selectedAmphure]);
+
   return (
     <>
-      {/* Overlay สำหรับ Mobile Drawer */}
       {isMobileDrawerOpen && setIsMobileDrawerOpen && (
         <div 
           className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 lg:hidden transition-opacity" 
@@ -107,215 +148,208 @@ export default function SearchSidebar({
           </div>
         </div>
 
-      {/* ทำเลที่ตั้งแบบขั้นบันได */}
-      <div className="space-y-3 pb-3 border-b border-slate-100">
-        <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">ทำเลที่ตั้ง (ระบุตามเขตพื้นที่)</label>
-        
+        {/* ทำเลที่ตั้งแบบขั้นบันได */}
+        <div className="space-y-3 pb-3 border-b border-slate-100">
+          <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">ทำเลที่ตั้ง (ระบุตามเขตพื้นที่)</label>
+          
+          <div className="space-y-2">
+            {/* เลือกจังหวัด */}
+            <div className="flex flex-col gap-1 text-xs">
+              <span className="font-bold text-slate-500">จังหวัด</span>
+              <select 
+                value={selectedProvince}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedProvince(val);
+                  setSelectedAmphure('');
+                  setSelectedDistrict('');
+                }}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none cursor-pointer"
+              >
+                <option value="">-- เลือกจังหวัด --</option>
+                {provincesList.map(prov => (
+                  <option key={prov.id} value={prov.id}>{prov.name_th}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* เลือกอำเภอ */}
+            <div className="flex flex-col gap-1 text-xs">
+              <span className={`font-bold ${selectedProvince ? 'text-slate-500' : 'text-slate-300'}`}>อำเภอ / เขต</span>
+              <select 
+                value={selectedAmphure}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedAmphure(val);
+                  setSelectedDistrict('');
+                }}
+                disabled={!selectedProvince}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">-- เลือกอำเภอ --</option>
+                {amphuresList.map(amp => (
+                  <option key={amp.id} value={amp.id}>{amp.name_th}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* เลือกตำบล */}
+            <div className="flex flex-col gap-1 text-xs">
+              <span className={`font-bold ${selectedAmphure ? 'text-slate-500' : 'text-slate-300'}`}>ตำบล / แขวง</span>
+              <select 
+                value={selectedDistrict}
+                onChange={(e) => setSelectedDistrict(e.target.value)}
+                disabled={!selectedAmphure}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">-- เลือกตำบล --</option>
+                {districtsList.map(dist => (
+                  <option key={dist.id} value={dist.id}>{dist.name_th}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* ช่วงราคา */}
         <div className="space-y-2">
-          {/* เลือกจังหวัด */}
-          <div className="flex flex-col gap-1 text-xs">
-            <span className="font-bold text-slate-500">จังหวัด</span>
-            <select 
-              value={selectedProvince}
-              onChange={(e) => {
-                const val = e.target.value;
-                setSelectedProvince(val);
-                setSelectedAmphure('');
-                setSelectedDistrict('');
-                if (!val) {
-                  setAmphuresList([]);
-                  setDistrictsList([]);
-                }
-              }}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none cursor-pointer"
-            >
-              <option value="">-- เลือกจังหวัด --</option>
-              {provincesList.map(prov => (
-                <option key={prov.id} value={prov.id}>{prov.name_th}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* เลือกอำเภอ */}
-          <div className="flex flex-col gap-1 text-xs">
-            <span className={`font-bold ${selectedProvince ? 'text-slate-500' : 'text-slate-300'}`}>อำเภอ / เขต</span>
-            <select 
-              value={selectedAmphure}
-              onChange={(e) => {
-                const val = e.target.value;
-                setSelectedAmphure(val);
-                setSelectedDistrict('');
-                if (!val) {
-                  setDistrictsList([]);
-                }
-              }}
-              disabled={!selectedProvince}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="">-- เลือกอำเภอ --</option>
-              {amphuresList.map(amp => (
-                <option key={amp.id} value={amp.id}>{amp.name_th}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* เลือกตำบล */}
-          <div className="flex flex-col gap-1 text-xs">
-            <span className={`font-bold ${selectedAmphure ? 'text-slate-500' : 'text-slate-300'}`}>ตำบล / แขวง</span>
-            <select 
-              value={selectedDistrict}
-              onChange={(e) => setSelectedDistrict(e.target.value)}
-              disabled={!selectedAmphure}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="">-- เลือกตำบล --</option>
-              {districtsList.map(dist => (
-                <option key={dist.id} value={dist.id}>{dist.name_th}</option>
-              ))}
-            </select>
+          <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">ช่วงราคา (บาท)</label>
+          <div className="flex items-center gap-2">
+            <input 
+              type="number" 
+              value={priceMin}
+              onChange={(e) => setPriceMin(e.target.value)}
+              placeholder="ต่ำสุด" 
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none"
+            />
+            <span className="text-slate-400 text-xs">-</span>
+            <input 
+              type="number" 
+              value={priceMax}
+              onChange={(e) => setPriceMax(e.target.value)}
+              placeholder="สูงสุด" 
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none"
+            />
           </div>
         </div>
-      </div>
 
-      {/* ช่วงราคา */}
-      <div className="space-y-2">
-        <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">ช่วงราคา (บาท)</label>
-        <div className="flex items-center gap-2">
-          <input 
-            type="number" 
-            value={priceMin}
-            onChange={(e) => setPriceMin(e.target.value)}
-            placeholder="ต่ำสุด" 
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none"
-          />
-          <span className="text-slate-400 text-xs">-</span>
-          <input 
-            type="number" 
-            value={priceMax}
-            onChange={(e) => setPriceMax(e.target.value)}
-            placeholder="สูงสุด" 
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none"
-          />
+        {/* ห้องนอน */}
+        <div className="space-y-2.5">
+          <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">ห้องนอน</label>
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { value: 'any', label: 'ไม่ระบุ' },
+              { value: '1', label: '1+' },
+              { value: '2', label: '2+' },
+              { value: '3', label: '3+' },
+              { value: '4+', label: '4+' },
+            ].map((item) => (
+              <button
+                key={item.value}
+                onClick={() => setBedrooms(item.value)}
+                className={`px-3 py-2 text-[11px] font-bold rounded-xl border transition-all cursor-pointer ${
+                  bedrooms === item.value 
+                    ? 'bg-blue-600 border-blue-600 text-white shadow-sm' 
+                    : 'border-slate-200 hover:border-slate-300 text-slate-600 bg-white'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* ห้องนอน */}
-      <div className="space-y-2.5">
-        <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">ห้องนอน</label>
-        <div className="flex flex-wrap gap-1.5">
-          {[
-            { value: 'any', label: 'ไม่ระบุ' },
-            { value: '1', label: '1+' },
-            { value: '2', label: '2+' },
-            { value: '3', label: '3+' },
-            { value: '4+', label: '4+' },
-          ].map((item) => (
-            <button
-              key={item.value}
-              onClick={() => setBedrooms(item.value)}
-              className={`px-3 py-2 text-[11px] font-bold rounded-xl border transition-all cursor-pointer ${
-                bedrooms === item.value 
-                  ? 'bg-blue-600 border-blue-600 text-white shadow-sm' 
-                  : 'border-slate-200 hover:border-slate-300 text-slate-600 bg-white'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
+        {/* ห้องน้ำ */}
+        <div className="space-y-2.5">
+          <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">ห้องน้ำ</label>
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { value: 'any', label: 'ไม่ระบุ' },
+              { value: '1', label: '1+' },
+              { value: '2', label: '2+' },
+              { value: '3', label: '3+' },
+              { value: '4+', label: '4+' },
+            ].map((item) => (
+              <button
+                key={item.value}
+                onClick={() => setBathrooms(item.value)}
+                className={`px-3 py-2 text-[11px] font-bold rounded-xl border transition-all cursor-pointer ${
+                  bathrooms === item.value 
+                    ? 'bg-blue-600 border-blue-600 text-white shadow-sm' 
+                    : 'border-slate-200 hover:border-slate-300 text-slate-600 bg-white'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* ห้องน้ำ */}
-      <div className="space-y-2.5">
-        <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">ห้องน้ำ</label>
-        <div className="flex flex-wrap gap-1.5">
-          {[
-            { value: 'any', label: 'ไม่ระบุ' },
-            { value: '1', label: '1+' },
-            { value: '2', label: '2+' },
-            { value: '3', label: '3+' },
-            { value: '4+', label: '4+' },
-          ].map((item) => (
-            <button
-              key={item.value}
-              onClick={() => setBathrooms(item.value)}
-              className={`px-3 py-2 text-[11px] font-bold rounded-xl border transition-all cursor-pointer ${
-                bathrooms === item.value 
-                  ? 'bg-blue-600 border-blue-600 text-white shadow-sm' 
-                  : 'border-slate-200 hover:border-slate-300 text-slate-600 bg-white'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ขนาดพื้นที่ */}
-      <div className="space-y-2">
-        <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">พื้นที่ (ตร.ม.)</label>
-        <div className="flex items-center gap-2">
-          <input 
-            type="number" 
-            value={areaMin}
-            onChange={(e) => setAreaMin(e.target.value)}
-            placeholder="ต่ำสุด" 
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none"
-          />
-          <span className="text-slate-400 text-xs">-</span>
-          <input 
-            type="number" 
-            value={areaMax}
-            onChange={(e) => setAreaMax(e.target.value)}
-            placeholder="สูงสุด" 
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none"
-          />
-        </div>
-      </div>
-
-      {/* สิ่งอำนวยความสะดวก */}
-      <div className="space-y-3">
-        <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">สิ่งอำนวยความสะดวก</label>
-        <div className="space-y-2 text-xs font-bold text-slate-600">
-          <label className="flex items-center gap-2 cursor-pointer hover:text-slate-900 transition-colors">
+        {/* ขนาดพื้นที่ */}
+        <div className="space-y-2">
+          <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">พื้นที่ (ตร.ม.)</label>
+          <div className="flex items-center gap-2">
             <input 
-              type="checkbox" 
-              checked={facilities.pool}
-              onChange={(e) => setFacilities({ ...facilities, pool: e.target.checked })}
-              className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+              type="number" 
+              value={areaMin}
+              onChange={(e) => setAreaMin(e.target.value)}
+              placeholder="ต่ำสุด" 
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none"
             />
-            <span>🏊 สระว่ายน้ำ</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer hover:text-slate-900 transition-colors">
+            <span className="text-slate-400 text-xs">-</span>
             <input 
-              type="checkbox" 
-              checked={facilities.gym}
-              onChange={(e) => setFacilities({ ...facilities, gym: e.target.checked })}
-              className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+              type="number" 
+              value={areaMax}
+              onChange={(e) => setAreaMax(e.target.value)}
+              placeholder="สูงสุด" 
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none"
             />
-            <span>🏋️ ฟิตเนส / ยิม</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer hover:text-slate-900 transition-colors">
-            <input 
-              type="checkbox" 
-              checked={facilities.parking}
-              onChange={(e) => setFacilities({ ...facilities, parking: e.target.checked })}
-              className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
-            />
-            <span>🚗 ที่จอดรถ</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer hover:text-slate-900 transition-colors">
-            <input 
-              type="checkbox" 
-              checked={facilities.security}
-              onChange={(e) => setFacilities({ ...facilities, security: e.target.checked })}
-              className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
-            />
-            <span>🛡️ รักษาความปลอดภัย / CCTV</span>
-          </label>
+          </div>
         </div>
-      </div>
-    </aside>
+
+        {/* สิ่งอำนวยความสะดวก */}
+        <div className="space-y-3">
+          <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">สิ่งอำนวยความสะดวก</label>
+          <div className="space-y-2 text-xs font-bold text-slate-600">
+            <label className="flex items-center gap-2 cursor-pointer hover:text-slate-900 transition-colors">
+              <input 
+                type="checkbox" 
+                checked={facilities.pool}
+                onChange={(e) => setFacilities({ ...facilities, pool: e.target.checked })}
+                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+              />
+              <span>🏊 สระว่ายน้ำ</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer hover:text-slate-900 transition-colors">
+              <input 
+                type="checkbox" 
+                checked={facilities.gym}
+                onChange={(e) => setFacilities({ ...facilities, gym: e.target.checked })}
+                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+              />
+              <span>🏋️ ฟิตเนส / ยิม</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer hover:text-slate-900 transition-colors">
+              <input 
+                type="checkbox" 
+                checked={facilities.parking}
+                onChange={(e) => setFacilities({ ...facilities, parking: e.target.checked })}
+                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+              />
+              <span>🚗 ที่จอดรถ</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer hover:text-slate-900 transition-colors">
+              <input 
+                type="checkbox" 
+                checked={facilities.security}
+                onChange={(e) => setFacilities({ ...facilities, security: e.target.checked })}
+                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+              />
+              <span>🛡️ รักษาความปลอดภัย / CCTV</span>
+            </label>
+          </div>
+        </div>
+      </aside>
     </>
   );
 }
