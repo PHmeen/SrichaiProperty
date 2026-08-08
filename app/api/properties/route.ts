@@ -127,7 +127,7 @@ export async function POST(request: Request) {
       title, price, listing_type, listingType, type_id, type, location, description,
       bedrooms, bathrooms, area_sqm, areaSqm,
       province_id, amphure_id, district_id, latitude, longitude, images,
-      viewingSlots
+      doc, viewingSlots
     } = body;
 
     const resolvedListingType = (listing_type ?? listingType) === "rent" ? "rent" : "sale";
@@ -202,7 +202,18 @@ export async function POST(request: Request) {
       });
     }
 
-    // 3. บันทึกวันเวลาที่นายหน้าเปิดว่างสำหรับบ้านหลังนี้ (ถ้ามีการเลือกไว้ตอนลงประกาศ)
+    // 3. บันทึกเอกสารสิทธิ์เข้าตาราง property_documents ถ้ามีการแนบมา (เช่น โฉนดที่ดิน, สัญญา)
+    if (doc) {
+      await db.property_documents.create({
+        data: {
+          property_id: newProperty.id,
+          doc_url: doc,
+          doc_type: String(doc).toLowerCase().endsWith(".pdf") ? "pdf" : "image"
+        }
+      });
+    }
+
+    // 4. บันทึกวันเวลาที่นายหน้าเปิดว่างสำหรับบ้านหลังนี้ (ถ้ามีการเลือกไว้ตอนลงประกาศ)
     if (Array.isArray(viewingSlots) && viewingSlots.length > 0) {
       await db.property_viewing_slots.createMany({
         data: viewingSlots.map((slot: { date: string; timeSlot: string }) => ({
