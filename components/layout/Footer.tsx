@@ -31,7 +31,7 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/register" className="hover:text-blue-400 transition">
+                <Link href="/register/agent" className="hover:text-blue-400 transition">
                   สมัครเป็นนายหน้า
                 </Link>
               </li>
