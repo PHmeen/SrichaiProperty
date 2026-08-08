@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     // ✅ ตรวจสอบประเภทไฟล์
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
       return NextResponse.json(
-        { error: 'รองรับเฉพาะไฟล์รูปภาพ (JPEG, PNG, WEBP, GIF) เท่านั้น' },
+        { error: 'รองรับเฉพาะไฟล์รูปภาพ (JPEG, PNG, WEBP, GIF) หรือเอกสาร PDF เท่านั้น' },
         { status: 400 }
       );
     }
@@ -39,6 +39,7 @@ export async function POST(request: Request) {
     const ext = file.type === 'image/jpeg' ? '.jpg'
       : file.type === 'image/png' ? '.png'
       : file.type === 'image/webp' ? '.webp'
+      : file.type === 'application/pdf' ? '.pdf'
       : '.gif';
     const filename = `upload_${Date.now()}_${Math.random().toString(36).substring(2, 10)}${ext}`;
 
