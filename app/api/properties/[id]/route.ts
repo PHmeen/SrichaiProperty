@@ -98,6 +98,7 @@ export async function GET(
       amphure_id: property.amphure_id,
       district_id: property.district_id,
       status: property.status,
+      rejectReason: property.reject_reason || null,
       agentName: property.users ? `${property.users.first_name} ${property.users.last_name}` : "ไม่ระบุตัวแทน",
       agentPhone: property.users?.phone || "081-234-5678",
       lineId: property.users?.line_id || null,
@@ -124,7 +125,8 @@ export async function GET(
 
 // ---------------------------------------------------------------------------
 // PATCH: แก้ไขรายละเอียดบ้าน + รูปภาพ + วันว่าง
-// หมายเหตุ: ไม่แตะฟิลด์ status เพื่อไม่ให้ต้องรอแอดมินอนุมัติซ้ำ
+// หมายเหตุ: ปกติไม่แตะฟิลด์ status เพื่อไม่ให้ต้องรอแอดมินอนุมัติซ้ำ
+// ยกเว้นกรณีเดียว — ประกาศที่เคยถูกตีกลับ (rejected) จะถูกส่งกลับเข้าคิว pending ให้อัตโนมัติ
 // ---------------------------------------------------------------------------
 export async function PATCH(
   req: Request,
@@ -145,6 +147,12 @@ export async function PATCH(
     } = body;
 
     const resolvedListingType = listing_type ?? listingType;
+
+    // ดึงสถานะปัจจุบันไว้เช็คว่าเคยถูกตีกลับหรือไม่ (ใช้ตัดสินใจตอนอัปเดตด้านล่าง)
+    const currentProperty = await db.properties.findUnique({
+      where: { id },
+      select: { status: true }
+    });
 
     if (!title || !price || !location) {
       return NextResponse.json(
@@ -190,6 +198,13 @@ export async function PATCH(
     if (amphure_id) updateData.amphure_id = parseInt(String(amphure_id));
     if (district_id) updateData.district_id = parseInt(String(district_id));
     if (newStatus) updateData.status = newStatus;
+
+    // ประกาศที่เคยถูกตีกลับ (rejected) เมื่อนายหน้าแก้ไขแล้วบันทึก ให้ส่งกลับเข้าคิวตรวจสอบใหม่อัตโนมัติ
+    // (กฎ "แก้ประกาศไม่ต้องรออนุมัติซ้ำ" ใช้เฉพาะกรณี approved อยู่แล้วเท่านั้น ไม่รวมกรณีถูกตีกลับ)
+    if (currentProperty?.status === "rejected") {
+      updateData.status = "pending";
+      updateData.reject_reason = null;
+    }
 
     const updated = await db.properties.update({
       where: { id },
