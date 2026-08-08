@@ -9,24 +9,29 @@ interface UpgradeProModalProps {
 }
 
 export default function UpgradeProModal({ isOpen, onClose, onSuccess }: UpgradeProModalProps) {
-  const [slipUrl, setSlipUrl] = useState('');
+  const [slipFile, setSlipFile] = useState<File | null>(null);
   const [submittingPayment, setSubmittingPayment] = useState(false);
 
   if (!isOpen) return null;
 
   const handleCheckout = async () => {
-    if (!slipUrl.trim()) return alert('กรุณาแนบลิงก์รูปภาพสลิปการโอนเงิน');
+    if (!slipFile) return alert('กรุณาแนบไฟล์รูปภาพสลิปการโอนเงิน');
     setSubmittingPayment(true);
     try {
+      // ต้องส่งเป็น FormData เพราะ /api/packages/checkout รับไฟล์แนบจริง (formData.get("slip")) ไม่ใช่ JSON
+      const formData = new FormData();
+      formData.append('slip', slipFile);
+      formData.append('packageId', '1');
+      formData.append('amount', '599');
+
       const res = await fetch('/api/packages/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slipUrl, packageId: 1, amount: 599 })
+        body: formData
       });
       const data = await res.json();
       if (data.success) {
         alert('ส่งหลักฐานการชำระเงินเรียบร้อยแล้ว! ทีมงานจะตรวจสอบและอนุมัติแพ็กเกจ PRO ภายใน 1-2 ชม.');
-        setSlipUrl('');
+        setSlipFile(null);
         onClose();
         if (onSuccess) onSuccess();
       } else {
@@ -69,14 +74,21 @@ export default function UpgradeProModal({ isOpen, onClose, onSuccess }: UpgradeP
         </div>
 
         <div className="space-y-2 border-t pt-3">
-          <h4 className="font-extrabold text-xs text-slate-800">2. แนบลิงก์รูปภาพสลิปโอนเงิน</h4>
+          <h4 className="font-extrabold text-xs text-slate-800">2. แนบไฟล์รูปภาพสลิปโอนเงิน</h4>
           <input
-            type="text"
-            value={slipUrl}
-            onChange={e => setSlipUrl(e.target.value)}
-            placeholder="ระบุ URL รูปภาพสลิปการโอนเงิน (เช่น https://...)"
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:bg-white font-medium"
+            type="file"
+            id="pro-slip-input"
+            accept="image/*"
+            className="hidden"
+            onChange={e => setSlipFile(e.target.files?.[0] || null)}
           />
+          <button
+            type="button"
+            onClick={() => document.getElementById('pro-slip-input')?.click()}
+            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none hover:bg-slate-100 font-bold text-slate-700 text-left cursor-pointer"
+          >
+            {slipFile ? `✓ ${slipFile.name}` : '📎 คลิกเพื่อเลือกไฟล์รูปภาพสลิป'}
+          </button>
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
