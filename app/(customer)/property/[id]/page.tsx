@@ -26,10 +26,12 @@ export default function PropertyDetailPage() {
   const params = useParams();
   const id = params.id; // รหัส ID อสังหาฯ จาก URL Parameter (เช่น /property/uuid)
   
-  const { properties, favorites, toggleFavorite } = useApp();
+  const { properties, propertiesLoading, favorites, toggleFavorite } = useApp();
 
   // 1.1 ค้นหาข้อมูลอสังหาริมทรัพย์จาก ID ที่ตรงกันในฐานข้อมูล
-  const property = properties.find((p) => String(p.id) === String(id)) || properties[0];
+  // หมายเหตุ: ห้าม fallback ไปที่บ้านหลังอื่น (เดิม || properties[0] ทำให้ id ที่หาไม่เจอ
+  // ไปโชว์บ้านหลังแรกของระบบแทนแบบเนียนๆ โดยผู้ใช้ไม่รู้ตัว)
+  const property = properties.find((p) => String(p.id) === String(id));
 
   // ----------------------------------------------------------------------------
   // 2. PHOTO GALLERY MEMOIZATION (จัดการรูปภาพสำหรับแสดงผลในกริด)
@@ -82,11 +84,24 @@ export default function PropertyDetailPage() {
     return isNaN(payment) || !isFinite(payment) ? '0' : payment.toFixed(0);
   }, [loanAmount, interestRate, loanYears]);
 
-  // แสดงผลหน้ารอโหลดถ้ายังไม่พบข้อมูลประกาศ
-  if (!property) {
+  // แสดงผลหน้ารอโหลดระหว่างที่ยังดึงรายการอสังหาฯ ทั้งหมดไม่เสร็จ
+  if (propertiesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500 font-bold">
         🔄 กำลังโหลดข้อมูลอสังหาริมทรัพย์...
+      </div>
+    );
+  }
+
+  // โหลดเสร็จแล้วแต่หา id นี้ไม่เจอจริง (ถูกลบ/ยังไม่อนุมัติ/ลิงก์ผิด) — ต้องบอกตรงๆ ไม่ใช่โชว์บ้านอื่นแทน
+  if (!property) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 text-slate-500 font-bold gap-4 px-4 text-center">
+        <div className="text-4xl">🔍</div>
+        <p>ไม่พบประกาศอสังหาริมทรัพย์นี้ อาจถูกลบไปแล้วหรือยังไม่ได้รับการอนุมัติ</p>
+        <Link href="/search" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs transition">
+          กลับไปหน้าค้นหา
+        </Link>
       </div>
     );
   }
