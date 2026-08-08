@@ -129,7 +129,7 @@ export async function POST(request: Request) {
     const {
       title, price, listing_type, listingType, type_id, type, location, description,
       bedrooms, bathrooms, area_sqm, areaSqm,
-      province_id, amphure_id, district_id, latitude, longitude, images, viewingSlots
+      province_id, amphure_id, district_id, latitude, longitude, images, doc, viewingSlots
     } = body;
 
     // 2.4 ตรวจสอบความถูกต้องของข้อมูล (Data Validation)
@@ -187,7 +187,18 @@ export async function POST(request: Request) {
       });
     }
 
-    // 2.8 บันทึกรอบเวลานัดหมายเข้าชมที่นายหน้าเปิดให้จอง ลงในตาราง property_viewing_slots
+    // 2.8 บันทึกเอกสารสิทธิ์เข้าตาราง property_documents ถ้ามีการแนบมา (เช่น โฉนดที่ดิน, สัญญา)
+    if (doc) {
+      await db.property_documents.create({
+        data: {
+          property_id: newProperty.id,
+          doc_url: doc,
+          doc_type: String(doc).toLowerCase().endsWith(".pdf") ? "pdf" : "image"
+        }
+      });
+    }
+
+    // 2.9 บันทึกรอบเวลานัดหมายเข้าชมที่นายหน้าเปิดให้จอง ลงในตาราง property_viewing_slots
     if (Array.isArray(viewingSlots) && viewingSlots.length > 0) {
       await db.property_viewing_slots.createMany({
         data: viewingSlots.map((slot: { date: string; timeSlot: string }) => ({
@@ -200,7 +211,7 @@ export async function POST(request: Request) {
       });
     }
 
-    // 2.9 ส่งการแจ้งเตือน (Notifications) ไปยังแอดมินทุกคนเพื่อแจ้งให้ทราบว่ามีประกาศใหม่รออนุมัติ
+    // 2.10 ส่งการแจ้งเตือน (Notifications) ไปยังแอดมินทุกคนเพื่อแจ้งให้ทราบว่ามีประกาศใหม่รออนุมัติ
     const admins = await db.users.findMany({ where: { role_id: "admin" }, select: { id: true } });
     if (admins.length > 0) {
       await db.notifications.createMany({
