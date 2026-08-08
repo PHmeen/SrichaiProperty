@@ -44,6 +44,14 @@ interface SearchSidebarProps {
   handleClearFilters: () => void;
 }
 
+const ROOM_OPTIONS = [
+  { value: 'any', label: 'ไม่ระบุ' },
+  { value: '1', label: '1+' },
+  { value: '2', label: '2+' },
+  { value: '3', label: '3+' },
+  { value: '4+', label: '4+' },
+];
+
 export default function SearchSidebar({
   selectedProvince,
   setSelectedProvince,
@@ -73,47 +81,83 @@ export default function SearchSidebar({
   const [amphuresList, setAmphuresList] = useState<LocationItem[]>([]);
   const [districtsList, setDistrictsList] = useState<LocationItem[]>([]);
 
+  // โหลดรายชื่อจังหวัด
   useEffect(() => {
-    fetch('/api/locations?type=provinces')
-      .then((res) => res.json())
-      .then((data) => Array.isArray(data) && setProvincesList(data))
-      .catch(console.error);
+    async function loadProvinces() {
+      try {
+        const res = await fetch('/api/locations?type=provinces');
+        const data = await res.json();
+        if (Array.isArray(data)) setProvincesList(data);
+      } catch (err) {
+        console.error('Failed to load provinces:', err);
+      }
+    }
+    loadProvinces();
   }, []);
 
+  // โหลดรายชื่ออำเภอเมื่อเลือกจังหวัด
   useEffect(() => {
-    let ignore = false;
-    if (!selectedProvince) {
-      Promise.resolve().then(() => {
-        setAmphuresList([]);
-        setDistrictsList([]);
-      });
-      return;
+    if (!selectedProvince) return;
+
+    let active = true;
+    async function loadAmphures() {
+      try {
+        const res = await fetch(`/api/locations?type=amphures&provinceId=${selectedProvince}`);
+        const data = await res.json();
+        if (active && Array.isArray(data)) setAmphuresList(data);
+      } catch (err) {
+        console.error('Failed to load amphures:', err);
+      }
     }
-    fetch(`/api/locations?type=amphures&provinceId=${selectedProvince}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (!ignore && Array.isArray(data)) setAmphuresList(data);
-      })
-      .catch(console.error);
-    return () => { ignore = true; };
+
+    loadAmphures();
+    return () => {
+      active = false;
+    };
   }, [selectedProvince]);
 
+  // โหลดรายชื่อตำบลเมื่อเลือกอำเภอ
   useEffect(() => {
-    let ignore = false;
-    if (!selectedAmphure) {
-      Promise.resolve().then(() => {
-        setDistrictsList([]);
-      });
-      return;
+    if (!selectedAmphure) return;
+
+    let active = true;
+    async function loadDistricts() {
+      try {
+        const res = await fetch(`/api/locations?type=districts&amphureId=${selectedAmphure}`);
+        const data = await res.json();
+        if (active && Array.isArray(data)) setDistrictsList(data);
+      } catch (err) {
+        console.error('Failed to load districts:', err);
+      }
     }
-    fetch(`/api/locations?type=districts&amphureId=${selectedAmphure}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (!ignore && Array.isArray(data)) setDistrictsList(data);
-      })
-      .catch(console.error);
-    return () => { ignore = true; };
+
+    loadDistricts();
+    return () => {
+      active = false;
+    };
   }, [selectedAmphure]);
+
+  const handleProvinceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setSelectedProvince(val);
+    setSelectedAmphure('');
+    setSelectedDistrict('');
+    setAmphuresList([]);
+    setDistrictsList([]);
+  };
+
+  const handleAmphureChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setSelectedAmphure(val);
+    setSelectedDistrict('');
+    setDistrictsList([]);
+  };
+
+  const onResetAll = () => {
+    setAmphuresList([]);
+    setDistrictsList([]);
+    handleClearFilters();
+  };
 
   return (
     <>
@@ -132,7 +176,7 @@ export default function SearchSidebar({
           <h2 className="font-extrabold text-slate-900 text-sm">ตัวกรองขั้นสูง</h2>
           <div className="flex items-center gap-4">
             <button 
-              onClick={handleClearFilters}
+              onClick={onResetAll}
               className="text-[10px] text-blue-600 font-bold hover:underline cursor-pointer"
             >
               ล้างค่า
@@ -158,16 +202,11 @@ export default function SearchSidebar({
               <span className="font-bold text-slate-500">จังหวัด</span>
               <select 
                 value={selectedProvince}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setSelectedProvince(val);
-                  setSelectedAmphure('');
-                  setSelectedDistrict('');
-                }}
+                onChange={handleProvinceChange}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none cursor-pointer"
               >
                 <option value="">-- เลือกจังหวัด --</option>
-                {provincesList.map(prov => (
+                {provincesList.map((prov) => (
                   <option key={prov.id} value={prov.id}>{prov.name_th}</option>
                 ))}
               </select>
@@ -178,16 +217,12 @@ export default function SearchSidebar({
               <span className={`font-bold ${selectedProvince ? 'text-slate-500' : 'text-slate-300'}`}>อำเภอ / เขต</span>
               <select 
                 value={selectedAmphure}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setSelectedAmphure(val);
-                  setSelectedDistrict('');
-                }}
+                onChange={handleAmphureChange}
                 disabled={!selectedProvince}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">-- เลือกอำเภอ --</option>
-                {amphuresList.map(amp => (
+                {amphuresList.map((amp) => (
                   <option key={amp.id} value={amp.id}>{amp.name_th}</option>
                 ))}
               </select>
@@ -203,7 +238,7 @@ export default function SearchSidebar({
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">-- เลือกตำบล --</option>
-                {districtsList.map(dist => (
+                {districtsList.map((dist) => (
                   <option key={dist.id} value={dist.id}>{dist.name_th}</option>
                 ))}
               </select>
@@ -237,13 +272,7 @@ export default function SearchSidebar({
         <div className="space-y-2.5">
           <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">ห้องนอน</label>
           <div className="flex flex-wrap gap-1.5">
-            {[
-              { value: 'any', label: 'ไม่ระบุ' },
-              { value: '1', label: '1+' },
-              { value: '2', label: '2+' },
-              { value: '3', label: '3+' },
-              { value: '4+', label: '4+' },
-            ].map((item) => (
+            {ROOM_OPTIONS.map((item) => (
               <button
                 key={item.value}
                 onClick={() => setBedrooms(item.value)}
@@ -263,13 +292,7 @@ export default function SearchSidebar({
         <div className="space-y-2.5">
           <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">ห้องน้ำ</label>
           <div className="flex flex-wrap gap-1.5">
-            {[
-              { value: 'any', label: 'ไม่ระบุ' },
-              { value: '1', label: '1+' },
-              { value: '2', label: '2+' },
-              { value: '3', label: '3+' },
-              { value: '4+', label: '4+' },
-            ].map((item) => (
+            {ROOM_OPTIONS.map((item) => (
               <button
                 key={item.value}
                 onClick={() => setBathrooms(item.value)}
@@ -315,7 +338,7 @@ export default function SearchSidebar({
               <input 
                 type="checkbox" 
                 checked={facilities.pool}
-                onChange={(e) => setFacilities({ ...facilities, pool: e.target.checked })}
+                onChange={(e) => setFacilities(prev => ({ ...prev, pool: e.target.checked }))}
                 className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
               />
               <span>🏊 สระว่ายน้ำ</span>
@@ -324,7 +347,7 @@ export default function SearchSidebar({
               <input 
                 type="checkbox" 
                 checked={facilities.gym}
-                onChange={(e) => setFacilities({ ...facilities, gym: e.target.checked })}
+                onChange={(e) => setFacilities(prev => ({ ...prev, gym: e.target.checked }))}
                 className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
               />
               <span>🏋️ ฟิตเนส / ยิม</span>
@@ -333,7 +356,7 @@ export default function SearchSidebar({
               <input 
                 type="checkbox" 
                 checked={facilities.parking}
-                onChange={(e) => setFacilities({ ...facilities, parking: e.target.checked })}
+                onChange={(e) => setFacilities(prev => ({ ...prev, parking: e.target.checked }))}
                 className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
               />
               <span>🚗 ที่จอดรถ</span>
@@ -342,7 +365,7 @@ export default function SearchSidebar({
               <input 
                 type="checkbox" 
                 checked={facilities.security}
-                onChange={(e) => setFacilities({ ...facilities, security: e.target.checked })}
+                onChange={(e) => setFacilities(prev => ({ ...prev, security: e.target.checked }))}
                 className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
               />
               <span>🛡️ รักษาความปลอดภัย / CCTV</span>
