@@ -124,19 +124,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "อนุญาตให้ลงประกาศได้เฉพาะบัญชีนายหน้าเท่านั้น" }, { status: 403 });
     }
 
-    // 2.2b จำกัดโควต้าลงประกาศฟรี 3 รายการสำหรับนายหน้าที่ยังไม่ได้อัปเกรด Verified PRO
-    // (เช็ค isPro ด้วยสูตรเดียวกับ /api/agent/portal เพื่อให้ตรงกับตัวเลขที่ dashboard แสดงผล)
-    const isPro = agent.plan_type === "pro" && (!agent.plan_expired_at || new Date(agent.plan_expired_at) > new Date());
-    if (!isPro) {
-      const propertiesCount = await db.properties.count({ where: { agent_id: agent.id } });
-      if (propertiesCount >= 3) {
-        return NextResponse.json(
-          { error: "คุณใช้โควต้าลงประกาศฟรีครบ 3 รายการแล้ว กรุณาอัปเกรดเป็น Verified PRO เพื่อลงประกาศเพิ่ม" },
-          { status: 403 }
-        );
-      }
-    }
-
     // 2.3 อ่านข้อมูลที่ส่งมาจาก Request Body
     const body = await request.json();
     const {
