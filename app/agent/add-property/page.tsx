@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import ImageUploader from '@/components/property/ImageUploader';
 
@@ -35,6 +36,7 @@ export default function AgentAddPropertyPage() {
   const [agreed2, setAgreed2] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [docFileName, setDocFileName] = useState<string>('');
+  const [docUploading, setDocUploading] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // === วันเวลาที่เปิดให้ลูกค้าเข้าชมบ้านหลังนี้ (เลือกไว้ล่วงหน้า บันทึกจริงตอนกดส่งประกาศ) ===
@@ -104,6 +106,7 @@ export default function AgentAddPropertyPage() {
           description: f.description, bedrooms: parseInt(f.bedrooms), bathrooms: parseInt(f.bathrooms),
           area_sqm: parseFloat(f.usableArea) || parseFloat(f.landArea) || 120,
           images: uploadedImages.length > 0 ? uploadedImages : [f.image],
+          doc: f.doc || null,
           viewingSlots
         })
       });
@@ -282,38 +285,70 @@ export default function AgentAddPropertyPage() {
             />
 
             {/* PDPA Warning Alert */}
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[10px] text-amber-900 space-y-1">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[10px] text-amber-900 space-y-2">
               <div className="font-bold flex items-center gap-1 text-amber-800">⚠️ คำเตือนข้อมูลส่วนบุคคล (PDPA)</div>
               <p className="leading-relaxed">เอกสารนี้ใช้สำหรับให้ทีมงานตรวจสอบความถูกต้องเท่านั้น <span className="font-bold underline">จะไม่ถูกแสดงสู่สาธารณะ</span> กรุณาปิดซ่อนเลขบัตรประชาชนในเอกสารก่อนอัปโหลด</p>
-              <div className="pt-1 flex items-center gap-2">
-                <input 
-                  type="file" 
-                  id="doc-file-input"
-                  accept="image/*,application/pdf"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const formData = new FormData();
-                    formData.append('file', file);
-                    try {
-                      const res = await fetch('/api/upload', { method: 'POST', body: formData });
-                      const data = await res.json();
-                      if (data.success) setDocFileName(file.name);
-                    } catch (err) { console.error(err); }
-                  }}
-                />
-                <button 
-                  type="button" 
-                  onClick={() => document.getElementById('doc-file-input')?.click()}
-                  className="px-2.5 py-1 bg-white border rounded font-bold text-[10px] text-slate-700 shadow-sm hover:bg-slate-50 cursor-pointer"
-                >
-                  Choose File
-                </button>
-                <span className="text-slate-500 text-[9px] font-bold truncate max-w-[200px]">
-                  {docFileName ? `✓ ${docFileName}` : 'No file chosen'}
-                </span>
-              </div>
+
+              <input
+                type="file"
+                id="doc-file-input"
+                accept="image/*,application/pdf"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setDocUploading(true);
+                  const formData = new FormData();
+                  formData.append('file', file);
+                  try {
+                    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                    const data = await res.json();
+                    if (data.success) {
+                      setF(prev => ({ ...prev, doc: data.url }));
+                      setDocFileName(file.name);
+                    } else {
+                      alert(data.error || 'อัปโหลดเอกสารล้มเหลว');
+                    }
+                  } catch (err) {
+                    console.error(err);
+                    alert('เกิดข้อผิดพลาดในการอัปโหลดเอกสาร');
+                  } finally {
+                    setDocUploading(false);
+                    e.target.value = '';
+                  }
+                }}
+              />
+
+              {f.doc ? (
+                <div className="flex items-center gap-2 bg-white border rounded-lg p-2">
+                  {f.doc.toLowerCase().endsWith('.pdf') ? (
+                    <span className="text-lg shrink-0">📄</span>
+                  ) : (
+                    <Image src={f.doc} alt="เอกสารสิทธิ์" width={32} height={32} className="w-8 h-8 rounded object-cover border shrink-0" unoptimized />
+                  )}
+                  <span className="text-slate-700 font-bold truncate max-w-[140px]">{docFileName || 'เอกสารที่อัปโหลดแล้ว'}</span>
+                  <a href={f.doc} target="_blank" rel="noreferrer" className="text-blue-600 font-bold underline ml-auto shrink-0">ดูไฟล์</a>
+                  <button
+                    type="button"
+                    onClick={() => { setF(prev => ({ ...prev, doc: '' })); setDocFileName(''); }}
+                    className="text-red-500 font-bold hover:text-red-700 shrink-0 cursor-pointer"
+                  >
+                    ✕ ลบ
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById('doc-file-input')?.click()}
+                    disabled={docUploading}
+                    className="px-2.5 py-1 bg-white border rounded font-bold text-[10px] text-slate-700 shadow-sm hover:bg-slate-50 cursor-pointer disabled:opacity-50"
+                  >
+                    {docUploading ? 'กำลังอัปโหลด...' : 'Choose File'}
+                  </button>
+                  <span className="text-slate-500 text-[9px] font-bold">No file chosen</span>
+                </div>
+              )}
             </div>
           </div>
 
