@@ -2,6 +2,24 @@
 
 import React, { useState, useEffect } from 'react';
 
+export interface FilterState {
+  province: string;
+  amphure: string;
+  district: string;
+  priceMin: string;
+  priceMax: string;
+  bedrooms: string;
+  bathrooms: string;
+  areaMin: string;
+  areaMax: string;
+  facilities: {
+    pool: boolean;
+    gym: boolean;
+    parking: boolean;
+    security: boolean;
+  };
+}
+
 interface LocationItem {
   id: number;
   name_th: string;
@@ -9,38 +27,10 @@ interface LocationItem {
 }
 
 interface SearchSidebarProps {
-  selectedProvince: string;
-  setSelectedProvince: (val: string) => void;
-  selectedAmphure: string;
-  setSelectedAmphure: (val: string) => void;
-  selectedDistrict: string;
-  setSelectedDistrict: (val: string) => void;
-  priceMin: string;
-  setPriceMin: (val: string) => void;
-  priceMax: string;
-  setPriceMax: (val: string) => void;
-  bedrooms: string;
-  setBedrooms: (val: string) => void;
-  bathrooms: string;
-  setBathrooms: (val: string) => void;
-  areaMin: string;
-  setAreaMin: (val: string) => void;
-  areaMax: string;
-  setAreaMax: (val: string) => void;
+  filters: FilterState;
+  setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
   isMobileDrawerOpen?: boolean;
   setIsMobileDrawerOpen?: (val: boolean) => void;
-  facilities: {
-    pool: boolean;
-    gym: boolean;
-    parking: boolean;
-    security: boolean;
-  };
-  setFacilities: React.Dispatch<React.SetStateAction<{
-    pool: boolean;
-    gym: boolean;
-    parking: boolean;
-    security: boolean;
-  }>>;
   handleClearFilters: () => void;
 }
 
@@ -53,28 +43,10 @@ const ROOM_OPTIONS = [
 ];
 
 export default function SearchSidebar({
-  selectedProvince,
-  setSelectedProvince,
-  selectedAmphure,
-  setSelectedAmphure,
-  selectedDistrict,
-  setSelectedDistrict,
-  priceMin,
-  setPriceMin,
-  priceMax,
-  setPriceMax,
-  bedrooms,
-  setBedrooms,
-  bathrooms,
-  setBathrooms,
-  areaMin,
-  setAreaMin,
-  areaMax,
-  setAreaMax,
+  filters,
+  setFilters,
   isMobileDrawerOpen,
   setIsMobileDrawerOpen,
-  facilities,
-  setFacilities,
   handleClearFilters,
 }: SearchSidebarProps) {
   const [provincesList, setProvincesList] = useState<LocationItem[]>([]);
@@ -97,12 +69,12 @@ export default function SearchSidebar({
 
   // โหลดรายชื่ออำเภอเมื่อเลือกจังหวัด
   useEffect(() => {
-    if (!selectedProvince) return;
+    if (!filters.province) return;
 
     let active = true;
     async function loadAmphures() {
       try {
-        const res = await fetch(`/api/locations?type=amphures&provinceId=${selectedProvince}`);
+        const res = await fetch(`/api/locations?type=amphures&provinceId=${filters.province}`);
         const data = await res.json();
         if (active && Array.isArray(data)) setAmphuresList(data);
       } catch (err) {
@@ -114,16 +86,16 @@ export default function SearchSidebar({
     return () => {
       active = false;
     };
-  }, [selectedProvince]);
+  }, [filters.province]);
 
   // โหลดรายชื่อตำบลเมื่อเลือกอำเภอ
   useEffect(() => {
-    if (!selectedAmphure) return;
+    if (!filters.amphure) return;
 
     let active = true;
     async function loadDistricts() {
       try {
-        const res = await fetch(`/api/locations?type=districts&amphureId=${selectedAmphure}`);
+        const res = await fetch(`/api/locations?type=districts&amphureId=${filters.amphure}`);
         const data = await res.json();
         if (active && Array.isArray(data)) setDistrictsList(data);
       } catch (err) {
@@ -135,21 +107,22 @@ export default function SearchSidebar({
     return () => {
       active = false;
     };
-  }, [selectedAmphure]);
+  }, [filters.amphure]);
+
+  const updateFilter = <K extends keyof FilterState>(key: K, val: FilterState[K]) => {
+    setFilters((prev) => ({ ...prev, [key]: val }));
+  };
 
   const handleProvinceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
-    setSelectedProvince(val);
-    setSelectedAmphure('');
-    setSelectedDistrict('');
+    setFilters((prev) => ({ ...prev, province: val, amphure: '', district: '' }));
     setAmphuresList([]);
     setDistrictsList([]);
   };
 
   const handleAmphureChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
-    setSelectedAmphure(val);
-    setSelectedDistrict('');
+    setFilters((prev) => ({ ...prev, amphure: val, district: '' }));
     setDistrictsList([]);
   };
 
@@ -201,7 +174,7 @@ export default function SearchSidebar({
             <div className="flex flex-col gap-1 text-xs">
               <span className="font-bold text-slate-500">จังหวัด</span>
               <select 
-                value={selectedProvince}
+                value={filters.province}
                 onChange={handleProvinceChange}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none cursor-pointer"
               >
@@ -214,11 +187,11 @@ export default function SearchSidebar({
 
             {/* เลือกอำเภอ */}
             <div className="flex flex-col gap-1 text-xs">
-              <span className={`font-bold ${selectedProvince ? 'text-slate-500' : 'text-slate-300'}`}>อำเภอ / เขต</span>
+              <span className={`font-bold ${filters.province ? 'text-slate-500' : 'text-slate-300'}`}>อำเภอ / เขต</span>
               <select 
-                value={selectedAmphure}
+                value={filters.amphure}
                 onChange={handleAmphureChange}
-                disabled={!selectedProvince}
+                disabled={!filters.province}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">-- เลือกอำเภอ --</option>
@@ -230,11 +203,11 @@ export default function SearchSidebar({
 
             {/* เลือกตำบล */}
             <div className="flex flex-col gap-1 text-xs">
-              <span className={`font-bold ${selectedAmphure ? 'text-slate-500' : 'text-slate-300'}`}>ตำบล / แขวง</span>
+              <span className={`font-bold ${filters.amphure ? 'text-slate-500' : 'text-slate-300'}`}>ตำบล / แขวง</span>
               <select 
-                value={selectedDistrict}
-                onChange={(e) => setSelectedDistrict(e.target.value)}
-                disabled={!selectedAmphure}
+                value={filters.district}
+                onChange={(e) => updateFilter('district', e.target.value)}
+                disabled={!filters.amphure}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">-- เลือกตำบล --</option>
@@ -252,16 +225,16 @@ export default function SearchSidebar({
           <div className="flex items-center gap-2">
             <input 
               type="number" 
-              value={priceMin}
-              onChange={(e) => setPriceMin(e.target.value)}
+              value={filters.priceMin}
+              onChange={(e) => updateFilter('priceMin', e.target.value)}
               placeholder="ต่ำสุด" 
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none"
             />
             <span className="text-slate-400 text-xs">-</span>
             <input 
               type="number" 
-              value={priceMax}
-              onChange={(e) => setPriceMax(e.target.value)}
+              value={filters.priceMax}
+              onChange={(e) => updateFilter('priceMax', e.target.value)}
               placeholder="สูงสุด" 
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none"
             />
@@ -275,9 +248,9 @@ export default function SearchSidebar({
             {ROOM_OPTIONS.map((item) => (
               <button
                 key={item.value}
-                onClick={() => setBedrooms(item.value)}
+                onClick={() => updateFilter('bedrooms', item.value)}
                 className={`px-3 py-2 text-[11px] font-bold rounded-xl border transition-all cursor-pointer ${
-                  bedrooms === item.value 
+                  filters.bedrooms === item.value 
                     ? 'bg-blue-600 border-blue-600 text-white shadow-sm' 
                     : 'border-slate-200 hover:border-slate-300 text-slate-600 bg-white'
                 }`}
@@ -295,9 +268,9 @@ export default function SearchSidebar({
             {ROOM_OPTIONS.map((item) => (
               <button
                 key={item.value}
-                onClick={() => setBathrooms(item.value)}
+                onClick={() => updateFilter('bathrooms', item.value)}
                 className={`px-3 py-2 text-[11px] font-bold rounded-xl border transition-all cursor-pointer ${
-                  bathrooms === item.value 
+                  filters.bathrooms === item.value 
                     ? 'bg-blue-600 border-blue-600 text-white shadow-sm' 
                     : 'border-slate-200 hover:border-slate-300 text-slate-600 bg-white'
                 }`}
@@ -314,16 +287,16 @@ export default function SearchSidebar({
           <div className="flex items-center gap-2">
             <input 
               type="number" 
-              value={areaMin}
-              onChange={(e) => setAreaMin(e.target.value)}
+              value={filters.areaMin}
+              onChange={(e) => updateFilter('areaMin', e.target.value)}
               placeholder="ต่ำสุด" 
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none"
             />
             <span className="text-slate-400 text-xs">-</span>
             <input 
               type="number" 
-              value={areaMax}
-              onChange={(e) => setAreaMax(e.target.value)}
+              value={filters.areaMax}
+              onChange={(e) => updateFilter('areaMax', e.target.value)}
               placeholder="สูงสุด" 
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 outline-none"
             />
@@ -334,42 +307,22 @@ export default function SearchSidebar({
         <div className="space-y-3">
           <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">สิ่งอำนวยความสะดวก</label>
           <div className="space-y-2 text-xs font-bold text-slate-600">
-            <label className="flex items-center gap-2 cursor-pointer hover:text-slate-900 transition-colors">
-              <input 
-                type="checkbox" 
-                checked={facilities.pool}
-                onChange={(e) => setFacilities(prev => ({ ...prev, pool: e.target.checked }))}
-                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
-              />
-              <span>🏊 สระว่ายน้ำ</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer hover:text-slate-900 transition-colors">
-              <input 
-                type="checkbox" 
-                checked={facilities.gym}
-                onChange={(e) => setFacilities(prev => ({ ...prev, gym: e.target.checked }))}
-                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
-              />
-              <span>🏋️ ฟิตเนส / ยิม</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer hover:text-slate-900 transition-colors">
-              <input 
-                type="checkbox" 
-                checked={facilities.parking}
-                onChange={(e) => setFacilities(prev => ({ ...prev, parking: e.target.checked }))}
-                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
-              />
-              <span>🚗 ที่จอดรถ</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer hover:text-slate-900 transition-colors">
-              <input 
-                type="checkbox" 
-                checked={facilities.security}
-                onChange={(e) => setFacilities(prev => ({ ...prev, security: e.target.checked }))}
-                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
-              />
-              <span>🛡️ รักษาความปลอดภัย / CCTV</span>
-            </label>
+            {[
+              { key: 'pool', label: '🏊 สระว่ายน้ำ' },
+              { key: 'gym', label: '🏋️ ฟิตเนส / ยิม' },
+              { key: 'parking', label: '🚗 ที่จอดรถ' },
+              { key: 'security', label: '🛡️ รักษาความปลอดภัย / CCTV' },
+            ].map(({ key, label }) => (
+              <label key={key} className="flex items-center gap-2 cursor-pointer hover:text-slate-900 transition-colors">
+                <input 
+                  type="checkbox" 
+                  checked={filters.facilities[key as keyof typeof filters.facilities]}
+                  onChange={(e) => updateFilter('facilities', { ...filters.facilities, [key]: e.target.checked })}
+                  className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+                />
+                <span>{label}</span>
+              </label>
+            ))}
           </div>
         </div>
       </aside>

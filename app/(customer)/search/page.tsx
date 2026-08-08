@@ -3,8 +3,21 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import SearchSidebar from '@/components/customer/SearchSidebar';
+import SearchSidebar, { FilterState } from '@/components/customer/SearchSidebar';
 import PropertyCard from '@/components/customer/PropertyCard';
+
+const DEFAULT_FILTERS: FilterState = {
+  province: '',
+  amphure: '',
+  district: '',
+  priceMin: '',
+  priceMax: '',
+  bedrooms: 'any',
+  bathrooms: 'any',
+  areaMin: '',
+  areaMax: '',
+  facilities: { pool: false, gym: false, parking: false, security: false },
+};
 
 function SearchPageContent() {
   const searchParams = useSearchParams();
@@ -13,38 +26,34 @@ function SearchPageContent() {
   const resultsRef = useRef<HTMLDivElement>(null);
   const { properties, favorites, toggleFavorite } = useApp();
 
-  // ตั้งค่า Filter state เริ่มต้นโดยอ่านจาก URL search params โดยตรง
   const [searchTerm, setSearchTerm] = useState(() => searchParams.get('q') || '');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
   const [activeTab, setActiveTab] = useState<'buy' | 'rent'>(() => searchParams.get('tab') === 'rent' ? 'rent' : 'buy');
   const [propertyType, setPropertyType] = useState(() => searchParams.get('type') || 'all');
 
-  const [priceMin, setPriceMin] = useState(() => searchParams.get('priceMin') || '');
-  const [priceMax, setPriceMax] = useState(() => searchParams.get('priceMax') || '');
-  const [bedrooms, setBedrooms] = useState(() => searchParams.get('bedrooms') || 'any');
-  const [bathrooms, setBathrooms] = useState(() => searchParams.get('bathrooms') || 'any');
-  const [areaMin, setAreaMin] = useState(() => searchParams.get('areaMin') || '');
-  const [areaMax, setAreaMax] = useState(() => searchParams.get('areaMax') || '');
-
-  const [selectedProvince, setSelectedProvince] = useState(() => searchParams.get('province') || '');
-  const [selectedAmphure, setSelectedAmphure] = useState(() => searchParams.get('amphure') || '');
-  const [selectedDistrict, setSelectedDistrict] = useState(() => searchParams.get('district') || '');
-
-  const [facilities, setFacilities] = useState(() => {
-    const facs = searchParams.get('facilities')?.split(',') || [];
-    return {
-      pool: facs.includes('pool'),
-      gym: facs.includes('gym'),
-      parking: facs.includes('parking'),
-      security: facs.includes('security'),
-    };
-  });
+  const [filters, setFilters] = useState<FilterState>(() => ({
+    province: searchParams.get('province') || '',
+    amphure: searchParams.get('amphure') || '',
+    district: searchParams.get('district') || '',
+    priceMin: searchParams.get('priceMin') || '',
+    priceMax: searchParams.get('priceMax') || '',
+    bedrooms: searchParams.get('bedrooms') || 'any',
+    bathrooms: searchParams.get('bathrooms') || 'any',
+    areaMin: searchParams.get('areaMin') || '',
+    areaMax: searchParams.get('areaMax') || '',
+    facilities: {
+      pool: searchParams.get('facilities')?.includes('pool') || false,
+      gym: searchParams.get('facilities')?.includes('gym') || false,
+      parking: searchParams.get('facilities')?.includes('parking') || false,
+      security: searchParams.get('facilities')?.includes('security') || false,
+    },
+  }));
 
   const [sortBy, setSortBy] = useState<'latest' | 'price_asc' | 'price_desc'>('latest');
   const [currentPage, setCurrentPage] = useState(1);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
-  // Debounce การพิมพ์คำค้นหา 500ms
+  // Debounce การพิมพ์คำค้นหา
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 500);
     return () => clearTimeout(timer);
@@ -57,17 +66,18 @@ function SearchPageContent() {
     if (debouncedSearchTerm) params.set('q', debouncedSearchTerm);
     if (activeTab !== 'buy') params.set('tab', activeTab);
     if (propertyType !== 'all') params.set('type', propertyType);
-    if (priceMin) params.set('priceMin', priceMin);
-    if (priceMax) params.set('priceMax', priceMax);
-    if (bedrooms !== 'any') params.set('bedrooms', bedrooms);
-    if (bathrooms !== 'any') params.set('bathrooms', bathrooms);
-    if (areaMin) params.set('areaMin', areaMin);
-    if (areaMax) params.set('areaMax', areaMax);
-    if (selectedProvince) params.set('province', selectedProvince);
-    if (selectedAmphure) params.set('amphure', selectedAmphure);
-    if (selectedDistrict) params.set('district', selectedDistrict);
 
-    const activeFacs = Object.entries(facilities)
+    if (filters.priceMin) params.set('priceMin', filters.priceMin);
+    if (filters.priceMax) params.set('priceMax', filters.priceMax);
+    if (filters.bedrooms !== 'any') params.set('bedrooms', filters.bedrooms);
+    if (filters.bathrooms !== 'any') params.set('bathrooms', filters.bathrooms);
+    if (filters.areaMin) params.set('areaMin', filters.areaMin);
+    if (filters.areaMax) params.set('areaMax', filters.areaMax);
+    if (filters.province) params.set('province', filters.province);
+    if (filters.amphure) params.set('amphure', filters.amphure);
+    if (filters.district) params.set('district', filters.district);
+
+    const activeFacs = Object.entries(filters.facilities)
       .filter(([, active]) => active)
       .map(([k]) => k)
       .join(',');
@@ -80,7 +90,7 @@ function SearchPageContent() {
     if (newUrl !== currentUrl) {
       router.replace(newUrl, { scroll: false });
     }
-  }, [debouncedSearchTerm, activeTab, propertyType, priceMin, priceMax, bedrooms, bathrooms, areaMin, areaMax, selectedProvince, selectedAmphure, selectedDistrict, facilities, pathname, router, searchParams]);
+  }, [debouncedSearchTerm, activeTab, propertyType, filters, pathname, router, searchParams]);
 
   const triggerSearch = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -91,16 +101,7 @@ function SearchPageContent() {
   const handleClearFilters = () => {
     setSearchTerm('');
     setPropertyType('all');
-    setPriceMin('');
-    setPriceMax('');
-    setBedrooms('any');
-    setBathrooms('any');
-    setAreaMin('');
-    setAreaMax('');
-    setFacilities({ pool: false, gym: false, parking: false, security: false });
-    setSelectedProvince('');
-    setSelectedAmphure('');
-    setSelectedDistrict('');
+    setFilters(DEFAULT_FILTERS);
   };
 
   // กรองรายการอสังหาริมทรัพย์
@@ -113,9 +114,9 @@ function SearchPageContent() {
       return false;
     }
 
-    if (selectedProvince && prop.province_id !== parseInt(selectedProvince)) return false;
-    if (selectedAmphure && prop.amphure_id !== parseInt(selectedAmphure)) return false;
-    if (selectedDistrict && prop.district_id !== parseInt(selectedDistrict)) return false;
+    if (filters.province && prop.province_id !== parseInt(filters.province)) return false;
+    if (filters.amphure && prop.amphure_id !== parseInt(filters.amphure)) return false;
+    if (filters.district && prop.district_id !== parseInt(filters.district)) return false;
 
     const typeMap: Record<string, string> = { house: 'บ้าน', condo: 'คอนโด', townhome: 'ทาวน์โฮม', land: 'ที่ดิน' };
     if (propertyType !== 'all' && typeMap[propertyType] && !prop.type.includes(typeMap[propertyType]) && !(propertyType === 'land' && prop.type.toLowerCase().includes('land'))) {
@@ -123,20 +124,20 @@ function SearchPageContent() {
     }
 
     const price = parseInt(prop.price.replace(/[^\d]/g, '')) || 0;
-    if (priceMin && price < parseInt(priceMin)) return false;
-    if (priceMax && price > parseInt(priceMax)) return false;
+    if (filters.priceMin && price < parseInt(filters.priceMin)) return false;
+    if (filters.priceMax && price > parseInt(filters.priceMax)) return false;
 
-    if (bedrooms !== 'any' && (prop.bedrooms || 0) < parseInt(bedrooms)) return false;
-    if (bathrooms !== 'any' && (prop.bathrooms || 0) < parseInt(bathrooms)) return false;
+    if (filters.bedrooms !== 'any' && (prop.bedrooms || 0) < parseInt(filters.bedrooms)) return false;
+    if (filters.bathrooms !== 'any' && (prop.bathrooms || 0) < parseInt(filters.bathrooms)) return false;
 
-    if (areaMin && (prop.area || 0) < parseFloat(areaMin)) return false;
-    if (areaMax && (prop.area || 0) > parseFloat(areaMax)) return false;
+    if (filters.areaMin && (prop.area || 0) < parseFloat(filters.areaMin)) return false;
+    if (filters.areaMax && (prop.area || 0) > parseFloat(filters.areaMax)) return false;
 
     const desc = prop.description || '';
-    if (facilities.pool && !/สระ|pool/i.test(desc)) return false;
-    if (facilities.gym && !/ฟิตเนส|ยิม|gym/i.test(desc)) return false;
-    if (facilities.parking && !/ที่จอดรถ|จอดรถ|parking/i.test(desc)) return false;
-    if (facilities.security && !/รักษาความปลอดภัย|cctv|รปภ/i.test(desc)) return false;
+    if (filters.facilities.pool && !/สระ|pool/i.test(desc)) return false;
+    if (filters.facilities.gym && !/ฟิตเนส|ยิม|gym/i.test(desc)) return false;
+    if (filters.facilities.parking && !/ที่จอดรถ|จอดรถ|parking/i.test(desc)) return false;
+    if (filters.facilities.security && !/รักษาความปลอดภัย|cctv|รปภ/i.test(desc)) return false;
 
     return true;
   });
@@ -225,28 +226,10 @@ function SearchPageContent() {
       <main className="max-w-5xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
           <SearchSidebar
-            selectedProvince={selectedProvince}
-            setSelectedProvince={setSelectedProvince}
-            selectedAmphure={selectedAmphure}
-            setSelectedAmphure={setSelectedAmphure}
-            selectedDistrict={selectedDistrict}
-            setSelectedDistrict={setSelectedDistrict}
-            priceMin={priceMin}
-            setPriceMin={setPriceMin}
-            priceMax={priceMax}
-            setPriceMax={setPriceMax}
-            bedrooms={bedrooms}
-            setBedrooms={setBedrooms}
-            bathrooms={bathrooms}
-            setBathrooms={setBathrooms}
-            areaMin={areaMin}
-            setAreaMin={setAreaMin}
-            areaMax={areaMax}
-            setAreaMax={setAreaMax}
+            filters={filters}
+            setFilters={setFilters}
             isMobileDrawerOpen={isMobileDrawerOpen}
             setIsMobileDrawerOpen={setIsMobileDrawerOpen}
-            facilities={facilities}
-            setFacilities={setFacilities}
             handleClearFilters={handleClearFilters}
           />
 
