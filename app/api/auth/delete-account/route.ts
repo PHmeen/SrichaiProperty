@@ -2,48 +2,53 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { db } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 
-// API Endpoint สำหรับให้ผู้ใช้ทำการลบบัญชีตนเองออกอย่างถาวร
+/**
+ * ==============================================================================
+ * API Endpoint สำหรับลบบัญชีผู้ใช้งานถาวร (Delete Account API Route)
+ * /app/api/auth/delete-account/route.ts
+ * ==============================================================================
+ * วัตถุประสงค์หลัก:
+ * 1. ตรวจสอบสิทธิ์ความปลอดภัยของผู้ใช้จาก NextAuth Session หลังบ้าน
+ * 2. ลบข้อมูลบัญชีผู้ใช้งานออกจากฐานข้อมูล PostgreSQL ตามอีเมล
+ * 3. ดักจับข้อผิดพลาด Foreign Key (P2003) กรณีผู้ใช้มีประวัติสัญญาซื้อขายที่ลบไม่ได้
+ * ==============================================================================
+ */
 export async function DELETE() {
   try {
-    // 1. ดึงข้อมูลเซสชันของผู้ใช้ที่ล็อกอินอยู่ในขณะนี้ (ตรวจสอบความปลอดภัยหลังบ้าน)
+    // 1. ตรวจสอบเซสชันการล็อกอินของผู้ใช้ปัจจุบันจาก NextAuth
     const session = await getServerSession(authOptions);
-    
-    if (!session || !session.user || !session.user.email) {
-      return NextResponse.json(
-        { error: "กรุณาเข้าสู่ระบบก่อนดำเนินการลบบัญชี" },
-        { status: 401 }
-      );
+    const userEmail = session?.user?.email;
+
+    // ถ้ายังไม่ได้ล็อกอินหรือไม่มีอีเมลในเซสชัน ปฏิเสธคำขอทันที (401 Unauthorized)
+    if (!userEmail) {
+      return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อนดำเนินการลบบัญชี" }, { status: 401 });
     }
 
-    const email = session.user.email;
-
-    // 2. ค้นหาบัญชีผู้ใช้ในตารางฐานข้อมูล
-    const user = await db.users.findUnique({
-      where: { email },
+    // 2. ทำการลบข้อมูลผู้ใช้งานออกจากฐานข้อมูล PostgreSQL ใน Query เดียว (ลบข้อมูลเชื่อมโยง Cascade ให้อัตโนมัติ)
+    const result = await db.users.deleteMany({
+      where: { email: userEmail }
     });
 
-    if (!user) {
-      return NextResponse.json(
-        { error: "ไม่พบข้อมูลบัญชีผู้ใช้งานนี้ในระบบ" },
-        { status: 404 }
-      );
+    // ถ้าไม่พบแถวที่ถูกลบ (count = 0) แสดงว่าไม่พบบัญชีนี้ในฐานข้อมูล (404 Not Found)
+    if (result.count === 0) {
+      return NextResponse.json({ error: "ไม่พบข้อมูลบัญชีผู้ใช้งานนี้ในระบบ" }, { status: 404 });
     }
 
-    // 3. ทำการลบข้อมูลบัญชีผู้ใช้ออกอย่างถาวร (Cascade ลบข้อมูลเชื่อมโยงอื่น ๆ ใน Database)
-    await db.users.delete({
-      where: { id: user.id },
-    });
+    // 3. ส่งคำตอบกลับสำเร็จ (200 OK)
+    return NextResponse.json({ success: true, message: "ลบบัญชีผู้ใช้งานของคุณเสร็จเรียบร้อยแล้ว" });
 
-    return NextResponse.json(
-      { success: true, message: "ลบบัญชีผู้ใช้งานของคุณเสร็จเรียบร้อยแล้ว" },
-      { status: 200 }
-    );
   } catch (error) {
+    // ดักจับกรณีติด Foreign Key Constraint (P2003) เช่น มีประวัติสัญญาซื้อขายในระบบที่ถูกบล็อกไว้
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      return NextResponse.json(
+        { error: "ไม่สามารถลบบัญชีได้เนื่องจากมีประวัติสัญญาซื้อขายคงค้างในระบบ" },
+        { status: 400 }
+      );
+    }
+
     console.error("Delete Account Error:", error);
-    return NextResponse.json(
-      { error: "เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ในการลบบัญชี" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ในการลบบัญชี" }, { status: 500 });
   }
 }
