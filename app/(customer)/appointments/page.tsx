@@ -1,5 +1,21 @@
 'use client';
 
+/**
+ * ==============================================================================
+ * หน้าประวัติรายการนัดหมายสำหรับลูกค้า (Customer Appointments Page)
+ * /app/(customer)/appointments/page.tsx
+ * ==============================================================================
+ * วัตถุประสงค์หลัก:
+ * 1. แสดงรายการนัดหมายเข้าชมบ้านของลูกค้า แบ่งเป็น 3 แท็บ:
+ *    - "กำลังจะมาถึง / รอยืนยัน" (status: approved, pending)
+ *    - "ประวัติที่ผ่านมา" (status: completed)
+ *    - "ยกเลิกแล้ว / ปฏิเสธแล้ว" (status: cancelled, rejected)
+ * 2. รองรับการยกเลิกนัดหมายพร้อมเลือก/พิมพ์ระบุเหตุผล (ยิง DELETE /api/appointments)
+ * 3. เปิดทางลัดส่งข้อความแชทตรงถึงนายหน้าผู้ดูแลทรัพย์สิน (`/chat?sessionId=...`)
+ * 4. รองรับการให้คะแนนรีวิวนายหน้าสำหรับการนัดหมายที่เข้าชมเสร็จสิ้นแล้ว (`ReviewModal`)
+ * ==============================================================================
+ */
+
 import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import ReviewModal from '@/components/customer/ReviewModal';
@@ -27,12 +43,30 @@ const MONTH_NAMES_TH = [
   "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."
 ];
 
+// ฟังก์ชันช่วยคืนค่าสีและข้อความตามสถานะการนัดหมาย
+const getStatusDetails = (status: string) => {
+  switch (status) {
+    case 'approved':
+      return { text: "ยืนยันแล้ว", bg: "bg-emerald-50 border-emerald-200", color: "text-emerald-700" };
+    case 'pending':
+      return { text: "รอยืนยันคิว", bg: "bg-amber-50 border-amber-200", color: "text-amber-700" };
+    case 'cancelled':
+      return { text: "ยกเลิกแล้ว", bg: "bg-red-50 border-red-200", color: "text-red-700" };
+    case 'rejected':
+      return { text: "ปฏิเสธแล้ว", bg: "bg-rose-50 border-rose-200", color: "text-rose-700" };
+    default:
+      return { text: "เข้าชมแล้ว", bg: "bg-slate-100 border-slate-200", color: "text-slate-600" };
+  }
+};
+
 export default function AppointmentsPage() {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'cancelled'>('upcoming');
   const [appointments, setAppointments] = useState<AppointmentItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // === ดึงข้อมูลคิวนัดหมายจากฐานข้อมูล PostgreSQL จริง ===
+  // ----------------------------------------------------------------------------
+  // 1. ฟังก์ชันโหลด/รีเฟรชข้อมูลคิวนัดหมายจาก API หลังบ้าน (/api/appointments)
+  // ----------------------------------------------------------------------------
   const loadAppointments = useCallback(async () => {
     try {
       const res = await fetch('/api/appointments');
@@ -47,26 +81,22 @@ export default function AppointmentsPage() {
     }
   }, []);
 
+  // ใช้ asynchronous promise callback (.then) ภายใน useEffect เพื่อป้องกันเตือน Cascading Renders
   useEffect(() => {
-    let ignore = false;
-    async function fetchData() {
-      try {
-        const res = await fetch('/api/appointments');
-        const data = await res.json();
-        if (!ignore && data.success && Array.isArray(data.appointments)) {
+    fetch('/api/appointments')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && Array.isArray(data.appointments)) {
           setAppointments(data.appointments);
         }
-      } catch (err) {
-        console.error('Error fetching appointments:', err);
-      } finally {
-        if (!ignore) setLoading(false);
-      }
-    }
-    fetchData();
-    return () => { ignore = true; };
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
-  // === ระบบ "ยกเลิกนัดหมายระบุเหตุผล" (Cancel Modal) ===
+  // ----------------------------------------------------------------------------
+  // 2. ระบบโมดัลยกเลิกนัดหมายแบบระบุเหตุผล (Cancel Modal Logic)
+  // ----------------------------------------------------------------------------
   const [cancelingApt, setCancelingApt] = useState<AppointmentItem | null>(null);
   const [cancelReasonOption, setCancelReasonOption] = useState<string>('ติดภารกิจด่วน / การเดินทางไม่สะดวก');
   const [customReasonText, setCustomReasonText] = useState<string>('');
@@ -84,6 +114,7 @@ export default function AppointmentsPage() {
     setCustomReasonText('');
   };
 
+  // ยืนยันการยกเลิกนัดหมายลงฐานข้อมูลจริง
   const confirmCancelAppointment = async () => {
     if (!cancelingApt) return;
     const finalReason = cancelReasonOption === 'อื่นๆ' ? customReasonText.trim() : cancelReasonOption;
@@ -94,12 +125,12 @@ export default function AppointmentsPage() {
 
     setSubmittingCancel(true);
 
-    // 1) อัปเดต UI ทันที 0 วินาที
+    // อัปเดต UI หน้าบ้านทันทีเพื่อความรวดเร็ว (Optimistic UI)
     setAppointments(prev => prev.map(a => String(a.id) === String(cancelingApt.id) ? { ...a, status: 'cancelled', cancelReason: finalReason } : a));
     setActiveTab('cancelled');
 
     try {
-      // 2) ส่ง DELETE ลง PostgreSQL จริงพร้อมเหตุผลทาง Query Parameter แบบปกติ
+      // ส่งคำขอยกเลิกนัดหมายไปยัง API หลังบ้าน
       const res = await fetch(`/api/appointments?id=${encodeURIComponent(cancelingApt.id)}&reason=${encodeURIComponent(finalReason)}`, {
         method: 'DELETE'
       });
@@ -118,41 +149,16 @@ export default function AppointmentsPage() {
     }
   };
 
-  // นับจำนวนรายการแต่ละกลุ่ม
-  const upcomingCount = appointments.filter(
-    apt => apt.status === 'approved' || apt.status === 'pending'
-  ).length;
+  // ----------------------------------------------------------------------------
+  // 3. คำนวณยอดรวมนัดหมายในแต่ละกลุ่ม และกรองรายการตามแท็บที่เลือก
+  // ----------------------------------------------------------------------------
+  const upcomingCount = appointments.filter(apt => apt.status === 'approved' || apt.status === 'pending').length;
+  const cancelledCount = appointments.filter(apt => apt.status === 'cancelled' || apt.status === 'rejected').length;
 
-  const cancelledCount = appointments.filter(
-    apt => apt.status === 'cancelled' || apt.status === 'rejected'
-  ).length;
-
-  const getStatusDetails = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return { text: "ยืนยันแล้ว", bg: "bg-emerald-50 border-emerald-200", color: "text-emerald-700" };
-      case 'pending':
-        return { text: "รอยืนยันคิว", bg: "bg-amber-50 border-amber-200", color: "text-amber-700" };
-      case 'cancelled':
-        return { text: "ยกเลิกแล้ว", bg: "bg-red-50 border-red-200", color: "text-red-700" };
-      case 'rejected':
-        return { text: "ปฏิเสธแล้ว", bg: "bg-rose-50 border-rose-200", color: "text-rose-700" };
-      default:
-        return { text: "เข้าชมแล้ว", bg: "bg-slate-100 border-slate-200", color: "text-slate-600" };
-    }
-  };
-
-  // กรองรายการตามแท็บที่เลือก
   const filteredAppointments = appointments.filter(apt => {
-    if (activeTab === 'upcoming') {
-      return apt.status === 'approved' || apt.status === 'pending';
-    }
-    if (activeTab === 'past') {
-      return apt.status === 'completed';
-    }
-    if (activeTab === 'cancelled') {
-      return apt.status === 'cancelled' || apt.status === 'rejected';
-    }
+    if (activeTab === 'upcoming') return apt.status === 'approved' || apt.status === 'pending';
+    if (activeTab === 'past') return apt.status === 'completed';
+    if (activeTab === 'cancelled') return apt.status === 'cancelled' || apt.status === 'rejected';
     return false;
   });
 
@@ -160,7 +166,7 @@ export default function AppointmentsPage() {
 
   return (
     <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm flex flex-col">
-      {/* หัวข้อหน้า */}
+      {/* 4.1 แบนเนอร์หัวข้อหน้า */}
       <div className="pt-8 pb-6 bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-3">
           <span className="text-2xl bg-amber-100 text-amber-500 w-12 h-12 flex items-center justify-center rounded-xl shadow-sm">📅</span>
@@ -172,7 +178,7 @@ export default function AppointmentsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-grow">
-        {/* เมนูแท็บ */}
+        {/* 4.2 เมนูแท็บสลับสถานะ */}
         <div className="flex space-x-3 mb-6 border-b border-slate-200 pb-1">
           <button 
             onClick={() => setActiveTab('upcoming')} 
@@ -202,7 +208,7 @@ export default function AppointmentsPage() {
           </button>
         </div>
 
-        {/* รายการนัดหมาย */}
+        {/* 4.3 รายการการ์ดนัดหมาย */}
         <div className="space-y-4">
           {loading ? (
             <div className="flex items-center justify-center py-16">
@@ -226,7 +232,7 @@ export default function AppointmentsPage() {
                     apt.status === 'cancelled' || apt.status === 'rejected' ? 'bg-slate-50/80 border-slate-200 opacity-85' : 'border-slate-200'
                   }`}
                 >
-                  {/* วันที่และเวลา */}
+                  {/* แสดงวันที่และรอบเวลา */}
                   <div className="flex gap-3 sm:gap-4 items-center w-full lg:w-1/3">
                     <div className="w-16 h-20 bg-slate-50 rounded-xl border border-slate-100 flex flex-col items-center justify-center flex-shrink-0 shadow-inner">
                       <span className="text-[10px] font-bold text-red-500 uppercase">{monthStr}</span>
@@ -245,7 +251,7 @@ export default function AppointmentsPage() {
                     </div>
                   </div>
 
-                  {/* รายละเอียดบ้านและนายหน้า */}
+                  {/* รายละเอียดทรัพย์สิน ชื่อนายหน้า และเหตุผลการยกเลิก (ถ้ามี) */}
                   <div className="flex-1 space-y-1.5">
                     <span className={`inline-block px-2.5 py-0.5 rounded-full border text-[10px] font-black ${statusDetails.bg} ${statusDetails.color}`}>
                       {statusDetails.text}
@@ -263,7 +269,7 @@ export default function AppointmentsPage() {
                     )}
                   </div>
 
-                  {/* ปุ่มปฏิกิริยา */}
+                  {/* ปุ่มการทำงาน (แชทกับนายหน้า, ให้คะแนนรีวิว, ยกเลิกนัด) */}
                   <div className="flex items-center justify-end gap-2 border-t lg:border-t-0 pt-3 lg:pt-0">
                     <button 
                       onClick={async () => {
@@ -313,7 +319,7 @@ export default function AppointmentsPage() {
         </div>
       </div>
 
-      {/* Cancel Appointment Modal (ระบุเหตุผล) */}
+      {/* 4.4 โมดัลยืนยันการยกเลิกนัดหมายแบบระบุเหตุผล */}
       {cancelingApt && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 border border-slate-100">
@@ -385,7 +391,7 @@ export default function AppointmentsPage() {
         </div>
       )}
 
-      {/* โมดัลให้คะแนนรีวิว */}
+      {/* 4.5 โมดัลสำหรับให้คะแนนรีวิวนายหน้า */}
       {reviewModalApt && (
         <ReviewModal
           isOpen={true}
