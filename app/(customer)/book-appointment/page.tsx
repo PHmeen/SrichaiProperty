@@ -1,161 +1,188 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+/**
+ * ==============================================================================
+ * หน้าจองคิวนัดหมายเข้าชมสถานที่จริง (Book Appointment Page)
+ * /app/(customer)/book-appointment/page.tsx
+ * ==============================================================================
+ * วัตถุประสงค์หลัก:
+ * 1. ดึงวันและรอบเวลาที่เปิดว่างจริงจากนายหน้า (`property_viewing_slots`) สำหรับอสังหาริมทรัพย์หลังนี้
+ * 2. แสดงปฏิทินให้ลูกค้าเลือกวันที่สะดวก และเลือกรอบเวลา (รอบเช้า 09:00-12:00 น. / รอบบ่าย 13:00-17:00 น.)
+ * 3. บันทึกข้อมูลคำขอนัดหมายลงตาราง `appointments` ในฐานข้อมูลจริงผ่าน API
+ * ==============================================================================
+ */
+
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import BookingSidebar from '@/components/customer/BookingSidebar';
 import BookingCalendar from '@/components/customer/BookingCalendar';
 
+// รายชื่อเดือนภาษาไทยสำหรับแสดงผลวันที่แบบข้อความอ่านง่าย
+const MONTH_NAMES_TH = [
+  "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+  "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+];
+
 function BookAppointmentForm() {
+  // ----------------------------------------------------------------------------
+  // 1. ROUTER & URL PARAMS
+  // ----------------------------------------------------------------------------
   const searchParams = useSearchParams();
   const router = useRouter();
-  const propertyId = searchParams.get('propertyId');
+  const propertyId = searchParams.get('propertyId'); // รหัสอสังหาฯ ที่ส่งมาจากหน้าก่อนหน้า (?propertyId=uuid)
   const today = new Date();
+
+  // ----------------------------------------------------------------------------
+  // 2. LOCAL COMPONENT STATE (สถานะภายในฟอร์ม)
+  // ----------------------------------------------------------------------------
+  const [currentYear, setCurrentYear] = useState<number>(today.getFullYear());  // ปีของปฏิทินที่เปิดอยู่
+  const [currentMonth, setCurrentMonth] = useState<number>(today.getMonth());   // เดือนของปฏิทินที่เปิดอยู่
+  const [selectedDateStr, setSelectedDateStr] = useState<string>('');          // วันที่ผู้ใช้เลือก (รูปแบบ "YYYY-MM-DD")
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('');        // ช่วงเวลาที่เลือก (รอบเช้า / รอบบ่าย)
+  const [note, setNote] = useState('');                                         // ข้อความเพิ่มเติมถึงนายหน้า
+  const [submitting, setSubmitting] = useState(false);                          // สถานะกำลังส่งข้อมูล (ป้องกันการกดซ้ำ)
+  const [holidays, setHolidays] = useState<string[]>([]);                       // รายการวันหยุดประจำปี
+  const [viewingSlots, setViewingSlots] = useState<{ date: string; timeSlot: string; isBooked: boolean }[]>([]); // รอบเวลาที่เปิดว่างจริง
+  const [slotsLoading, setSlotsLoading] = useState(true);                       // สถานะกำลังดึงข้อมูลรอบเวลา
+
+  // ----------------------------------------------------------------------------
+  // 3. GLOBAL CONTEXT
+  // ----------------------------------------------------------------------------
+  const { properties, propertiesLoading, refreshAppointments } = useApp();
   
-  const [currentYear, setCurrentYear] = useState<number>(today.getFullYear());
-  const [currentMonth, setCurrentMonth] = useState<number>(today.getMonth());
+  // ค้นหาอสังหาริมทรัพย์ที่ตรงกับ propertyId
+  const property = properties.find((p) => String(p.id) === String(propertyId));
 
-  const [selectedDateStr, setSelectedDateStr] = useState<string>('');
-
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('');
-  const [note, setNote] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [holidays, setHolidays] = useState<string[]>([]);
-
-  // วันเวลาที่นายหน้าเปิดว่างจริงสำหรับ "บ้านหลังนี้โดยเฉพาะ" (ดึงจาก property_viewing_slots)
-  const [viewingSlots, setViewingSlots] = useState<{ date: string; timeSlot: string; isBooked: boolean }[]>([]);
-  const [slotsLoading, setSlotsLoading] = useState(true);
-
-  const { properties, refreshAppointments } = useApp();
-  const property = properties.find(p => String(p.id) === String(propertyId)) || properties[0];
-
-  // ดึงวันว่างจริงของบ้านหลังนี้ทันทีที่รู้ว่ากำลังจองบ้านหลังไหน
+  // ----------------------------------------------------------------------------
+  // 4. EFFECTS & FETCHING (ดึงข้อมูลวันว่างและวันหยุดจาก API)
+  // ----------------------------------------------------------------------------
+  // 4.1 โหลดวันและช่วงเวลาที่นายหน้าเปิดว่างสำหรับบ้านหลังนี้โดยเฉพาะ
   useEffect(() => {
     if (!property?.id) return;
     let active = true;
-    const fetchSlots = async () => {
-      try {
-        const res = await fetch(`/api/properties/viewing-slots?propertyId=${property.id}`);
-        const data = await res.json();
-        if (active && data.success && Array.isArray(data.slots)) {
-          setViewingSlots(data.slots);
-        }
-      } catch (err) {
-        console.error('Failed to fetch viewing slots:', err);
-      } finally {
-        if (active) setSlotsLoading(false);
-      }
-    };
-    fetchSlots();
+    fetch(`/api/properties/viewing-slots?propertyId=${property.id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (active && data.success && Array.isArray(data.slots)) setViewingSlots(data.slots);
+      })
+      .catch(console.error)
+      .finally(() => active && setSlotsLoading(false));
+
     return () => { active = false; };
   }, [property?.id]);
 
-  // รายชื่อวันที่ (YYYY-MM-DD) ที่มีอย่างน้อย 1 รอบเวลาเปิดว่างและยังไม่มีคนจอง
-  const availableDates = Array.from(
-    new Set(viewingSlots.filter(s => !s.isBooked).map(s => s.date))
-  );
+  // 4.2 โหลดข้อมูลวันหยุดนักขัตฤกษ์ประจำปี
+  useEffect(() => {
+    let active = true;
+    fetch(`/api/holidays?year=${currentYear}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (active && data.success && Array.isArray(data.holidays)) setHolidays(data.holidays);
+      })
+      .catch(console.error);
 
-  // รอบเวลาของ "วันที่ที่กำลังเลือกอยู่" เท่านั้น
-  const slotsForSelectedDate = viewingSlots.filter(s => s.date === selectedDateStr);
-  const morningSlot = slotsForSelectedDate.find(s => s.timeSlot === 'morning');
-  const afternoonSlot = slotsForSelectedDate.find(s => s.timeSlot === 'afternoon');
+    return () => { active = false; };
+  }, [currentYear]);
 
+  // ----------------------------------------------------------------------------
+  // 5. COMPUTED & MEMOIZED VALUES
+  // ----------------------------------------------------------------------------
+  // 5.1 รายชื่อวันที่ที่มีอย่างน้อย 1 รอบเวลาว่างและยังไม่มีคนจอง (นำไปไฮไลต์ในปฏิทิน)
+  const availableDates = useMemo(() => 
+    Array.from(new Set(viewingSlots.filter((s) => !s.isBooked).map((s) => s.date)))
+  , [viewingSlots]);
+
+  // 5.2 กรองเฉพาะรอบเวลาของ "วันที่ที่เลือกอยู่ปัจจุบัน"
+  const slotsForSelectedDate = useMemo(() => 
+    viewingSlots.filter((s) => s.date === selectedDateStr)
+  , [viewingSlots, selectedDateStr]);
+
+  const morningSlot = slotsForSelectedDate.find((s) => s.timeSlot === 'morning');
+  const afternoonSlot = slotsForSelectedDate.find((s) => s.timeSlot === 'afternoon');
+
+  // ฟังก์ชันเลือกวันที่ในปฏิทิน (ล้างรอบเวลาเดิมทิ้งเมื่อเปลี่ยนวันใหม่)
   const handleDateSelect = (date: string) => {
     setSelectedDateStr(date);
     setSelectedTimeSlot('');
   };
 
-  const monthNamesTH = [
-    "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
-    "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
-  ];
-
-  useEffect(() => {
-    let active = true;
-    const fetchHolidays = async () => {
-      try {
-        const res = await fetch(`/api/holidays?year=${currentYear}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (active && data.success && Array.isArray(data.holidays)) {
-            setHolidays(data.holidays);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to fetch holidays:', err);
-      }
-    };
-    fetchHolidays();
-    return () => {
-      active = false;
-    };
-  }, [currentYear]);
-
+  // จัดข้อความสรุปวันที่เลือกสำหรับแสดงผลบน Badge หัวข้อขั้นตอนที่ 2
   const getThaiPreviewDate = () => {
     if (!selectedDateStr) return 'ยังไม่ได้เลือกวันที่';
     try {
-      const parts = selectedDateStr.split('-');
-      const d = parseInt(parts[2]);
-      const m = parseInt(parts[1]) - 1;
-      return `วันที่ ${d} ${monthNamesTH[m].substring(0, 3)}.`;
+      const [, m, d] = selectedDateStr.split('-');
+      return `วันที่ ${parseInt(d)} ${MONTH_NAMES_TH[parseInt(m) - 1]?.substring(0, 3)}.`;
     } catch {
       return '';
     }
   };
 
+  // ----------------------------------------------------------------------------
+  // 6. FORM SUBMISSION HANDLER (บันทึกคำขอนัดหมายลง DB)
+  // ----------------------------------------------------------------------------
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!property) return;
-    if (!selectedDateStr) return alert('กรุณาเลือกวันที่ต้องการเข้าชมบ้านก่อน');
-    if (!selectedTimeSlot) return alert('กรุณาเลือกช่วงเวลา (รอบเช้า/รอบบ่าย) ก่อน');
+    if (!property || !selectedDateStr || !selectedTimeSlot) return;
 
     setSubmitting(true);
     try {
       const res = await fetch('/api/appointments', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          propertyId: (property.id),
+          propertyId: property.id,
           date: selectedDateStr,
           timeSlot: selectedTimeSlot,
-          note: note
-        }),
+          note
+        })
       });
 
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'ไม่สามารถทำนัดหมายได้');
-      }
+      if (!res.ok) throw new Error(data.error || 'ไม่สามารถทำนัดหมายได้');
 
       alert(`ส่งขอจองนัดหมายสำหรับอสังหาฯ ${property.title} เรียบร้อยแล้ว!`);
-      await refreshAppointments();
-      router.push('/appointments');
-    } catch (err: unknown) {
-      const error = err as Error;
-      alert(error.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง');
+      await refreshAppointments(); // ดึงนัดหมายล่าสุดเข้า Context
+      router.push('/appointments'); // นำทางไปยังหน้ารายการนัดหมายของฉัน
+    } catch (err) {
+      alert((err as Error).message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (!properties || properties.length === 0) {
+  // แสดงผล Spinner ระหว่างรอโหลดรายการบ้าน
+  if (propertiesLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
       </div>
     );
   }
 
+  // กรณีหาอสังหาริมทรัพย์รหัสนี้ไม่เจอ
+  if (!property) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 text-slate-500 font-bold gap-4 px-4 text-center">
+        <div className="text-4xl">🔍</div>
+        <p>ไม่พบอสังหาริมทรัพย์ที่ต้องการจองนัดหมาย</p>
+        <button onClick={() => router.push('/search')} className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs transition">
+          ค้นหาบ้าน/คอนโด
+        </button>
+      </div>
+    );
+  }
+
+  // ----------------------------------------------------------------------------
+  // 7. RENDERING SECTION
+  // ----------------------------------------------------------------------------
   return (
-    <div className="font-sans bg-slate-50/50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm pb-24 pt-12">
+    <div className="font-sans bg-slate-50/50 min-h-screen text-slate-800 antialiased text-sm pb-24 pt-12">
       <div className="max-w-5xl mx-auto px-4">
+        
+        {/* หัวข้อหน้าและปุ่มย้อนกลับ */}
         <div className="mb-8">
-          <button 
-            onClick={() => router.back()} 
-            className="text-slate-500 hover:text-blue-600 font-bold text-xs flex items-center gap-1 mb-2 transition-colors cursor-pointer group"
-          >
+          <button onClick={() => router.back()} className="text-slate-500 hover:text-blue-600 font-bold text-xs flex items-center gap-1 mb-2 transition">
             &lt; กลับไปหน้ารายละเอียด
           </button>
           <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">ทำการนัดหมาย</h1>
@@ -163,17 +190,23 @@ function BookAppointmentForm() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* การ์ดสรุปข้อมูลอสังหาฯ และนายหน้าฝั่งซ้าย */}
           <BookingSidebar property={property} />
 
+          {/* ฟอร์มการจองนัดหมายฝั่งขวา (3 ขั้นตอน) */}
           <div className="lg:col-span-8 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/70 shadow-sm space-y-8">
             <form onSubmit={handleBookingSubmit} className="space-y-8">
+              
+              {/* ================================================================
+                  ขั้นตอนที่ 1: เลือกวันที่ในปฏิทิน
+                  ================================================================ */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <span className="bg-blue-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-extrabold">1</span>
                   <label className="text-xs font-black text-slate-800 uppercase tracking-wider">เลือกวันที่สะดวก</label>
                 </div>
-                
-                <BookingCalendar 
+
+                <BookingCalendar
                   currentYear={currentYear}
                   currentMonth={currentMonth}
                   setCurrentYear={setCurrentYear}
@@ -184,6 +217,7 @@ function BookAppointmentForm() {
                   availableDates={availableDates}
                 />
 
+                {/* ข้อความเตือนกรณีไม่มีวันว่างเปิดให้จองเลย */}
                 {!slotsLoading && availableDates.length === 0 && (
                   <p className="text-[11px] font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-center">
                     ⚠️ นายหน้ายังไม่ได้เปิดวันว่างสำหรับบ้านหลังนี้ กรุณาติดต่อนายหน้าโดยตรง
@@ -191,6 +225,9 @@ function BookAppointmentForm() {
                 )}
               </div>
 
+              {/* ================================================================
+                  ขั้นตอนที่ 2: เลือกรอบเวลา (รอบเช้า / รอบบ่าย)
+                  ================================================================ */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -203,80 +240,67 @@ function BookAppointmentForm() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <button
-                    type="button"
-                    disabled={!morningSlot || morningSlot.isBooked}
-                    onClick={() => setSelectedTimeSlot(prev => prev.includes('รอบเช้า') ? '' : 'รอบเช้า (09:00 - 12:00 น.)')}
-                    className={`p-4 rounded-2xl border text-left transition-all flex justify-between items-center ${
-                      !morningSlot || morningSlot.isBooked
-                        ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed'
-                        : selectedTimeSlot.includes('รอบเช้า')
-                          ? 'border-blue-600 bg-blue-50 text-blue-700 ring-2 ring-blue-600/10 cursor-pointer'
-                          : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-600 cursor-pointer'
-                    }`}
-                  >
-                    <div>
-                      <h4 className="font-extrabold text-xs">รอบเช้า</h4>
-                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">09:00 - 12:00</p>
-                    </div>
-                    {!selectedDateStr ? (
-                      <span className="bg-slate-100 text-slate-400 px-2 py-0.5 rounded text-[8px] font-bold">เลือกวันก่อน</span>
-                    ) : morningSlot?.isBooked ? (
-                      <span className="bg-red-50 text-red-500 px-2 py-0.5 rounded text-[8px] font-bold">มีคนจองแล้ว</span>
-                    ) : morningSlot ? (
-                      <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[8px] font-bold">✓ ว่างให้จอง</span>
-                    ) : (
-                      <span className="bg-slate-100 text-slate-400 px-2 py-0.5 rounded text-[8px] font-bold">ไม่เปิดว่าง</span>
-                    )}
-                  </button>
+                  {[
+                    { key: 'morning', title: 'รอบเช้า', time: '09:00 - 12:00', fullText: 'รอบเช้า (09:00 - 12:00 น.)', slot: morningSlot },
+                    { key: 'afternoon', title: 'รอบบ่าย', time: '13:00 - 17:00', fullText: 'รอบบ่าย (13:00 - 17:00 น.)', slot: afternoonSlot },
+                  ].map(({ key, title, time, fullText, slot }) => {
+                    const isSelected = selectedTimeSlot.includes(title);
+                    const isDisabled = !slot || slot.isBooked;
 
-                  <button
-                    type="button"
-                    disabled={!afternoonSlot || afternoonSlot.isBooked}
-                    onClick={() => setSelectedTimeSlot(prev => prev.includes('รอบบ่าย') ? '' : 'รอบบ่าย (13:00 - 17:00 น.)')}
-                    className={`p-4 rounded-2xl border text-left transition-all flex justify-between items-center ${
-                      !afternoonSlot || afternoonSlot.isBooked
-                        ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed'
-                        : selectedTimeSlot.includes('รอบบ่าย')
-                          ? 'border-blue-600 bg-blue-50 text-blue-700 ring-2 ring-blue-600/10 cursor-pointer'
-                          : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-600 cursor-pointer'
-                    }`}
-                  >
-                    <div>
-                      <h4 className="font-extrabold text-xs">รอบบ่าย</h4>
-                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">13:00 - 17:00</p>
-                    </div>
-                    {!selectedDateStr ? (
-                      <span className="bg-slate-100 text-slate-400 px-2 py-0.5 rounded text-[8px] font-bold">เลือกวันก่อน</span>
-                    ) : afternoonSlot?.isBooked ? (
-                      <span className="bg-red-50 text-red-500 px-2 py-0.5 rounded text-[8px] font-bold">มีคนจองแล้ว</span>
-                    ) : afternoonSlot ? (
-                      <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[8px] font-bold">✓ ว่างให้จอง</span>
-                    ) : (
-                      <span className="bg-slate-100 text-slate-400 px-2 py-0.5 rounded text-[8px] font-bold">ไม่เปิดว่าง</span>
-                    )}
-                  </button>
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        disabled={isDisabled}
+                        onClick={() => setSelectedTimeSlot((prev) => (prev.includes(title) ? '' : fullText))}
+                        className={`p-4 rounded-2xl border text-left transition flex justify-between items-center ${
+                          isDisabled
+                            ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed'
+                            : isSelected
+                              ? 'border-blue-600 bg-blue-50 text-blue-700 ring-2 ring-blue-600/10 cursor-pointer'
+                              : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-600 cursor-pointer'
+                        }`}
+                      >
+                        <div>
+                          <h4 className="font-extrabold text-xs">{title}</h4>
+                          <p className="text-[10px] font-bold text-slate-400 mt-0.5">{time}</p>
+                        </div>
+                        {!selectedDateStr ? (
+                          <span className="bg-slate-100 text-slate-400 px-2 py-0.5 rounded text-[8px] font-bold">เลือกวันก่อน</span>
+                        ) : slot?.isBooked ? (
+                          <span className="bg-red-50 text-red-500 px-2 py-0.5 rounded text-[8px] font-bold">มีคนจองแล้ว</span>
+                        ) : slot ? (
+                          <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[8px] font-bold">✓ ว่างให้จอง</span>
+                        ) : (
+                          <span className="bg-slate-100 text-slate-400 px-2 py-0.5 rounded text-[8px] font-bold">ไม่เปิดว่าง</span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
+              {/* ================================================================
+                  ขั้นตอนที่ 3: ฝากข้อความถึงนายหน้า และ ปุ่มยืนยันการจอง
+                  ================================================================ */}
               <div className="space-y-4 pt-2 border-t border-slate-100">
                 <div className="flex items-center gap-2">
                   <span className="bg-blue-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-extrabold">3</span>
                   <label className="text-xs font-black text-slate-800 uppercase tracking-wider">ข้อความเพิ่มเติม & ยืนยัน</label>
                 </div>
 
-                <textarea 
+                <textarea
                   rows={4}
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   placeholder="ฝากข้อความถึงนายหน้า (เช่น ขอไปเจอกันที่หน้าโครงการหมู่บ้านเลย).."
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 focus:bg-white transition-all text-slate-800 font-bold text-xs resize-none placeholder-slate-400"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 focus:bg-white transition text-slate-800 font-bold text-xs resize-none placeholder-slate-400"
                 />
 
                 <button
                   type="submit"
                   disabled={submitting || !selectedDateStr || !selectedTimeSlot}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-extrabold py-3.5 px-6 rounded-2xl transition-all duration-150 shadow-md hover:shadow-lg active:scale-[0.99] text-xs cursor-pointer flex items-center justify-center gap-2 disabled:cursor-not-allowed"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3.5 px-6 rounded-2xl transition shadow flex items-center justify-center gap-2 disabled:bg-slate-300 disabled:cursor-not-allowed text-xs"
                 >
                   {submitting
                     ? '⏳ กำลังบันทึกข้อมูลนัดชม...'
@@ -288,20 +312,22 @@ function BookAppointmentForm() {
 
             </form>
           </div>
-
         </div>
       </div>
     </div>
   );
 }
 
+// ใช้ Suspense เพื่อรองรับ useSearchParams() ใน Next.js App Router
 export default function BookAppointmentPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        </div>
+      }
+    >
       <BookAppointmentForm />
     </Suspense>
   );
