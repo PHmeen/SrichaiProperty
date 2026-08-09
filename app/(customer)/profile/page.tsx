@@ -1,32 +1,54 @@
 'use client';
 
+/**
+ * ==============================================================================
+ * หน้าจัดการข้อมูลส่วนตัวและโปรไฟล์ผู้ใช้งาน (User Profile Page)
+ * /app/(customer)/profile/page.tsx
+ * ==============================================================================
+ * วัตถุประสงค์หลัก:
+ * 1. ทำหน้าที่เป็น Controller หลักในการควบคุมข้อมูลส่วนตัวของผู้ใช้ (ชื่อ, นามสกุล, เบอร์โทร, LINE ID, รหัสผ่าน)
+ * 2. โหลดข้อมูลโปรไฟล์จริงและประวัติการล็อกอินจาก API หลังบ้าน (`GET /api/user/profile`)
+ * 3. ส่งข้อมูลการแก้ไขโปรไฟล์และเปลี่ยนรหัสผ่านไปยัง API หลังบ้าน (`PUT /api/user/profile`)
+ * 4. แยกการแสดงผล UI ออกเป็น 2 คอมโพเนนต์ย่อยเพื่อความสะอาดและอ่านง่าย:
+ *    - `ProfileSidebar`: แผงด้านซ้ายแสดงรูปโปรไฟล์ ยอดรายการโปรด และยอดคิวนัดหมาย
+ *    - `ProfileForm`: ฟอร์มด้านขวาสำหรับกรอกข้อมูล แก้ไขรหัสผ่าน และดูประวัติการเข้าใช้งาน
+ * ==============================================================================
+ */
+
 import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useApp } from '@/context/AppContext';
 import ProfileSidebar from '@/components/customer/ProfileSidebar';
 import ProfileForm from '@/components/customer/ProfileForm';
 
+// ฟังก์ชันสร้างรูปโปรไฟล์ตัวอักษรย่อ (fallback avatar) กรณีผู้ใช้ไม่มีรูปถ่ายในระบบ
+const getInitialsAvatar = (name: string) => {
+  const initials = name.trim().split(/\s+/).map(n => n[0]).slice(0, 2).join('').toUpperCase() || 'U';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#1e293b"/><text x="50" y="55" font-family="sans-serif" font-weight="bold" font-size="35" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${initials}</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+};
+
 export default function ProfilePage() {
   const { data: session, update: updateSession } = useSession();
   const { profile, updateProfile, appointments, favorites } = useApp();
 
-  // State ข้อมูลส่วนบุคคลตาม UI ดีไซน์
+  // ---- State ข้อมูลส่วนบุคคล ----
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [lineId, setLineId] = useState('');
   const [email, setEmail] = useState('');
 
-  // State ตั้งค่าการแจ้งเตือน
+  // ---- State การตั้งค่าการแจ้งเตือน ----
   const [emailNotification, setEmailNotification] = useState(true);
   const [smsNotification, setSmsNotification] = useState(false);
 
-  // State ตั้งค่ารหัสผ่านใหม่
+  // ---- State เปลี่ยนรหัสผ่านใหม่ ----
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // State ทั่วไปสำหรับ Loading & Status Message
+  // ---- State สถานะและการแสดงผล ----
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -35,10 +57,12 @@ export default function ProfilePage() {
   const [loginIp, setLoginIp] = useState<string>('');
   const [isVerified, setIsVerified] = useState(false);
 
-  // ค่าต้นฉบับที่โหลดมาจาก Database ไว้ใช้ตอนกด "ยกเลิก" เพื่อคืนค่าฟอร์ม
+  // สำเนาข้อมูลเดิมที่ดึงมาจากฐานข้อมูล ไว้ใช้รีเซ็ตฟอร์มเมื่อกด "ยกเลิก"
   const [originalProfile, setOriginalProfile] = useState({ firstName: '', lastName: '', phone: '', lineId: '' });
 
-  // ดึงข้อมูลโปรไฟล์จริงจาก Database เมื่อโหลดหน้าเพจ
+  // ----------------------------------------------------------------------------
+  // 1. EFFECT: โหลดข้อมูลโปรไฟล์ผู้ใช้งานจริงจาก API หลังบ้าน
+  // ----------------------------------------------------------------------------
   useEffect(() => {
     async function loadUserProfile() {
       try {
@@ -70,7 +94,7 @@ export default function ProfilePage() {
             setLastLoginTime('ไม่มีข้อมูล');
           }
         } else {
-          // Fallback ข้อมูลเบื้องต้นถ้า API ไม่พร้อม
+          // กรณี API มีปัญหา ให้ดึงข้อมูลสำรองจาก Session / AppContext
           const nameParts = (session?.user?.name || profile.fullName || '').trim().split(/\s+/);
           const loaded = {
             firstName: nameParts[0] || '',
@@ -94,9 +118,11 @@ export default function ProfilePage() {
     }
 
     loadUserProfile();
-  }, [session, profile]);
+  }, [session]);
 
-  // ยกเลิกการแก้ไข: คืนค่าฟอร์มกลับไปเป็นข้อมูลล่าสุดที่โหลดจาก Database
+  // ----------------------------------------------------------------------------
+  // 2. ฟังก์ชันรีเซ็ตฟอร์ม (ยกเลิกการแก้ไข คืนค่าเป็นข้อมูลล่าสุดจากฐานข้อมูล)
+  // ----------------------------------------------------------------------------
   const handleResetProfile = () => {
     setFirstName(originalProfile.firstName);
     setLastName(originalProfile.lastName);
@@ -108,11 +134,14 @@ export default function ProfilePage() {
     setStatusMsg(null);
   };
 
-  // ฟังก์ชันบันทึกข้อมูลส่วนบุคคลและรหัสผ่านไปยังฐานข้อมูลจริง
+  // ----------------------------------------------------------------------------
+  // 3. ฟังก์ชันบันทึกข้อมูลโปรไฟล์และเปลี่ยนรหัสผ่าน (ส่งไปยัง API PUT /api/user/profile)
+  // ----------------------------------------------------------------------------
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatusMsg(null);
 
+    // ตรวจสอบการยืนยันรหัสผ่านใหม่
     if (newPassword && newPassword !== confirmPassword) {
       setStatusMsg({ type: 'error', text: 'รหัสผ่านใหม่และรหัสผ่านยืนยันไม่ตรงกัน' });
       return;
@@ -163,20 +192,14 @@ export default function ProfilePage() {
     }
   };
 
-  // Avatar อักษรย่อย่อกรณีไม่มีรูปภาพ
-  const getInitialsAvatar = (name: string) => {
-    const initials = name.trim().split(/\s+/).map(n => n[0]).slice(0, 2).join('').toUpperCase() || 'U';
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#1e293b"/><text x="50" y="55" font-family="sans-serif" font-weight="bold" font-size="35" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${initials}</text></svg>`;
-    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-  };
-
+  // คำนวณชื่อผู้ใช้ที่จะนำไปแสดงผล และดึง URL รูปโปรไฟล์
   const userDisplayName = `${firstName} ${lastName}`.trim() || session?.user?.name || profile.fullName || 'ผู้ใช้งาน';
   const rawImage = session?.user?.image;
   const avatarUrl = (rawImage && rawImage.startsWith('http')) ? rawImage : getInitialsAvatar(userDisplayName);
 
   return (
     <div className="font-sans bg-slate-900 min-h-screen text-slate-800 antialiased text-xs">
-      {/* Header Banner */}
+      {/* 4.1 แบนเนอร์หัวข้อหน้าเพจ */}
       <header className="bg-slate-950 text-white pt-10 pb-20 border-b border-slate-800/80">
         <div className="max-w-5xl mx-auto px-4">
           <h1 className="text-xl font-bold tracking-tight">จัดการบัญชีผู้ใช้</h1>
@@ -184,8 +207,9 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      {/* Main Content Layout */}
+      {/* 4.2 เลย์เอาต์ส่วนเนื้อหาหลัก (แบ่งเป็น Sidebar ซ้าย และ Form ขวา) */}
       <div className="max-w-5xl mx-auto px-4 pb-16 -mt-12 flex flex-col lg:flex-row gap-6">
+        {/* แผงข้อมูลผู้ใช้สรุปด้านซ้าย */}
         <ProfileSidebar
           userDisplayName={userDisplayName}
           email={email}
@@ -194,6 +218,7 @@ export default function ProfilePage() {
           appointmentsCount={appointments.length}
         />
 
+        {/* ฟอร์มแก้ไขข้อมูลและเปลี่ยนรหัสผ่านด้านขวา */}
         <ProfileForm
           firstName={firstName}
           setFirstName={setFirstName}
