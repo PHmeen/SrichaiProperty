@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { signOut } from 'next-auth/react';
 
 interface ProfileFormProps {
@@ -17,15 +17,24 @@ interface ProfileFormProps {
   setEmailNotification: (val: boolean) => void;
   smsNotification: boolean;
   setSmsNotification: (val: boolean) => void;
+  currentPassword: string;
+  setCurrentPassword: (val: string) => void;
   newPassword: string;
   setNewPassword: (val: string) => void;
   confirmPassword: string;
   setConfirmPassword: (val: string) => void;
   isSaving: boolean;
+  isLoadingProfile: boolean;
   statusMsg: { type: 'success' | 'error'; text: string } | null;
   lastLoginTime: string;
+  loginDevice: string;
+  loginIp: string;
+  isVerified: boolean;
   handleSaveProfile: (e: React.FormEvent) => void;
+  onResetProfile: () => void;
 }
+
+const DELETE_CONFIRM_TEXT = 'ลบบัญชี';
 
 export default function ProfileForm({
   firstName,
@@ -41,15 +50,24 @@ export default function ProfileForm({
   setEmailNotification,
   smsNotification,
   setSmsNotification,
+  currentPassword,
+  setCurrentPassword,
   newPassword,
   setNewPassword,
   confirmPassword,
   setConfirmPassword,
   isSaving,
+  isLoadingProfile,
   statusMsg,
   lastLoginTime,
+  loginDevice,
+  loginIp,
+  isVerified,
   handleSaveProfile,
+  onResetProfile,
 }: ProfileFormProps) {
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
   return (
     <main className="flex-1">
       <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-100 space-y-8">
@@ -60,10 +78,17 @@ export default function ProfileForm({
             <h2 className="text-base font-bold text-slate-900">ตั้งค่าข้อมูลพื้นฐาน</h2>
             <p className="text-slate-400 text-xs mt-0.5">ข้อมูลที่ครบถ้วนช่วยเพิ่มความน่าเชื่อถือในการติดต่อ</p>
           </div>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200/60 rounded-full text-[11px] font-semibold">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-            อีเมลยืนยันแล้ว
-          </span>
+          {isVerified ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200/60 rounded-full text-[11px] font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              อีเมลยืนยันแล้ว
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200/60 rounded-full text-[11px] font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+              ยังไม่ได้ยืนยันตัวตน
+            </span>
+          )}
         </div>
 
         {/* Notification Alert Status */}
@@ -76,8 +101,8 @@ export default function ProfileForm({
         )}
 
         {/* Profile Form */}
-        <form onSubmit={handleSaveProfile} className="space-y-8">
-          
+        <form onSubmit={handleSaveProfile} className={`space-y-8 ${isLoadingProfile ? 'opacity-50 pointer-events-none' : ''}`}>
+
           {/* Personal Info Group */}
           <div className="space-y-4">
             <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">ข้อมูลส่วนบุคคล</h3>
@@ -198,51 +223,62 @@ export default function ProfileForm({
           <div className="space-y-4 pt-2 border-t border-slate-100">
             <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">ความปลอดภัย</h3>
 
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">รหัสผ่านปัจจุบัน (กรอกเมื่อต้องการเปลี่ยนรหัสผ่าน)</label>
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="••••••••"
+                autoComplete="current-password"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition text-slate-900"
+              />
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">รหัสผ่านใหม่ (ทิ้งว่างไว้หากไม่ต้องการเปลี่ยน)</label>
-                <input 
-                  type="password" 
+                <input
+                  type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="••••••••"
+                  autoComplete="new-password"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition text-slate-900"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">ยืนยันรหัสผ่านใหม่</label>
-                <input 
-                  type="password" 
+                <input
+                  type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
+                  autoComplete="new-password"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition text-slate-900"
                 />
               </div>
             </div>
 
             {/* Login History Bar */}
-            <div className="p-3.5 bg-slate-50/80 border border-slate-100 rounded-xl flex items-center justify-between text-[11px]">
+            <div className="p-3.5 bg-slate-50/80 border border-slate-100 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px]">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                 <span className="font-semibold text-slate-700">ประวัติเข้าสู่ระบบล่าสุด</span>
-                <span className="text-slate-400 font-mono hidden sm:inline">Windows 10 - Chrome - Hat Yai (IP: 182.176.x.x)</span>
+                <span className="text-slate-400 font-mono hidden sm:inline truncate max-w-xs">
+                  {loginDevice || loginIp ? `${loginDevice || 'ไม่ทราบอุปกรณ์'}${loginIp ? ` (IP: ${loginIp})` : ''}` : 'ไม่มีข้อมูล'}
+                </span>
               </div>
-              <span className="text-slate-400">{lastLoginTime}</span>
+              <span className="text-slate-400">{isLoadingProfile ? 'กำลังโหลด...' : lastLoginTime}</span>
             </div>
           </div>
 
           {/* Action Buttons */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-            <button 
-              type="button" 
-              onClick={() => {
-                setFirstName('');
-                setLastName('');
-                setNewPassword('');
-                setConfirmPassword('');
-              }}
+            <button
+              type="button"
+              onClick={onResetProfile}
               className="px-5 py-2.5 border border-slate-200 text-slate-600 font-semibold rounded-xl hover:bg-slate-50 transition cursor-pointer"
             >
               ยกเลิก
@@ -261,34 +297,49 @@ export default function ProfileForm({
 
         {/* Danger Zone: Delete Account */}
         <div className="pt-6 border-t border-slate-100">
-          <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h4 className="font-bold text-rose-700 text-xs">ลบบัญชีผู้ใช้ (Delete Account)</h4>
-              <p className="text-rose-500 text-[11px] mt-0.5">
-                เมื่อคุณลบบัญชี ข้อมูลส่วนตัว ประวัติการค้นหา และประกาศทั้งหมดของคุณจะถูกลบออกจากระบบอย่างถาวร
-              </p>
+          <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h4 className="font-bold text-rose-700 text-xs">ลบบัญชีผู้ใช้ (Delete Account)</h4>
+                <p className="text-rose-500 text-[11px] mt-0.5">
+                  เมื่อคุณลบบัญชี ข้อมูลส่วนตัว ประวัติการค้นหา และประกาศทั้งหมดของคุณจะถูกลบออกจากระบบอย่างถาวร ไม่สามารถกู้คืนได้
+                </p>
+              </div>
             </div>
 
-            <button 
-              type="button"
-              onClick={async () => {
-                const confirmDel = window.confirm("⚠️ คุณแน่ใจหรือไม่ว่าต้องการลบบัญชีถาวร? การกระทำนี้ไม่สามารถย้อนกลับได้");
-                if (confirmDel) {
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder={`พิมพ์ "${DELETE_CONFIRM_TEXT}" เพื่อยืนยัน`}
+                className="flex-1 px-3.5 py-2.5 bg-white border border-rose-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent outline-none transition text-slate-900 text-xs"
+              />
+              <button
+                type="button"
+                disabled={deleteConfirmText !== DELETE_CONFIRM_TEXT || isDeleting}
+                onClick={async () => {
+                  setIsDeleting(true);
                   try {
                     const res = await fetch('/api/auth/delete-account', { method: 'DELETE' });
+                    const data = await res.json().catch(() => null);
                     if (res.ok) {
                       alert('ลบบัญชีเรียบร้อยแล้ว');
                       signOut({ callbackUrl: '/login' });
+                    } else {
+                      alert(data?.error || 'ไม่สามารถลบบัญชีได้');
                     }
                   } catch {
                     alert('ไม่สามารถลบบัญชีได้');
+                  } finally {
+                    setIsDeleting(false);
                   }
-                }
-              }}
-              className="px-4 py-2 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold rounded-xl text-xs transition cursor-pointer flex-shrink-0"
-            >
-              ลบบัญชีถาวร
-            </button>
+                }}
+                className="px-4 py-2 bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 font-bold rounded-xl text-xs transition cursor-pointer flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isDeleting ? 'กำลังลบ...' : 'ลบบัญชีถาวร'}
+              </button>
+            </div>
           </div>
         </div>
 

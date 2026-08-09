@@ -91,7 +91,24 @@ export async function PUT(request: Request) {
     const userEmail = session.user.email;
 
     const body = await request.json();
-    const { firstName, lastName, phone, lineId, newPassword } = body;
+    const { firstName, lastName, phone, lineId, newPassword, currentPassword } = body;
+
+    // ตรวจสอบความถูกต้องของข้อมูลฝั่งเซิร์ฟเวอร์
+    if (firstName !== undefined && (typeof firstName !== "string" || firstName.trim().length === 0 || firstName.trim().length > 100)) {
+      return NextResponse.json({ error: "กรุณากรอกชื่อจริงให้ถูกต้อง (ไม่เกิน 100 ตัวอักษร)" }, { status: 400 });
+    }
+    if (lastName !== undefined && (typeof lastName !== "string" || lastName.trim().length === 0 || lastName.trim().length > 100)) {
+      return NextResponse.json({ error: "กรุณากรอกนามสกุลให้ถูกต้อง (ไม่เกิน 100 ตัวอักษร)" }, { status: 400 });
+    }
+    if (phone !== undefined && phone !== "") {
+      const phoneDigits = String(phone).replace(/\D/g, "");
+      if (!/^0\d{8,9}$/.test(phoneDigits)) {
+        return NextResponse.json({ error: "รูปแบบเบอร์โทรศัพท์ไม่ถูกต้อง" }, { status: 400 });
+      }
+    }
+    if (lineId !== undefined && typeof lineId === "string" && lineId.length > 100) {
+      return NextResponse.json({ error: "LINE ID ยาวเกินไป" }, { status: 400 });
+    }
 
     const updateData: {
       first_name?: string;
@@ -101,17 +118,10 @@ export async function PUT(request: Request) {
       password_hash?: string;
     } = {};
 
-    if (firstName !== undefined) updateData.first_name = firstName;
-    if (lastName !== undefined) updateData.last_name = lastName;
-    if (phone !== undefined) updateData.phone = phone;
-    if (lineId !== undefined) updateData.line_id = lineId;
-
-    if (newPassword && newPassword.trim() !== "") {
-      if (newPassword.length < 6) {
-        return NextResponse.json({ error: "รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร" }, { status: 400 });
-      }
-      updateData.password_hash = await bcrypt.hash(newPassword, 10);
-    }
+    if (firstName !== undefined) updateData.first_name = firstName.trim();
+    if (lastName !== undefined) updateData.last_name = lastName.trim();
+    if (phone !== undefined) updateData.phone = phone.trim();
+    if (lineId !== undefined) updateData.line_id = lineId.trim();
 
     const targetUser = await db.users.findFirst({
       where: userId ? { id: userId } : { email: userEmail || "" },
@@ -119,6 +129,25 @@ export async function PUT(request: Request) {
 
     if (!targetUser) {
       return NextResponse.json({ error: "ไม่พบผู้ใช้งาน" }, { status: 404 });
+    }
+
+    if (newPassword && newPassword.trim() !== "") {
+      if (newPassword.length < 6) {
+        return NextResponse.json({ error: "รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร" }, { status: 400 });
+      }
+
+      // ถ้าบัญชีนี้มีรหัสผ่านอยู่แล้ว ต้องยืนยันรหัสผ่านเดิมก่อนเปลี่ยน เพื่อป้องกันการยึด session แล้วเปลี่ยนรหัสผ่านแทนเจ้าของบัญชี
+      if (targetUser.password_hash) {
+        if (!currentPassword || typeof currentPassword !== "string") {
+          return NextResponse.json({ error: "กรุณากรอกรหัสผ่านปัจจุบันเพื่อยืนยันการเปลี่ยนรหัสผ่าน" }, { status: 400 });
+        }
+        const isValidCurrentPassword = await bcrypt.compare(currentPassword, targetUser.password_hash);
+        if (!isValidCurrentPassword) {
+          return NextResponse.json({ error: "รหัสผ่านปัจจุบันไม่ถูกต้อง" }, { status: 400 });
+        }
+      }
+
+      updateData.password_hash = await bcrypt.hash(newPassword, 10);
     }
 
     const updatedUser = await db.users.update({

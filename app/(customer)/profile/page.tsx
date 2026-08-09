@@ -22,13 +22,21 @@ export default function ProfilePage() {
   const [smsNotification, setSmsNotification] = useState(false);
 
   // State ตั้งค่ารหัสผ่านใหม่
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
   // State ทั่วไปสำหรับ Loading & Status Message
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [lastLoginTime, setLastLoginTime] = useState<string>('วันนี้ 10:45 น.');
+  const [lastLoginTime, setLastLoginTime] = useState<string>('');
+  const [loginDevice, setLoginDevice] = useState<string>('');
+  const [loginIp, setLoginIp] = useState<string>('');
+  const [isVerified, setIsVerified] = useState(false);
+
+  // ค่าต้นฉบับที่โหลดมาจาก Database ไว้ใช้ตอนกด "ยกเลิก" เพื่อคืนค่าฟอร์ม
+  const [originalProfile, setOriginalProfile] = useState({ firstName: '', lastName: '', phone: '', lineId: '' });
 
   // ดึงข้อมูลโปรไฟล์จริงจาก Database เมื่อโหลดหน้าเพจ
   useEffect(() => {
@@ -39,31 +47,66 @@ export default function ProfilePage() {
 
         if (res.ok && data.success && data.user) {
           const u = data.user;
-          setFirstName(u.firstName || '');
-          setLastName(u.lastName || '');
-          setPhone(u.phone || '');
-          setLineId(u.lineId || '');
+          const loaded = {
+            firstName: u.firstName || '',
+            lastName: u.lastName || '',
+            phone: u.phone || '',
+            lineId: u.lineId || '',
+          };
+          setFirstName(loaded.firstName);
+          setLastName(loaded.lastName);
+          setPhone(loaded.phone);
+          setLineId(loaded.lineId);
           setEmail(u.email || '');
+          setOriginalProfile(loaded);
+          setIsVerified(Boolean(u.isVerified));
 
           if (u.lastLogin?.created_at) {
             const dt = new Date(u.lastLogin.created_at);
             setLastLoginTime(dt.toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }));
+            setLoginDevice(u.lastLogin.user_agent || '');
+            setLoginIp(u.lastLogin.ip_address || '');
+          } else {
+            setLastLoginTime('ไม่มีข้อมูล');
           }
         } else {
           // Fallback ข้อมูลเบื้องต้นถ้า API ไม่พร้อม
           const nameParts = (session?.user?.name || profile.fullName || '').trim().split(/\s+/);
-          setFirstName(nameParts[0] || '');
-          setLastName(nameParts.slice(1).join(' ') || '');
-          setPhone(profile.phone || '');
+          const loaded = {
+            firstName: nameParts[0] || '',
+            lastName: nameParts.slice(1).join(' ') || '',
+            phone: profile.phone || '',
+            lineId: '',
+          };
+          setFirstName(loaded.firstName);
+          setLastName(loaded.lastName);
+          setPhone(loaded.phone);
           setEmail(session?.user?.email || profile.email || '');
+          setOriginalProfile(loaded);
+          setLastLoginTime('ไม่มีข้อมูล');
         }
       } catch (err) {
         console.error('Error fetching user profile:', err);
+        setLastLoginTime('ไม่มีข้อมูล');
+      } finally {
+        setIsLoadingProfile(false);
       }
     }
 
     loadUserProfile();
   }, [session, profile]);
+
+  // ยกเลิกการแก้ไข: คืนค่าฟอร์มกลับไปเป็นข้อมูลล่าสุดที่โหลดจาก Database
+  const handleResetProfile = () => {
+    setFirstName(originalProfile.firstName);
+    setLastName(originalProfile.lastName);
+    setPhone(originalProfile.phone);
+    setLineId(originalProfile.lineId);
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setStatusMsg(null);
+  };
 
   // ฟังก์ชันบันทึกข้อมูลส่วนบุคคลและรหัสผ่านไปยังฐานข้อมูลจริง
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -72,6 +115,11 @@ export default function ProfilePage() {
 
     if (newPassword && newPassword !== confirmPassword) {
       setStatusMsg({ type: 'error', text: 'รหัสผ่านใหม่และรหัสผ่านยืนยันไม่ตรงกัน' });
+      return;
+    }
+
+    if (newPassword && !currentPassword) {
+      setStatusMsg({ type: 'error', text: 'กรุณากรอกรหัสผ่านปัจจุบันเพื่อยืนยันการเปลี่ยนรหัสผ่าน' });
       return;
     }
 
@@ -87,6 +135,7 @@ export default function ProfilePage() {
           lineId,
           emailNotification,
           smsNotification,
+          currentPassword: newPassword ? currentPassword : undefined,
           newPassword: newPassword || undefined
         }),
       });
@@ -100,6 +149,8 @@ export default function ProfilePage() {
         if (session) {
           await updateSession({ name: updatedFullName });
         }
+        setOriginalProfile({ firstName, lastName, phone, lineId });
+        setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
       } else {
@@ -157,14 +208,21 @@ export default function ProfilePage() {
           setEmailNotification={setEmailNotification}
           smsNotification={smsNotification}
           setSmsNotification={setSmsNotification}
+          currentPassword={currentPassword}
+          setCurrentPassword={setCurrentPassword}
           newPassword={newPassword}
           setNewPassword={setNewPassword}
           confirmPassword={confirmPassword}
           setConfirmPassword={setConfirmPassword}
           isSaving={isSaving}
+          isLoadingProfile={isLoadingProfile}
           statusMsg={statusMsg}
           lastLoginTime={lastLoginTime}
+          loginDevice={loginDevice}
+          loginIp={loginIp}
+          isVerified={isVerified}
           handleSaveProfile={handleSaveProfile}
+          onResetProfile={handleResetProfile}
         />
       </div>
     </div>
