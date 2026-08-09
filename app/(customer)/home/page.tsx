@@ -2,13 +2,14 @@
 
 /**
  * ==============================================================================
- * หน้าหลักสำหรับฝั่งลูกค้า (Customer Home Page) - /app/(customer)/home/page.tsx
+ * หน้าหลักพอร์ตัลสำหรับลูกค้า (Customer Home Portal Page)
+ * /app/(customer)/home/page.tsx
  * ==============================================================================
  * วัตถุประสงค์หลัก:
- * 1. ต้อนรับผู้ใช้งานด้วยข้อมูลโปรไฟล์ และแจ้งเตือนนัดหมายที่กำลังจะมาถึง
- * 2. เป็นจุดเริ่มต้นในการค้นหาบ้าน/คอนโด (เลือก แท็บ ซื้อ/เช่า, พิมพ์ทำเล, เลือกประเภทอสังหาฯ)
- * 3. แสดง "ทำเลยอดนิยม" 4 อันดับแรก โดยคำนวณจากจำนวนประกาศจริงในฐานข้อมูล
- * 4. แสดง "ประกาศแนะนำล่าสุด" 6 รายการแรก ดึงจากฐานข้อมูลจริง
+ * 1. แสดงคำทักทายชื่อผู้ใช้งานที่ล็อกอิน และแสดงแถบแจ้งเตือนนัดหมายด่วนที่กำลังจะมาถึง
+ * 2. เป็นศูนย์กลางค้นหาอสังหาริมทรัพย์ (เลือกซื้อ/เช่า, พิมพ์ทำเล, เลือกประเภทบ้าน/คอนโด)
+ * 3. คำนวณและแสดงผล "ทำเลยอดนิยม 4 อันดับแรก" แบบไดนามิกจากจำนวนประกาศในฐานข้อมูล
+ * 4. แสดงผล "ประกาศแนะนำล่าสุด 6 รายการแรก" พร้อมรองรับ 3 สถานะ (Loading, Empty, Data)
  * ==============================================================================
  */
 
@@ -18,10 +19,7 @@ import Image from 'next/image';
 import { useApp } from '@/context/AppContext';
 import PropertyCard from '@/components/customer/PropertyCard';
 
-/**
- * รายการประเภทอสังหาริมทรัพย์คงที่ (Static Reference Data)
- * ใช้สำหรับแสดงผลใน Dropdown เมนูค้นหาประเภทบ้าน/คอนโด
- */
+// อาร์เรย์รายการประเภทอสังหาริมทรัพย์สำหรับ Dropdown เมนูค้นหา
 const PROPERTY_TYPES = [
   { val: '', label: 'ทุกประเภท' },
   { val: 'house', label: 'บ้านเดี่ยว' },
@@ -33,48 +31,37 @@ export default function CustomerHomePage() {
   // ----------------------------------------------------------------------------
   // 1. STATE การทำงานภายในหน้าจอ (Local Component State)
   // ----------------------------------------------------------------------------
-  // activeTab: แท็บเลือกรูปแบบการค้นหา 'buy' (ซื้อ) หรือ 'rent' (เช่า)
-  const [activeTab, setActiveTab] = useState<'buy' | 'rent'>('buy');
-  
-  // locationInput: ข้อความคำค้นหาทำเลที่ตั้งที่ผู้ใช้พิมพ์ลงในช่องค้นหา
-  const [locationInput, setLocationInput] = useState('');
-  
-  // propertyType: ค่าประเภทอสังหาฯ ที่เลือก ('', 'house', 'townhome', 'condo')
-  const [propertyType, setPropertyType] = useState('');
-  
-  // isTypeOpen: สถานะเปิด/ปิด เมนู Dropdown เลือกประเภทอสังหาริมทรัพย์
-  const [isTypeOpen, setIsTypeOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'buy' | 'rent'>('buy'); // แท็บเลือก ซื้อ ('buy') หรือ เช่า ('rent')
+  const [locationInput, setLocationInput] = useState('');           // ข้อความค้นหาทำเลที่ตั้ง
+  const [propertyType, setPropertyType] = useState('');             // ประเภทอสังหาฯ ที่เลือก ('', 'house', 'townhome', 'condo')
+  const [isTypeOpen, setIsTypeOpen] = useState(false);               // สถานะเปิด/ปิด Dropdown เลือกประเภท
 
   // ----------------------------------------------------------------------------
-  // 2. GLOBAL CONTEXT (ดึงข้อมูลกลางจาก AppContext ที่เชื่อมต่อฐานข้อมูลเรียบร้อยแล้ว)
+  // 2. GLOBAL CONTEXT (ดึงข้อมูลกลางและฟังก์ชันจาก AppContext)
   // ----------------------------------------------------------------------------
   const { 
-    properties,        // รายชื่ออสังหาฯ ทั้งหมดในระบบ (ดึงจาก DB ผ่าน /api/properties)
-    propertiesLoading, // สถานะกำลังโหลดข้อมูลอสังหาฯ (true = กำลังโหลด)
-    favorites,         // อาร์เรย์ ID อสังหาฯ ที่ผู้ใช้กดถูกใจไว้ (ดึงจาก DB ผ่าน /api/user/saved-properties)
-    toggleFavorite,    // ฟังก์ชันกดสลับบันทึก/ยกเลิกรายการโปรดไปยัง DB
-    profile,           // ข้อมูลโปรไฟล์ของผู้ใช้ปัจจุบัน (เช่น ชื่อเต็ม, อีเมล)
-    appointments       // รายการนัดหมายทั้งหมดของผู้ใช้ (ดึงจาก DB ผ่าน /api/appointments)
+    properties,        // รายการบ้านทั้งหมดในระบบ (ดึงจาก DB ผ่าน /api/properties)
+    propertiesLoading, // สถานะการโหลดข้อมูล (true = กำลังโหลด)
+    favorites,         // อาร์เรย์ ID อสังหาฯ ที่ผู้ใช้กดบันทึกโปรดไว้
+    toggleFavorite,    // ฟังก์ชันสลับบันทึก/ยกเลิกรายการโปรด
+    profile,           // ข้อมูลโปรไฟล์ผู้ใช้งานปัจจุบัน (ชื่อเต็ม, อีเมล, เบอร์โทร)
+    appointments       // รายการนัดหมายทั้งหมดของผู้ใช้
   } = useApp();
 
   // ----------------------------------------------------------------------------
-  // 3. COMPUTED & MEMOIZED DATA (การคำนวณข้อมูลด้วย useMemo เพื่อประสิทธิภาพสูงสุด)
+  // 3. COMPUTED DATA (การคำนวณข้อมูลสถิติและคัดกรองด้วย useMemo)
   // ----------------------------------------------------------------------------
-  
-  // 3.1 คัดเลือกเฉพาะ 6 ประกาศแรกจาก DB เพื่อนำมาแสดงในส่วน "ประกาศแนะนำล่าสุด"
+  // 3.1 คัดเลือก 6 ประกาศแรกมาแสดงเป็น "ประกาศแนะนำล่าสุด"
   const featuredProperties = useMemo(() => properties.slice(0, 6), [properties]);
 
-  // 3.2 คำนวณ "ทำเลยอดนิยม" 4 อันดับแรกแบบไดนามิกจากข้อมูลจริงใน DB
-  // วิธีการทำงาน: นับจำนวนประกาศในแต่ละอำเภอ/จังหวัด แล้วจัดอันดับจากมากไปน้อย
+  // 3.2 คำนวณทำเลยอดนิยม 4 อันดับแรกโดยนับจำนวนประกาศจริงจากฐานข้อมูล
   const locations = useMemo(() => {
     const map: Record<string, { count: number; image: string }> = {};
 
     properties.forEach((p) => {
-      // ดึงชื่อทำเลโดยลำดับความสำคัญ: ชื่ออำเภอ > ชื่อจังหวัด > คำแรกจากข้อความที่อยู่
       const name = p.amphureName || p.provinceName || (p.location ? p.location.replace(/📍/g, '').split(',')[0].trim() : '');
       if (!name) return;
 
-      // สรุปจำนวนประกาศและเลือกภาพหน้าปกแรกของทำเลนั้น
       if (!map[name]) {
         map[name] = { 
           count: 0, 
@@ -84,14 +71,13 @@ export default function CustomerHomePage() {
       map[name].count += 1;
     });
 
-    // แปลง Map เป็น Array แล้วเรียงลำดับจำนวนประกาศมาก -> น้อย และดึงมาแค่ 4 ทำเลแรก
     return Object.entries(map)
       .map(([name, data]) => ({ name, ...data }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 4);
   }, [properties]);
 
-  // 3.3 นับจำนวนนัดหมายที่กำลังจะมาถึง (สถานะ 'upcoming', 'pending', หรือ 'approved')
+  // 3.3 นับจำนวนนัดหมายที่กำลังจะมาถึงของผู้ใช้
   const upcomingCount = useMemo(() => 
     appointments.filter((a) => ['upcoming', 'pending', 'approved'].includes(a.status)).length
   , [appointments]);
@@ -103,21 +89,21 @@ export default function CustomerHomePage() {
     <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased text-sm">
 
       {/* ========================================================================
-          ส่วนที่ 1: HERO SECTION (ภาพพื้นหลัง + คำทักทาย + กล่องค้นหาอสังหาฯ)
+          ส่วนที่ 1: HERO SECTION (ภาพแบนเนอร์หลัก, ทักทายชื่อผู้ใช้, และกล่องค้นหา)
           ======================================================================== */}
       <header className="relative pt-8 pb-16 lg:pt-16 lg:pb-20 flex items-center justify-center min-h-[55vh]">
-        {/* ภาพพื้นหลัง Hero และ Overlay สีเข้มเพื่อให้อ่านข้อความชัดเจน */}
+        {/* ภาพพื้นหลังหลังม่านสีเข้ม */}
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=2000&q=80')" }} />
         <div className="absolute inset-0 bg-slate-900/60 mix-blend-multiply" />
 
         <div className="relative z-10 w-full max-w-5xl mx-auto px-4 flex flex-col items-center text-center">
           
-          {/* Badge แสดงคำทักทายชื่อผู้ใช้งานที่ล็อกอิน */}
+          {/* Badge แสดงคำทักทายชื่อผู้ใช้งาน */}
           <div className="mb-3 inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-md border border-white/30 px-4 py-1.5 rounded-full text-white text-xs font-medium shadow">
             <span>👋</span> <span>สวัสดีคุณ {profile.fullName}, ยินดีต้อนรับกลับมา</span>
           </div>
 
-          {/* แถบแจ้งเตือนนัดหมายที่กำลังจะมาถึง (แสดงเฉพาะเมื่อมีนัดหมายอย่างน้อย 1 รายการ) */}
+          {/* แถบแจ้งเตือนนัดหมายด่วนที่กำลังจะมาถึง */}
           {upcomingCount > 0 && (
             <div className="mb-5 bg-white/10 backdrop-blur-md border border-white/20 text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-3 shadow max-w-xl w-full">
               <span className="text-xl">📅</span>
@@ -128,7 +114,7 @@ export default function CustomerHomePage() {
             </div>
           )}
 
-          {/* สโลแกนหน้าแรก */}
+          {/* ข้อความสโลแกน */}
           <h1 className="text-3xl md:text-5xl font-extrabold text-white mb-4 leading-tight drop-shadow-md">
             ค้นพบพื้นที่ความสุข<br />ที่คุณเรียกว่า <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-300">&quot;บ้าน&quot;</span>
           </h1>
@@ -136,12 +122,9 @@ export default function CustomerHomePage() {
             Srichai Property Agents ศูนย์รวมอสังหาริมทรัพย์คุณภาพ พร้อมระบบจองนัดหมายและแชทกับนายหน้าโดยตรง
           </p>
 
-          {/* --------------------------------------------------------------------
-              กล่องค้นหา (Search Box Window)
-              -------------------------------------------------------------------- */}
+          {/* กล่องค้นหาอสังหาริมทรัพย์ (Search Window) */}
           <div className="w-full max-w-3xl bg-white border border-slate-200 shadow-sm rounded-2xl p-4">
-            
-            {/* แท็บเลือกโหมด: ซื้อ (buy) หรือ เช่า (rent) */}
+            {/* แท็บสลับประเภทประกาศ: ซื้อ / เช่า */}
             <div className="flex space-x-1 mb-4 bg-slate-100 p-1 rounded-lg w-fit border border-slate-200">
               {(['buy', 'rent'] as const).map((tab) => (
                 <button
@@ -156,10 +139,8 @@ export default function CustomerHomePage() {
               ))}
             </div>
 
-            {/* ฟอร์มรับข้อมูลการค้นหา (ทำเล + ประเภทอสังหาฯ + ปุ่มกดค้นหา) */}
+            {/* ฟอร์มกรอกคำค้นหา และ Dropdown ประเภทอสังหาฯ */}
             <div className="flex flex-col md:flex-row items-stretch bg-slate-50 rounded-xl border border-slate-200 p-1 gap-1.5">
-              
-              {/* ช่องกรอกข้อความค้นหาทำเล (Location Input) */}
               <div className="flex-1 flex items-center px-4 py-2">
                 <span className="text-xl mr-3 text-slate-400">📍</span>
                 <div className="flex flex-col text-left w-full">
@@ -174,10 +155,9 @@ export default function CustomerHomePage() {
                 </div>
               </div>
 
-              {/* เส้นแบ่งแนวตั้งในมุมมอง Desktop */}
               <div className="hidden md:block w-px h-10 bg-slate-200 self-center" />
 
-              {/* Dropdown เมนูเลือกประเภทอสังหาริมทรัพย์ (Custom Select Dropdown) */}
+              {/* Dropdown ประเภทอสังหาริมทรัพย์ */}
               <div
                 id="property-type-dropdown"
                 className="relative md:w-48 flex items-center px-4 py-2 cursor-pointer select-none"
@@ -194,13 +174,9 @@ export default function CustomerHomePage() {
                   </div>
                 </div>
 
-                {/* เมนูตัวเลือกเมื่อ Dropdown ถูกเปิดอยู่ (isTypeOpen === true) */}
                 {isTypeOpen && (
                   <>
-                    {/* ฉากหลังโปร่งใส (Backdrop Overlay) ไว้รับการคลิกข้างนอกเพื่อปิด Dropdown */}
                     <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setIsTypeOpen(false); }} />
-                    
-                    {/* กล่องรายการตัวเลือก */}
                     <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-lg py-2 z-50" onClick={(e) => e.stopPropagation()}>
                       {PROPERTY_TYPES.map((t) => (
                         <button
@@ -211,6 +187,7 @@ export default function CustomerHomePage() {
                             propertyType === t.val ? "bg-blue-50 text-blue-700" : "text-slate-700 hover:bg-slate-50"
                           }`}
                         >
+                          {t.label}
                         </button>
                       ))}
                     </div>
@@ -218,7 +195,7 @@ export default function CustomerHomePage() {
                 )}
               </div>
 
-              {/* ปุ่มกดค้นหา: ส่ง Query Parameters ไปยังหน้า /search */}
+              {/* ปุ่มกดค้นหา: ส่งค่า Query Params ไปยังหน้า /search */}
               <Link
                 href={`/search?tab=${activeTab}&q=${encodeURIComponent(locationInput)}&type=${propertyType}`}
                 className="bg-blue-700 hover:bg-blue-800 text-white rounded-lg px-8 font-semibold transition flex items-center justify-center gap-2 text-sm w-full md:w-auto min-h-[48px]"
@@ -228,7 +205,6 @@ export default function CustomerHomePage() {
                 </svg>
                 <span>ค้นหาเลย</span>
               </Link>
-
             </div>
           </div>
         </div>
@@ -236,7 +212,6 @@ export default function CustomerHomePage() {
 
       {/* ========================================================================
           ส่วนที่ 2: ทำเลยอดนิยม (POPULAR LOCATIONS SECTION)
-          แสดงทำเลที่มีจำนวนประกาศมากที่สุด 4 อันดับแรกจากการคำนวณแบบ Real-time
           ======================================================================== */}
       <section className="py-10 bg-white">
         <div className="max-w-5xl mx-auto px-4">
@@ -273,7 +248,6 @@ export default function CustomerHomePage() {
 
       {/* ========================================================================
           ส่วนที่ 3: ประกาศแนะนำล่าสุด (FEATURED PROPERTIES SECTION)
-          แสดงอสังหาริมทรัพย์ 6 รายการแรก พร้อมจัดการ 3 สถานะ (Loading, Empty, Data)
           ======================================================================== */}
       <section className="py-10 bg-slate-50 border-t border-slate-200">
         <div className="max-w-5xl mx-auto px-4">
@@ -289,7 +263,6 @@ export default function CustomerHomePage() {
 
           {/* แสดงผลตามสถานะการดึงข้อมูลจาก DB */}
           {propertiesLoading ? (
-            // สถานะที่ 1: กำลังโหลดข้อมูลจาก DB (แสดง Skeleton Loading Card)
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="rounded-2xl border border-slate-200 bg-white overflow-hidden animate-pulse">
@@ -303,12 +276,10 @@ export default function CustomerHomePage() {
               ))}
             </div>
           ) : featuredProperties.length === 0 ? (
-            // สถานะที่ 2: โหลดเสร็จสิ้นแล้ว แต่ไม่พบประกาศในฐานข้อมูล
             <div className="text-center py-16 bg-white rounded-2xl border border-slate-200">
               <p className="text-slate-500 text-sm font-medium">ยังไม่มีประกาศแนะนำในขณะนี้</p>
             </div>
           ) : (
-            // สถานะที่ 3: โหลดข้อมูลสำเร็จ แสดงการ์ดอสังหาริมทรัพย์ 6 รายการ
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {featuredProperties.map((prop) => (
                 <PropertyCard

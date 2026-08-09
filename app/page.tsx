@@ -1,5 +1,17 @@
 'use client';
 
+/**
+ * ==============================================================================
+ * หน้าแรกสาธารณะของเว็บไซต์ (Public Landing Page) - /app/page.tsx
+ * ==============================================================================
+ * วัตถุประสงค์หลัก:
+ * 1. เป็น Root Route (`http://localhost:3000/`) สำหรับต้อนรับผู้เยี่ยมชมทั่วไปทุกคนที่เปิดเข้ามา
+ * 2. แสดงส่วนสไลด์แบนเนอร์ค้นหา (`HeroSection`) และส่วนทำเลยอดนิยม (`PopularLocations`)
+ * 3. ดึงรายการอสังหาริมทรัพย์และรายการโปรดจาก `AppContext` มาแสดงผลผ่าน `PropertyCard`
+ * 4. ครอบด้วย `<Navbar />` บนสุด และ `<Footer />` ล่างสุดโดยตรง
+ * ==============================================================================
+ */
+
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import Navbar from '@/components/layout/Navbar';
@@ -9,14 +21,21 @@ import PopularLocations from '@/components/customer/PopularLocations';
 import PropertyCard from '@/components/customer/PropertyCard';
 
 export default function Home() {
+  // ดึงรายการอสังหาฯ และรายการโปรดจาก AppContext ที่เชื่อมต่อฐานข้อมูลเรียบร้อยแล้ว
   const { properties, favorites, toggleFavorite } = useApp();
 
   return (
     <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm">
+      {/* 1. แถบเมนูนำทางหลักบนสุด */}
       <Navbar />
+
+      {/* 2. ส่วน Hero Banner ค้นหาบ้าน */}
       <HeroSection />
+
+      {/* 3. ส่วนแสดงทำเลยอดนิยม */}
       <PopularLocations />
 
+      {/* 4. ส่วนแสดงรายการอสังหาริมทรัพย์แนะนำล่าสุด */}
       <section className="py-10 bg-slate-50 border-t border-slate-200">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 gap-3">
@@ -32,6 +51,7 @@ export default function Home() {
             </Link>
           </div>
 
+          {/* รายการการ์ดอสังหาริมทรัพย์ */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {properties.map((prop) => {
               const isFav = favorites.includes(prop.id);
@@ -48,6 +68,7 @@ export default function Home() {
         </div>
       </section>
 
+      {/* 5. ท้ายเว็บไซต์ */}
       <Footer />
     </div>
   );
