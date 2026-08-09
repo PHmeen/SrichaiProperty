@@ -5,27 +5,28 @@ import { db } from "@/lib/db";
 
 /**
  * ==============================================================================
- * API Route: /api/appointments (ระบบจัดการการนัดหมายเข้าชมบ้าน)
+ * API Route: /api/appointments (ระบบจัดการการนัดหมายเข้าชมบ้านแบบครบวงจร)
  * ==============================================================================
- * วัตถุประสงค์หลัก:
- * 1. GET    - ดึงรายการนัดหมาย (แยกสิทธิ์: ลูกค้าดูของตัวเอง / นายหน้าดูคิวงาน ?view=agent)
- * 2. POST   - บันทึกคำขอนัดหมายใหม่จากลูกค้า + ล็อกรอบเวลาใน DB + ส่งแจ้งเตือนหานายหน้า
- * 3. PATCH  - นายหน้ากดรับ/ปฏิเสธ/ปิดงาน หรือ ลูกค้าขอเปลี่ยนวันเวลานัดหมาย
- * 4. DELETE - ยกเลิกการนัดหมาย + คืนสิทธิ์รอบเวลาว่างกลับเข้าคิว + บันทึกเหตุผลการยกเลิก
+ * วัตถุประสงค์และหน้าที่หลัก:
+ * 1. GET    - ดึงข้อมูลรายการนัดหมาย (แยกระหว่างมุมมอง "ลูกค้า" ดูนัดตนเอง และมุมมอง "นายหน้า" ดูคิวงาน ?view=agent)
+ * 2. POST   - บันทึกคำขอนัดหมายใหม่จากลูกค้า + ตรวจสอบนัดซ้ำ + ล็อกสล็อตวันว่างใน DB + ส่งแจ้งเตือนหานายหน้า
+ * 3. PATCH  - นายหน้ากดรับนัด (confirm), ปฏิเสธ (reject), ปิดงาน (complete) หรือ ลูกค้าขอเปลี่ยนวันเวลานัด
+ * 4. DELETE - ยกเลิกนัดหมาย + ปลดล็อกรอบวันว่างคืนให้ระบบ (is_booked = false) + บันทึกเหตุผลการยกเลิก
  * ==============================================================================
  */
 
-// Helper 1: ฟังก์ชันแปลงวัตถุ Date ให้เป็นข้อความวันที่รูปแบบ "YYYY-MM-DD"
+// Helper 1: ฟังก์ชันแปลงวัตถุ Date ให้เป็นข้อความวันที่รูปแบบ "YYYY-MM-DD" สำหรับเปรียบเทียบในระบบ
 const toDateKey = (d: Date) => d.toISOString().split("T")[0];
 
-// Helper 2: ดึงข้อมูลผู้ใช้จาก NextAuth Session ที่กำลังเข้าสู่ระบบอยู่
+// Helper 2: ดึงข้อมูลผู้ใช้งานที่กำลังเข้าสู่ระบบผ่าน NextAuth Session จากอีเมล
 async function getAuthUser() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return null;
+  if (!session?.user?.email) return null; // ถ้าไม่มีเซสชัน แปลว่ายังไม่ได้ล็อกอิน
   return db.users.findUnique({ where: { email: session.user.email } });
 }
 
 // Helper 3: ฟังก์ชันส่งการแจ้งเตือน (Notifications) ไปยังฐานข้อมูลแบบไม่ขัดจังหวะกระบวนการหลัก
+// (ใช้ .catch() ดักจับความผิดพลาดไว้เพื่อไม่ให้กระทบกับการทำธุรกรรมหลักข้างบน)
 const sendNotification = (userId: string, title: string, content: string, type = "appointment") =>
   db.notifications.create({ data: { user_id: userId, title, content, type, is_read: false } }).catch(() => {});
 
@@ -34,30 +35,33 @@ const sendNotification = (userId: string, title: string, content: string, type =
 // ==============================================================================
 export async function GET(request: Request) {
   try {
+    // 1.1 ตรวจสอบว่าผู้ใช้งานเข้าสู่ระบบแล้วหรือยัง
     const user = await getAuthUser();
     if (!user) return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อน" }, { status: 401 });
 
-    // เช็คว่าขอข้อมูลมุมมองนายหน้า (?view=agent) หรือไม่
+    // 1.2 ตรวจสอบจาก URL Query Parameters ว่าผู้ใช้ต้องการดูในมุมมองนายหน้า (?view=agent) หรือไม่
     const isAgent = new URL(request.url).searchParams.get("view") === "agent" && user.role_id === "agent";
 
-    // ดึงข้อมูลนัดหมายจากฐานข้อมูล PostgreSQL ผ่าน Prisma
+    // 1.3 ดึงข้อมูลนัดหมายจากฐานข้อมูล PostgreSQL ผ่าน Prisma ORM
+    // - ถ้าเป็นนายหน้า: ค้นหาแถวที่ agent_id === user.id
+    // - ถ้าเป็นลูกค้า: ค้นหาแถวที่ customer_id === user.id
     const appointments = await db.appointments.findMany({
       where: isAgent ? { agent_id: user.id } : { customer_id: user.id },
       include: {
         properties: {
           include: {
-            property_images: { orderBy: { order_index: "asc" }, take: 1 },
-            users: { select: { first_name: true, last_name: true, phone: true } }
+            property_images: { orderBy: { order_index: "asc" }, take: 1 }, // ดึงรูปภาพแรกของบ้านมาแสดง
+            users: { select: { first_name: true, last_name: true, phone: true } } // ดึงชื่อและเบอร์โทรนายหน้า
           }
         },
         users_appointments_customer_idTousers: {
-          select: { id: true, first_name: true, last_name: true, phone: true, email: true, profile_image: true }
+          select: { id: true, first_name: true, last_name: true, phone: true, email: true, profile_image: true } // ดึงข้อมูลลูกค้า
         }
       },
       orderBy: { appointment_date: "asc" } // เรียงลำดับตามวันที่นัดหมายจากใกล้ไปไกล
     });
 
-    // จัดฟอร์แมตโครงสร้างข้อมูลให้ง่ายต่อการนำไปแสดงผลบนหน้าบ้าน (React Components)
+    // 1.4 จัดฟอร์แมตออบเจกต์ข้อมูล (Response Mapping) เพื่อส่งให้ React Component หน้าบ้านนำไปใช้ได้ทันที
     const formatted = appointments.map((apt) => {
       const p = apt.properties;
       const cust = apt.users_appointments_customer_idTousers;
@@ -65,6 +69,8 @@ export async function GET(request: Request) {
 
       const customerName = cust ? `${cust.first_name || ""} ${cust.last_name || ""}`.trim() : "ลูกค้าทั่วไป";
       const agentName = agentUser ? `${agentUser.first_name || ""} ${agentUser.last_name || ""}`.trim() : "นายหน้า";
+      
+      // แปลงคีย์รอบเวลาให้เป็นข้อความภาษาไทยสำหรับแสดงผล
       const timeSlotText = apt.time_slot === "morning"
         ? "10:00 - 12:00 น. (ช่วงเช้า)"
         : apt.time_slot === "afternoon"
@@ -107,18 +113,21 @@ export async function GET(request: Request) {
 // ==============================================================================
 export async function POST(request: Request) {
   try {
+    // 2.1 ตรวจสอบผู้ใช้งานที่ล็อกอิน
     const user = await getAuthUser();
     if (!user) return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อน" }, { status: 401 });
 
+    // 2.2 อ่านและตรวจสอบข้อมูลสำคัญที่ส่งมาจาก Request Body
     const { propertyId, date, timeSlot, note } = await request.json();
     if (!propertyId || !date || !timeSlot) {
       return NextResponse.json({ error: "กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน" }, { status: 400 });
     }
 
+    // 2.3 ค้นหาข้อมูลบ้านหลังนี้ในฐานข้อมูล
     const property = await db.properties.findUnique({ where: { id: propertyId } });
     if (!property) return NextResponse.json({ error: "ไม่พบข้อมูลอสังหาริมทรัพย์นี้" }, { status: 404 });
 
-    // กฎธุรกิจ: 1 ลูกค้า จองค้างไว้ได้ทีละ 1 นัดต่อบ้าน 1 หลัง (ต้องรอผลก่อนถึงจะจองซ้ำได้)
+    // 2.4 ตรวจสอบกฎธุรกิจ: ลูกค้า 1 คน จองค้างไว้ได้ทีละ 1 นัดต่อบ้าน 1 หลัง ( status: pending หรือ approved )
     const existing = await db.appointments.findFirst({
       where: { customer_id: user.id, property_id: property.id, status: { in: ["pending", "approved"] } }
     });
@@ -126,10 +135,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "คุณมีนัดหมายค้างอยู่สำหรับบ้านหลังนี้แล้ว กรุณารอผลหรือยกเลิกนัดเดิมก่อนจองใหม่" }, { status: 400 });
     }
 
-    // แปลงข้อความรอบเวลาให้อยู่ในรูปแบบคีย์ 'morning' หรือ 'afternoon'
+    // 2.5 แปลงข้อความรอบเวลาให้อยู่ในคีย์มาตรฐาน DB ('morning' หรือ 'afternoon')
     const dbTimeSlot = timeSlot.includes("13:") || timeSlot.includes("15:") || timeSlot.includes("บ่าย") || timeSlot.toLowerCase().includes("afternoon") ? "afternoon" : "morning";
 
-    // ตรวจสอบว่ารอบเวลานี้เปิดว่างจริงในตาราง property_viewing_slots และยังไม่มีคนจอง
+    // 2.6 ตรวจสอบว่ารอบเวลานี้เปิดว่างจริงในตาราง property_viewing_slots และยังไม่มีคนจองคิวไปก่อน
     const targetSlot = await db.property_viewing_slots.findUnique({
       where: {
         property_id_available_date_time_slot: {
@@ -142,7 +151,7 @@ export async function POST(request: Request) {
     if (!targetSlot) return NextResponse.json({ error: "ไม่พบรอบเข้าชมนี้ กรุณาเลือกวันและช่วงเวลาที่นายหน้าเปิดไว้" }, { status: 400 });
     if (targetSlot.is_booked) return NextResponse.json({ error: "ช่วงเวลานี้ถูกจองไปแล้ว" }, { status: 400 });
 
-    // 2.1 สร้างแถวข้อมูลนัดหมายใหม่ (สถานะเริ่มต้นเป็น 'pending')
+    // 2.7 สร้างคำขอนัดหมายใหม่ลงในตาราง appointments (สถานะเริ่มต้นเป็น 'pending')
     const newAppointment = await db.appointments.create({
       data: {
         customer_id: user.id,
@@ -155,13 +164,13 @@ export async function POST(request: Request) {
       }
     });
 
-    // 2.2 ล็อกรอบเวลานี้ในฐานข้อมูลเพื่อป้องกันไม่ให้ผู้อื่นจองซ้ำ (is_booked = true)
+    // 2.8 ล็อกรอบเวลานี้ในตาราง property_viewing_slots ทันทีเพื่อป้องกันไม่ให้ผู้อื่นจองซ้ำ (is_booked = true)
     await db.property_viewing_slots.updateMany({
       where: { property_id: property.id, available_date: new Date(date), time_slot: dbTimeSlot },
       data: { is_booked: true }
     });
 
-    // 2.3 ส่งการแจ้งเตือนหานายหน้าและลูกค้า
+    // 2.9 ส่งการแจ้งเตือนไปยังนายหน้าผู้ดูแลและลูกค้าที่ทำรายการ
     const customerName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "ลูกค้า";
     const timeLabel = dbTimeSlot === "morning" ? "ช่วงเช้า (10:00 - 12:00 น.)" : "ช่วงบ่าย (14:00 - 16:00 น.)";
 
@@ -177,16 +186,18 @@ export async function POST(request: Request) {
 }
 
 // ==============================================================================
-// 3. PATCH: การอัปเดตนัดหมาย (ฝั่งนายหน้าตอบรับ/ปฏิเสธ หรือ ฝั่งลูกค้าเลื่อนวัน)
+// 3. PATCH: การอัปเดตนัดหมาย (ฝั่งนายหน้าตอบรับ/ปฏิเสธ/ปิดงาน หรือ ฝั่งลูกค้าขอเปลี่ยนวัน)
 // ==============================================================================
 export async function PATCH(request: Request) {
   try {
+    // 3.1 ตรวจสอบสิทธิ์ผู้ใช้งาน
     const user = await getAuthUser();
     if (!user) return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อน" }, { status: 401 });
 
     const { id, action, date, timeSlot } = await request.json();
     if (!id) return NextResponse.json({ error: "กรุณาระบุรหัสนัดหมาย" }, { status: 400 });
 
+    // 3.2 ค้นหาข้อมูลนัดหมายที่จะแก้ไข
     const appointment = await db.appointments.findUnique({ where: { id } });
     if (!appointment) return NextResponse.json({ error: "ไม่พบนัดหมายนี้ในระบบ" }, { status: 404 });
 
@@ -194,6 +205,7 @@ export async function PATCH(request: Request) {
     // (ก) กรณีฝั่งนายหน้าจัดการ: ยืนยัน (confirm), ปฏิเสธ (reject), หรือ ปิดงาน (complete)
     // --------------------------------------------------------------------------
     if (["confirm", "reject", "complete"].includes(action)) {
+      // ตรวจสอบสิทธิ์: ต้องเป็นนายหน้าเจ้าของคิวงานนี้เท่านั้น
       if (user.role_id !== "agent" || appointment.agent_id !== user.id) {
         return NextResponse.json({ error: "คุณไม่มีสิทธิ์จัดการนัดหมายนี้" }, { status: 403 });
       }
@@ -211,11 +223,11 @@ export async function PATCH(request: Request) {
 
       if (appointment.status !== "pending") return NextResponse.json({ error: "นัดหมายนี้ถูกดำเนินการไปแล้ว" }, { status: 400 });
 
-      // เปลี่ยนสถานะเป็น approved หรือ rejected
+      // นายหน้าอนุมัติ (approved) หรือ ปฏิเสธ (rejected)
       const newStatus = action === "confirm" ? "approved" : "rejected";
       const updated = await db.appointments.update({ where: { id }, data: { status: newStatus } });
 
-      // กรณีนายหน้าปฏิเสธ -> ปลดล็อกรอบเวลานัดหมายให้คนอื่นจองต่อได้ (is_booked = false)
+      // กรณีปฏิเสธ -> ปลดล็อกรอบเวลานัดหมายให้ผู้ใช้อื่นจองได้ต่อไป (is_booked = false)
       if (action === "reject" && appointment.property_id) {
         await db.property_viewing_slots.updateMany({
           where: { property_id: appointment.property_id, available_date: appointment.appointment_date, time_slot: appointment.time_slot ?? undefined },
@@ -223,7 +235,7 @@ export async function PATCH(request: Request) {
         });
       }
 
-      // ส่งแจ้งเตือนผลการอนุมัติ/ปฏิเสธไปยังลูกค้า
+      // ส่งแจ้งเตือนผลการตอบรับไปยังลูกค้า
       const property = appointment.property_id ? await db.properties.findUnique({ where: { id: appointment.property_id }, select: { title: true } }) : null;
       const propertyTitle = property?.title || "อสังหาริมทรัพย์";
 
@@ -237,7 +249,7 @@ export async function PATCH(request: Request) {
     }
 
     // --------------------------------------------------------------------------
-    // (ข) กรณีฝั่งลูกค้าจัดการ: ขอเลื่อนเปลี่ยนวันเวลานัดหมายใหม่
+    // (ข) กรณีฝั่งลูกค้าจัดการ: ขอเปลี่ยนวันและเวลานัดหมายใหม่
     // --------------------------------------------------------------------------
     if (date && timeSlot) {
       if (appointment.customer_id !== user.id || appointment.status !== "pending") {
@@ -259,7 +271,7 @@ export async function PATCH(request: Request) {
         data: { appointment_date: new Date(date), time_slot: timeSlot }
       });
 
-      // สลับการล็อกรอบเวลา: ปลดล็อกรอบเดิมคืน และไปล็อกรอบใหม่
+      // สลับการล็อกรอบเวลา: ปลดล็อกรอบเดิมคืนระบบ และ ไปล็อกรอบใหม่
       if (!isSameSlot) {
         await db.property_viewing_slots.updateMany({
           where: { property_id: appointment.property_id, available_date: appointment.appointment_date, time_slot: appointment.time_slot ?? undefined },
@@ -281,34 +293,38 @@ export async function PATCH(request: Request) {
 }
 
 // ==============================================================================
-// 4. DELETE: ยกเลิกคำขอนัดหมาย (คืนวันว่าง + บันทึกเหตุผลลง DB)
+// 4. DELETE: ยกเลิกคำขอนัดหมาย (คืนวันว่าง + บันทึกเหตุผลลงฐานข้อมูล)
 // ==============================================================================
 export async function DELETE(request: Request) {
   try {
+    // 4.1 ตรวจสอบผู้ใช้งานที่ล็อกอิน
     const user = await getAuthUser();
     if (!user) return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อน" }, { status: 401 });
 
+    // 4.2 ดึงรหัสนัดหมาย (id) และเหตุผลในการยกเลิก (reason) จาก URL Parameters
     const url = new URL(request.url);
     const id = url.searchParams.get("id");
     const reason = url.searchParams.get("reason") || "";
     if (!id) return NextResponse.json({ error: "กรุณาระบุรหัสนัดหมาย (id)" }, { status: 400 });
 
+    // 4.3 ค้นหาข้อมูลนัดหมายที่จะยกเลิก
     const appointment = await db.appointments.findUnique({
       where: { id },
       include: { properties: true }
     });
     if (!appointment) return NextResponse.json({ error: "ไม่พบนัดหมายนี้ในระบบ" }, { status: 404 });
 
+    // 4.4 ตรวจสอบสิทธิ์: ต้องเป็นลูกค้าเจ้าของนัด หรือ นายหน้าผู้ดูแลนัดนี้เท่านั้น
     const isCustomer = appointment.customer_id === user.id;
     const isAgent = appointment.agent_id === user.id;
     if (!isCustomer && !isAgent) return NextResponse.json({ error: "คุณไม่มีสิทธิ์ยกเลิกนัดหมายนี้" }, { status: 403 });
 
-    // ป้องกันการยกเลิกซ้ำในนัดที่จบหรือถูกยกเลิกไปแล้ว
+    // 4.5 ป้องกันการยกเลิกซ้ำในนัดที่ปิดงานไปแล้ว (completed, cancelled, rejected)
     if (["completed", "cancelled", "rejected"].includes(appointment.status || "")) {
       return NextResponse.json({ error: "นัดหมายนี้ถูกปิดไปแล้ว ไม่สามารถยกเลิกซ้ำได้" }, { status: 400 });
     }
 
-    // 4.1 ปลดล็อกรอบเวลาว่างคืนให้ระบบ (is_booked = false)
+    // 4.6 ปลดล็อกรอบเวลาว่างคืนให้ระบบ (ตั้งค่า is_booked = false)
     if (appointment.property_id && appointment.appointment_date) {
       await db.property_viewing_slots.updateMany({
         where: { property_id: appointment.property_id, available_date: appointment.appointment_date, time_slot: appointment.time_slot ?? undefined },
@@ -316,13 +332,13 @@ export async function DELETE(request: Request) {
       });
     }
 
-    // 4.2 เปลี่ยนสถานะเป็น 'cancelled' และบันทึกเหตุผล cancel_reason ลง DB
+    // 4.7 อัปเดตสถานะเป็น 'cancelled' และบันทึกเหตุผล cancel_reason ลงตาราง appointments ในฐานข้อมูลจริง
     const updated = await db.appointments.update({
       where: { id },
       data: { status: "cancelled", cancel_reason: reason || null }
     });
 
-    // 4.3 ส่งการแจ้งเตือนยกเลิกไปยังอีกฝ่าย
+    // 4.8 ส่งการแจ้งเตือนการยกเลิกพร้อมเหตุผลไปยังคู่สัญญาอีกฝ่าย
     const propertyTitle = appointment.properties?.title || "อสังหาริมทรัพย์";
     const customerName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "ผู้ใช้";
     const dateStr = toDateKey(appointment.appointment_date);
