@@ -3,13 +3,15 @@
 /**
  * ==============================================================================
  * คลังข้อมูลกลางของระบบ (Global App Context Provider)
+ * /context/AppContext.tsx
  * ==============================================================================
  * ภาพรวมการทำงาน:
- * 1. ทำหน้าที่เป็นศูนย์กลางเก็บข้อมูลที่ใช้ร่วมกันทั้งแอป เช่น รายชื่ออสังหาริมทรัพย์, รายการโปรด, 
- *    รายการนัดหมาย, ห้องแชท และข้อมูลโปรไฟล์ผู้ใช้งาน
- * 2. ทำหน้าที่โหลดข้อมูลเริ่มต้นจาก API หลังบ้าน และให้บริการฟังก์ชันสำหรับจัดการข้อมูล 
- *    (เช่น กดเพิ่ม/ลบรายการโปรด, นัดหมายเข้าชม, ส่งข้อความแชท)
- * 3. ช่วยให้ทุกคอมโพเนนต์สามารถเรียกใช้ข้อมูลกลางผ่าน Custom Hook `useApp()` ได้ทันที
+ * 1. ทำหน้าที่เป็นศูนย์กลางเก็บข้อมูลสภาวะกลาง (Global State) ที่ใช้ร่วมกันทั้งแอปพลิเคชัน
+ *    เช่น รายชื่ออสังหาริมทรัพย์, รายการโปรด, รายการนัดหมาย, ห้องแชทสด และข้อมูลโปรไฟล์ผู้ใช้
+ * 2. ทำหน้าที่ยิง API ดึงข้อมูลเริ่มต้นจากหลังบ้าน (PostgreSQL DB ผ่าน Next.js API Routes)
+ * 3. บริการฟังก์ชันการทำธุรกรรม (Actions) เช่น สลับบันทึกรายการโปรด, จอง/แก้ไข/ยกเลิกนัดหมาย, 
+ *    และส่งข้อความแชทไปหานายหน้า พร้อมเทคนิค Optimistic UI Update เพื่อการแสดงผลที่ตอบสนองทันที
+ * 4. ให้บริการ Custom Hook `useApp()` สำหรับให้ทุกคอมโพเนนต์ลูกเรียกใช้ข้อมูลได้สะดวก
  * ==============================================================================
  */
 
@@ -21,7 +23,7 @@ export type { Property, Appointment, ChatSession, Profile };
 
 /**
  * ------------------------------------------------------------------------------
- * นิยามพิมพ์เขียวข้อมูลและฟังก์ชันทั้งหมดใน AppContext (AppContextType Interface)
+ * นิยามพิมพ์เขียวโครงสร้างข้อมูลและฟังก์ชันทั้งหมดใน AppContext (AppContextType)
  * ------------------------------------------------------------------------------
  */
 interface AppContextType {
@@ -45,27 +47,27 @@ interface AppContextType {
   updateProfile: (profileData: Partial<Profile>) => void;           // ฟังก์ชันอัปเดตข้อมูลโปรไฟล์ผู้ใช้งาน
 }
 
-// สร้าง Context Object สำหรับเก็บสภาวะข้อมูลกลาง
+// สร้าง Context Object สำหรับเป็นศูนย์กลางกระจายข้อมูล
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 /**
  * ==============================================================================
- * AppProvider Component (ตัวห่อหุ้มแอปพลิเคชันเพื่อกระจายข้อมูล)
+ * AppProvider Component (คอมโพเนนต์แม่สำหรับห่อหุ้มโครงสร้างแอป)
  * ==============================================================================
  */
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession(); // ดึงข้อมูลล็อกอินของผู้ใช้ปัจจุบันจาก NextAuth
+  const { data: session } = useSession(); // ดึงข้อมูลล็อกอินของผู้ใช้ปัจจุบันจาก NextAuth Session
 
   // ---- State หลักภายในคลังข้อมูลกลาง ----
-  const [properties, setProperties] = useState<Property[]>([]);           // เก็บรายการบ้านทั้งหมด
-  const [propertiesLoading, setPropertiesLoading] = useState(true);        // สถานะโหลดรายการบ้าน
-  const [appointments, setAppointments] = useState<Appointment[]>([]);     // เก็บรายการนัดหมาย
-  const [favorites, setFavorites] = useState<(string | number)[]>([]);     // เก็บ ID รายการโปรด
-  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);     // เก็บห้องแชท
-  const [customProfile, setCustomProfile] = useState<Partial<Profile>>({});// เก็บข้อมูลโปรไฟล์เพิ่มเติม
+  const [properties, setProperties] = useState<Property[]>([]);           // อาร์เรย์เก็บรายการบ้านทั้งหมด
+  const [propertiesLoading, setPropertiesLoading] = useState(true);        // สถานะโหลดรายการบ้าน ( true = กำลังโหลด )
+  const [appointments, setAppointments] = useState<Appointment[]>([]);     // อาร์เรย์เก็บรายการนัดหมายเข้าชม
+  const [favorites, setFavorites] = useState<(string | number)[]>([]);     // อาร์เรย์เก็บ ID รายการโปรดที่บันทึกไว้
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);     // อาร์เรย์เก็บห้องแชทสด
+  const [customProfile, setCustomProfile] = useState<Partial<Profile>>({});// ออบเจกต์เก็บข้อมูลโปรไฟล์เพิ่มเติม
 
   // ============================================================================
-  // 1. ฟังก์ชันโหลด/รีเฟรชรายการนัดหมายจาก API หลังบ้าน
+  // 1. ฟังก์ชันดึง/รีเฟรชรายการนัดหมายล่าสุดจาก API หลังบ้าน (/api/appointments)
   // ============================================================================
   const refreshAppointments = useCallback(async () => {
     if (!session?.user) return;
@@ -83,7 +85,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [session]);
 
   // ============================================================================
-  // 2. ฟังก์ชันโหลด/รีเฟรชห้องแชททั้งหมดจาก API หลังบ้าน
+  // 2. ฟังก์ชันดึง/รีเฟรชห้องแชททั้งหมดล่าสุดจาก API หลังบ้าน (/api/chat/sessions)
   // ============================================================================
   const refreshChatSessions = useCallback(async () => {
     if (!session?.user) return;
@@ -97,19 +99,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [session]);
 
   // ============================================================================
-  // 3. EFFECT: โหลดข้อมูลเริ่มต้นจากฐานข้อมูลผ่าน API (ทำงานเมื่อโหลดแอปหรือ Session เปลี่ยน)
+  // 3. EFFECT: โหลดข้อมูลเริ่มต้นจากฐานข้อมูล (ทำงานเมื่อเปิดเว็บ หรือ เปลี่ยนผู้ใช้ล็อกอิน)
   // ============================================================================
   useEffect(() => {
-    // 3.1 โหลดข้อมูลอสังหาริมทรัพย์ทั้งหมดในระบบ (ไม่ต้องล็อกอินก็ดูได้)
+    // 3.1 โหลดข้อมูลอสังหาริมทรัพย์ทั้งหมดในระบบ (ทุกคนเห็นเหมือนกัน ไม่ต้องล็อกอินก็ดูได้)
     fetch('/api/properties')
       .then(res => res.json())
       .then(data => Array.isArray(data) && setProperties(data))
       .catch(console.error)
       .finally(() => setPropertiesLoading(false));
 
-    // 3.2 โหลดข้อมูลส่วนตัวของผู้ใช้เฉพาะเมื่อมีการ "ล็อกอินเข้าสู่ระบบ" แล้ว
+    // 3.2 โหลดข้อมูลเฉพาะบุคคล (นัดหมาย, แชท, รายการโปรด) เฉพาะเมื่อผู้ใช้งาน "เข้าสู่ระบบ" แล้ว
+    // หมายเหตุ: ใช้ .then() asynchronous callback ในการอัปเดต State เพื่อป้องกันเตือน Cascading Renders
     if (session?.user) {
-      // โหลดรายการนัดหมายของผู้ใช้
       fetch('/api/appointments')
         .then(res => res.json())
         .then(data => {
@@ -121,13 +123,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         })
         .catch(console.error);
 
-      // โหลดห้องแชทของผู้ใช้
       fetch('/api/chat/sessions')
         .then(res => res.json())
         .then(data => data.success && Array.isArray(data.sessions) && setChatSessions(data.sessions))
         .catch(console.error);
 
-      // โหลดรายการโปรดที่ผู้ใช้เคยบันทึกไว้ในฐานข้อมูล
       fetch('/api/user/saved-properties')
         .then(res => res.json())
         .then(data => {
@@ -140,7 +140,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [session]);
 
   // ============================================================================
-  // 4. การประกอบข้อมูลโปรไฟล์ผู้ใช้งาน (รวมข้อมูลจาก Session + CustomProfile)
+  // 4. การประกอบข้อมูลโปรไฟล์ผู้ใช้งาน (รวมข้อมูลจาก NextAuth Session + CustomProfile)
   // ============================================================================
   const profile: Profile = {
     fullName: customProfile.fullName || session?.user?.name || "ผู้สนใจซื้อ",
@@ -157,16 +157,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ============================================================================
-  // 6. ฟังก์ชันบันทึก / ยกเลิก รายการโปรดลงฐานข้อมูลจริง
+  // 6. ฟังก์ชันบันทึก / ยกเลิก รายการโปรดลงฐานข้อมูลจริง (พร้อม Optimistic UI)
   // ============================================================================
   const toggleFavorite = (id: string | number) => {
     const strId = String(id);
     const isFav = favorites.some(favId => String(favId) === strId);
     
-    // อัปเดต State หน้าบ้านทันที เพื่อความรวดเร็วในการแสดงผลไอคอนหัวใจ
+    // อัปเดต State หน้าบ้านทันที (Optimistic UI Update) เพื่อให้รูปหัวใจเปลี่ยนสีทันทีโดยไม่ต้องรอเน็ต
     setFavorites(prev => isFav ? prev.filter(favId => String(favId) !== strId) : [...prev, id]);
 
-    // ส่งคำร้องขอไปยัง API หลังบ้านเพื่อบันทึกลงฐานข้อมูลจริง
+    // ส่งคำขอไปยัง API หลังบ้านเพื่อบันทึก/ลบลงฐานข้อมูล PostgreSQL จริง
     if (session?.user) {
       const method = isFav ? 'DELETE' : 'POST';
       const url = isFav ? `/api/user/saved-properties?propertyId=${encodeURIComponent(strId)}` : '/api/user/saved-properties';
@@ -198,11 +198,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ============================================================================
   const cancelAppointment = async (id: string | number) => {
     const targetIdStr = String(id).trim();
-    // อัปเดต State หน้าบ้านทันที เพื่อให้รายการย้ายไปแท็บ "ยกเลิกแล้ว" ทันทีโดยไม่ต้องรอ
+    // อัปเดต State หน้าบ้านทันที เพื่อให้รายการย้ายไปแท็บ "ยกเลิกแล้ว" ทันทีโดยผู้ใช้ไม่ต้องรอคอย
     setAppointments(prev => prev.map(appt => String(appt.id).trim() === targetIdStr ? { ...appt, status: 'cancelled' as const } : appt));
 
     try {
-      // ส่งคำร้องขอลบ/ยกเลิกนัดหมายไปยังฐานข้อมูลจริง
+      // ยิงคำขอยกเลิกนัดหมายไปยัง API หลังบ้าน
       const res = await fetch(`/api/appointments?id=${encodeURIComponent(String(id))}`, {
         method: 'DELETE',
       });
@@ -261,7 +261,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCustomProfile(prev => ({ ...prev, ...profileData }));
   };
 
-  // กระจายข้อมูลและฟังก์ชันทั้งหมดผ่าน Context Provider ให้คอมโพเนนต์ลูกเรียกใช้
+  // กระจายข้อมูลและฟังก์ชันทั้งหมดผ่าน Context Provider ให้คอมโพเนนต์ลูกเรียกใช้ได้ทั้งแอป
   return (
     <AppContext.Provider value={{
       properties,

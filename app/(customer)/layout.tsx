@@ -6,6 +6,8 @@
 
 import Navbar from "@/components/layout/Navbar";
 // นำเข้า component แถบเมนูด้านบน (Navbar) ที่ใช้ร่วมกันทุกหน้าในกลุ่มลูกค้า
+import Footer from "@/components/layout/Footer";
+// นำเข้า Footer เต็มรูปแบบ (เมนู, ติดต่อ, ลิงก์ PDPA/Terms) ตัวเดียวกับที่ใช้ในหน้า Landing
 
 // CustomerLayout เป็น Server Component โดยดีฟอลต์ (ไม่มี "use client")
 // รับ props ชื่อ children ซึ่งก็คือเนื้อหาของหน้า (page.tsx) ที่ถูก render อยู่ภายในนี้
@@ -29,15 +31,9 @@ export default function CustomerLayout({
         {/* ตรงนี้คือจุดที่ Next.js จะแทรกเนื้อหาของหน้าปัจจุบัน เช่น หน้าแรก, หน้ารายละเอียดทรัพย์สิน ฯลฯ */}
       </main>
 
-      {/* Footer ท้ายเว็บไซต์ แสดงอยู่ทุกหน้าเช่นกัน
-          - พื้นหลังสีเข้ม (slate-900) ตัวอักษรสีเทาอ่อน (slate-400)
-          - มีเส้นขอบบน (border-t) คั่นจากเนื้อหาด้านบน */}
-      <footer className="bg-slate-900 text-slate-400 py-8 border-t border-slate-800">
-        <div className="max-w-5xl mx-auto px-4 text-center">
-          {/* ข้อความลิขสิทธิ์ท้ายเว็บ จัดกึ่งกลางและกำหนดความกว้างสูงสุดไม่ให้กว้างเกินไปบนจอใหญ่ */}
-          <p className="text-xs">&copy; 2026 Srichai Property Agents. All rights reserved.</p>
-        </div>
-      </footer>
+      {/* Footer ท้ายเว็บไซต์ แสดงอยู่ทุกหน้าเช่นกัน (ใช้ตัวเต็มร่วมกับหน้า Landing
+          เพื่อให้ลูกค้าที่ล็อกอินแล้วยังเห็นลิงก์ PDPA/Terms/ติดต่อเราด้วย) */}
+      <Footer />
     </div>
   );
 }
