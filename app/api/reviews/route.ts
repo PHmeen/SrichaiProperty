@@ -3,14 +3,20 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { db } from "@/lib/db";
 
-interface SessionUser {
-  user?: {
-    id?: string;
-    email?: string;
-  };
-}
+/**
+ * ==============================================================================
+ * API Endpoint สำหรับระบบรีวิวและให้คะแนนดาวนายหน้า (Agent Reviews API Route)
+ * /app/api/reviews/route.ts
+ * ==============================================================================
+ * วัตถุประสงค์หลัก:
+ * 1. GET: ดึงรายการรีวิวและคำนวณคะแนนเฉลี่ยดาว (Average Rating) ของนายหน้ารายนั้นๆ
+ * 2. POST: บันทึก/อัปเดตรีวิวจากลูกค้า (Upsert) พร้อมส่งการแจ้งเตือนไปยังนายหน้า
+ * ==============================================================================
+ */
 
-// GET: ดึงรีวิวของนายหน้า หรือคะแนนเฉลี่ยดาว
+// ------------------------------------------------------------------------------
+// 1. GET: ดึงรีวิวและคะแนนเฉลี่ยดาวของนายหน้าตาม agentId
+// ------------------------------------------------------------------------------
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -20,15 +26,9 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "กรุณาระบุ agentId" }, { status: 400 });
     }
 
-    const appointments = await db.appointments.findMany({
-      where: { agent_id: agentId },
-      select: { id: true }
-    });
-
-    const appointmentIds = appointments.map(a => a.id);
-
+    // ดึงรายการรีวิวทั้งหมดของนายหน้านี้ใน Query เดียว โดยใช้ Prisma Relation Filter
     const reviewsList = await db.reviews.findMany({
-      where: { appointment_id: { in: appointmentIds } },
+      where: { appointments: { agent_id: agentId } },
       include: {
         appointments: {
           include: {
@@ -44,25 +44,21 @@ export async function GET(req: Request) {
       orderBy: { created_at: "desc" }
     });
 
-    let totalRating = 0;
+    // คำนวณคะแนนเฉลี่ยดาว
     const count = reviewsList.length;
-    reviewsList.forEach(r => {
-      totalRating += r.rating || 5;
-    });
-
+    const totalRating = reviewsList.reduce((sum, r) => sum + (r.rating || 5), 0);
     const averageRating = count > 0 ? (totalRating / count).toFixed(1) : "5.0";
 
     const formattedReviews = reviewsList.map(r => {
       const customer = r.appointments?.users_appointments_customer_idTousers;
-      const customerName = customer ? `${customer.first_name} ${customer.last_name}` : "ลูกค้าทั่วไป";
       return {
         id: r.id,
         rating: r.rating || 5,
         comment: r.comment || "",
         createdAt: r.created_at,
-        customerName,
+        customerName: customer ? `${customer.first_name} ${customer.last_name}` : "ลูกค้าทั่วไป",
         customerImage: customer?.profile_image,
-        propertyTitle: r.appointments?.properties?.title || "อสังหาฯ"
+        propertyTitle: r.appointments?.properties?.title || "อสังหาริมทรัพย์"
       };
     });
 
@@ -73,30 +69,32 @@ export async function GET(req: Request) {
       reviews: formattedReviews
     });
   } catch (error) {
-    const err = error as Error;
-    console.error("GET Reviews Error:", err);
-    return NextResponse.json({ error: "ดึงข้อมูลรีวิวล้มเหลว: " + err.message }, { status: 500 });
+    console.error("GET Reviews Error:", error);
+    return NextResponse.json({ error: "ดึงข้อมูลรีวิวล้มเหลว: " + (error as Error).message }, { status: 500 });
   }
 }
 
-// POST: บันทึกรีวิวใหม่จากลูกค้า
+// ------------------------------------------------------------------------------
+// 2. POST: บันทึกรีวิวใหม่ หรือ อัปเดตรีวิวเดิมจากลูกค้า
+// ------------------------------------------------------------------------------
 export async function POST(req: Request) {
   try {
-    const session = (await getServerSession(authOptions)) as SessionUser | null;
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อน" }, { status: 401 });
+    const session = await getServerSession(authOptions);
+    const userEmail = session?.user?.email;
+
+    if (!userEmail) {
+      return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อนดำเนินการ" }, { status: 401 });
     }
 
     const user = await db.users.findUnique({
-      where: { email: session.user.email }
+      where: { email: userEmail }
     });
 
     if (!user) {
       return NextResponse.json({ error: "ไม่พบผู้ใช้ในระบบ" }, { status: 404 });
     }
 
-    const body = await req.json();
-    const { appointmentId, rating, comment } = body;
+    const { appointmentId, rating, comment } = await req.json();
 
     if (!appointmentId || !rating) {
       return NextResponse.json({ error: "กรุณาระบุรหัสนัดหมายและคะแนนดาว" }, { status: 400 });
@@ -114,6 +112,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "คุณไม่มีสิทธิ์รีวิวการนัดหมายนี้" }, { status: 403 });
     }
 
+    // บันทึก หรือ อัปเดตรีวิวกรณีเคยรีวิวไปแล้ว (Upsert)
     const newReview = await db.reviews.upsert({
       where: { appointment_id: appointmentId },
       update: {
@@ -127,7 +126,7 @@ export async function POST(req: Request) {
       }
     });
 
-    // ส่งการแจ้งเตือนถึงนายหน้า
+    // ส่งการแจ้งเตือนไปยังนายหน้าผู้ดูแลการนัดหมาย
     if (appointment.agent_id) {
       await db.notifications.create({
         data: {
@@ -142,8 +141,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, data: newReview });
   } catch (error) {
-    const err = error as Error;
-    console.error("POST Review Error:", err);
-    return NextResponse.json({ error: "บันทึกรีวิวล้มเหลว: " + err.message }, { status: 500 });
+    console.error("POST Review Error:", error);
+    return NextResponse.json({ error: "บันทึกรีวิวล้มเหลว: " + (error as Error).message }, { status: 500 });
   }
 }
