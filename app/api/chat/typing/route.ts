@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import { db } from '@/lib/db';
-import { pusherServer, chatChannelName } from '@/lib/pusher';
+import { getPusher, chatChannelName } from '@/lib/pusher';
 
 // POST: แจ้งอีกฝ่ายในห้องแชทว่ากำลังพิมพ์อยู่หรือไม่ (ไม่บันทึกลง DB, ยิงผ่าน Pusher เท่านั้น)
 // แทนที่ event 'typing' ของ socket-server.js เดิม
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'คุณไม่มีสิทธิ์เข้าถึงห้องแชทนี้' }, { status: 403 });
     }
 
-    await pusherServer.trigger(chatChannelName(sessionId), 'client-typing', {
+    await getPusher().trigger(chatChannelName(sessionId), 'client-typing', {
       isTyping: !!isTyping,
       userId: user.id
     });

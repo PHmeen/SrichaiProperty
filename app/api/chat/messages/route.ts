@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import { db } from '@/lib/db';
-import { pusherServer, chatChannelName } from '@/lib/pusher';
+import { getPusher, chatChannelName } from '@/lib/pusher';
 
 const MESSAGE_PAGE_SIZE = 30;
 
@@ -129,7 +129,7 @@ export async function POST(request: Request) {
     // กระจายข้อความใหม่ผ่าน Pusher ให้อีกฝ่ายในห้องเห็นทันที (ไม่ให้ Pusher ล่มแล้วทำให้ส่งข้อความล้มเหลวไปด้วย)
     // ฝั่ง client แค่ใช้เป็นสัญญาณให้ refetch ข้อมูลห้องแชทใหม่ ไม่ได้พึ่งพา payload นี้โดยตรง
     // เพราะ field "sender" ที่คำนวณด้านล่างเป็นมุมมองของผู้ส่งเท่านั้น ผู้รับต้องดึงข้อมูลใหม่เพื่อมุมมองที่ถูกต้อง
-    await pusherServer.trigger(chatChannelName(sessionId), 'new-message', { messageId: message.id })
+    await getPusher().trigger(chatChannelName(sessionId), 'new-message', { messageId: message.id })
       .catch(err => console.error('Pusher trigger error:', err));
 
     // แจ้งเตือนอีกฝ่ายในห้องแชท (ไม่ให้การแจ้งเตือนล้มเหลวทำให้การส่งข้อความล้มเหลวไปด้วย)

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import { db } from '@/lib/db';
-import { pusherServer } from '@/lib/pusher';
+import { getPusher } from '@/lib/pusher';
 
 // POST: ยืนยันสิทธิ์ก่อนอนุญาตให้ subscribe private channel ของห้องแชท (private-chat-{sessionId})
 // pusher-js เรียก endpoint นี้อัตโนมัติทุกครั้งที่ subscribe channel ที่ขึ้นต้นด้วย "private-"
@@ -44,6 +44,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'คุณไม่มีสิทธิ์เข้าห้องแชทนี้' }, { status: 403 });
   }
 
-  const authResponse = pusherServer.authorizeChannel(socketId, channel);
+  const authResponse = getPusher().authorizeChannel(socketId, channel);
   return NextResponse.json(authResponse);
 }
