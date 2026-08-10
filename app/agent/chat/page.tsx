@@ -39,14 +39,8 @@ interface QuickReplyTemplate {
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
 
-/**
- * ==============================================================================
- * AGENT CHAT PAGE (หน้าแชทสำหรับเอเย่นต์ / นายหน้า)
- * ==============================================================================
- * ใช้ API ชุดเดียวกับฝั่งลูกค้า (/api/chat/sessions, /api/chat/messages) เนื่องจาก
- * รองรับการแยก customer_id / agent_id ตามห้องแชทอยู่แล้ว ลดโค้ดซ้ำซ้อนกับ
- * /api/agent/portal?type=chat ที่เคยแยกไว้ต่างหาก
- */
+// หน้าแชทฝั่งนายหน้า ใช้ API ชุดเดียวกับฝั่งลูกค้า (/api/chat/*)
+// เพราะ API รองรับแยกห้องแชทตาม customer_id / agent_id อยู่แล้ว ไม่ต้องแยก API ต่างหาก
 function AgentChatContent() {
   const { status } = useSession();
   const searchParams = useSearchParams();
@@ -62,7 +56,7 @@ function AgentChatContent() {
   const socketRef = useRef<Socket | null>(null);
   const joinedRoomRef = useRef<string | null>(null);
 
-  // 1. โหลดข้อมูลห้องแชทของนายหน้าจากฐานข้อมูลจริง
+  // โหลดรายการห้องแชททั้งหมดของนายหน้าคนนี้ (เรียกตอนเปิดหน้า และทุกครั้งที่มีข้อความใหม่)
   const fetchChatData = useCallback(() => {
     fetch('/api/chat/sessions')
       .then(res => res.json())
@@ -79,7 +73,7 @@ function AgentChatContent() {
       .finally(() => setLoading(false));
   }, [initialSessionId]);
 
-  // 1b. โหลดเทมเพลตข้อความตอบกลับด่วนของนายหน้าจากฐานข้อมูลจริง
+  // โหลดเทมเพลตข้อความตอบกลับด่วนของนายหน้าคนนี้
   const fetchTemplates = useCallback(() => {
     fetch('/api/agent/quick-replies')
       .then(res => res.json())
@@ -91,6 +85,7 @@ function AgentChatContent() {
       .catch(err => console.error('Error fetching quick-reply templates:', err));
   }, []);
 
+  // เข้าหน้ามาแล้วต้อง login เสร็จก่อน ถึงจะเริ่มโหลดข้อมูลได้
   useEffect(() => {
     if (status === 'authenticated') {
       fetchChatData();
@@ -98,14 +93,14 @@ function AgentChatContent() {
     }
   }, [status, fetchChatData, fetchTemplates]);
 
-  // 1c. ถ้า sessionId ใน URL เปลี่ยน (เช่น คลิกลิงก์แจ้งเตือนขณะเปิดหน้านี้อยู่แล้ว) ให้สลับห้องตาม
-  // ปรับ state ระหว่าง render (ตามแนวทางของ React) แทนการใช้ effect เพื่อเลี่ยง cascading render
+  // ถ้า URL มี sessionId ใหม่ (เช่น กดลิงก์จากการแจ้งเตือนขณะเปิดหน้านี้ค้างอยู่) ให้สลับไปห้องนั้นทันที
+  // หมายเหตุ: จงใจเซ็ต state ตรงนี้ระหว่าง render แทนที่จะใช้ useEffect เพื่อไม่ให้ต้อง render ซ้ำเกินจำเป็น
   if (initialSessionId && initialSessionId !== syncedSessionId) {
     setSyncedSessionId(initialSessionId);
     setSelectedSessionId(initialSessionId);
   }
 
-  // 2. เชื่อมต่อ Socket.io ครั้งเดียว พร้อม JWT token ยืนยันตัวตน
+  // เชื่อมต่อ Socket.io ครั้งเดียวตอนล็อกอินสำเร็จ โดยขอ JWT token มายืนยันตัวตนกับ socket server ก่อน
   useEffect(() => {
     if (status !== 'authenticated') return;
     let cancelled = false;
@@ -123,16 +118,19 @@ function AgentChatContent() {
       });
       socketRef.current = socket;
 
+      // เชื่อมต่อสำเร็จ (หรือหลุดแล้วต่อกลับมาใหม่) ให้เข้าห้องที่ค้างไว้อีกครั้ง
       socket.on('connect', () => {
         if (joinedRoomRef.current) {
           socket.emit('join-room', joinedRoomRef.current);
         }
       });
 
+      // มีข้อความใหม่เข้ามาในห้อง -> โหลดรายการห้องแชทใหม่ทั้งหมด เพื่อให้ข้อมูลถูกต้องเสมอ
       socket.on('receive-message', () => {
         fetchChatData();
       });
 
+      // อีกฝ่ายกำลังพิมพ์อยู่ -> จำไว้เฉพาะห้องที่กำลังเปิดอยู่ตอนนี้
       socket.on('client-typing', (data: { isTyping: boolean }) => {
         if (joinedRoomRef.current) {
           setIsTypingState(prev => ({ ...prev, [joinedRoomRef.current as string]: data.isTyping }));
@@ -151,7 +149,7 @@ function AgentChatContent() {
     };
   }, [status, fetchChatData]);
 
-  // 3. สลับห้อง: ออกจากห้องเดิม เข้าห้องใหม่ ผ่าน connection เดียวกัน
+  // เมื่อเปลี่ยนห้องที่เลือก: ออกจากห้องเดิมก่อน แล้วค่อยเข้าห้องใหม่ (ใช้ socket connection เดิม ไม่ต้องต่อใหม่)
   useEffect(() => {
     const socket = socketRef.current;
     if (!selectedSessionId) return;
@@ -165,7 +163,7 @@ function AgentChatContent() {
     joinedRoomRef.current = selectedSessionId;
   }, [selectedSessionId]);
 
-  // 4. ทำเครื่องหมายว่าอ่านข้อความในห้องที่เปิดอยู่แล้ว
+  // เปิดห้องแชท -> ทำเครื่องหมายว่าอ่านข้อความในห้องนั้นหมดแล้ว
   const handleOpenSession = useCallback((sessionId: string) => {
     fetch('/api/chat/messages', {
       method: 'PATCH',
@@ -176,14 +174,14 @@ function AgentChatContent() {
       .catch(err => console.error('Mark read failed:', err));
   }, []);
 
-  // แจ้งลูกค้าว่านายหน้ากำลังพิมพ์อยู่หรือไม่ (ผ่าน socket เท่านั้น ไม่บันทึกลง DB)
+  // แจ้งลูกค้าแบบเรียลไทม์ว่านายหน้ากำลังพิมพ์อยู่หรือไม่ (ส่งผ่าน socket อย่างเดียว ไม่บันทึกลงฐานข้อมูล)
   const handleTyping = useCallback((typing: boolean) => {
     if (socketRef.current?.connected && selectedSessionId) {
       socketRef.current.emit('typing', { roomId: selectedSessionId, isTyping: typing });
     }
   }, [selectedSessionId]);
 
-  // โหลดข้อความเก่ากว่านี้ในห้องที่เลือก (cursor pagination ตาม message id ที่เก่าที่สุดที่มีอยู่)
+  // กดปุ่ม "โหลดข้อความเก่ากว่านี้" -> ดึงข้อความก่อนหน้า oldestMessageId มาต่อด้านบน
   const handleLoadOlderMessages = useCallback(async (sessionId: string, oldestMessageId: string | number) => {
     try {
       const res = await fetch(`/api/chat/messages?sessionId=${sessionId}&before=${oldestMessageId}`);
@@ -206,11 +204,12 @@ function AgentChatContent() {
     );
   }
 
-  // 5. ฟังก์ชันส่งข้อความ (ข้อความตัวหนังสือ / ไฟล์แนบ / ตำแหน่ง)
+  // ส่งข้อความ (รองรับทั้งข้อความตัวหนังสือ ไฟล์แนบ และตำแหน่ง) แล้วแจ้งอีกฝ่ายผ่าน socket ทันที
   const handleSendMessage = async (payload: OutgoingChatPayload) => {
     if (!selectedSessionId) return;
 
     try {
+      // 1) บันทึกข้อความลงฐานข้อมูลก่อน
       const res = await fetch('/api/chat/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -219,12 +218,14 @@ function AgentChatContent() {
 
       const data = await res.json();
       if (res.ok && data.success) {
+        // 2) บันทึกสำเร็จ -> ส่งต่อผ่าน socket ให้อีกฝ่ายเห็นข้อความแบบเรียลไทม์
         if (socketRef.current?.connected) {
           socketRef.current.emit('send-message', {
             roomId: selectedSessionId,
             message: data.message
           });
         }
+        // 3) โหลดรายการห้องแชทใหม่ เพื่ออัปเดตข้อความล่าสุดของฝั่งเราเองด้วย
         fetchChatData();
       } else {
         console.error('Error sending message:', data.error);
@@ -234,7 +235,7 @@ function AgentChatContent() {
     }
   };
 
-  // 6. แปลงข้อมูล sessions ของนายหน้าให้อยู่ในโครงสร้าง SharedChatSession
+  // แปลงข้อมูลห้องแชทให้อยู่ในรูปแบบที่ SharedChatView ต้องการ (คอมโพเนนต์กลางที่ใช้ร่วมกับฝั่งลูกค้า)
   const sharedSessions: SharedChatSession[] = sessions.map(s => ({
     id: s.id,
     name: s.name,
@@ -248,6 +249,7 @@ function AgentChatContent() {
     propertyPrice: s.propertyPrice,
     messages: s.messages.map(m => ({
       id: m.id,
+      // API ตอบกลับมาเป็น 'user' เมื่อเป็นข้อความของเราเอง ในหน้านี้ "เรา" คือนายหน้า จึงแปลงเป็น 'agent'
       sender: m.sender === 'user' ? 'agent' : 'other',
       text: m.text,
       time: m.time,
@@ -258,7 +260,7 @@ function AgentChatContent() {
     }))
   }));
 
-  // เพิ่มเทมเพลตข้อความตอบกลับด่วนใหม่ (บันทึกลงฐานข้อมูลจริง)
+  // ถามชื่อและเนื้อหาเทมเพลตจากผู้ใช้ แล้วบันทึกเป็นเทมเพลตข้อความตอบกลับด่วนอันใหม่
   const handleAddTemplate = async () => {
     const title = prompt('กรุณาระบุชื่อหัวข้อเทมเพลต (เช่น "แจ้งเลื่อนนัดหมาย")');
     if (!title?.trim()) return;
@@ -282,7 +284,7 @@ function AgentChatContent() {
     }
   };
 
-  // ลบเทมเพลตข้อความตอบกลับด่วน (เลือกจากรายการ)
+  // ให้ผู้ใช้เลือกหมายเลขเทมเพลตจากรายการ แล้วลบเทมเพลตนั้นทิ้ง
   const handleDeleteTemplate = async () => {
     if (templates.length === 0) return;
     const list = templates.map((t, i) => `${i + 1}. ${t.title}`).join('\n');
@@ -303,7 +305,7 @@ function AgentChatContent() {
     }
   };
 
-  // ปุ่มลัดสำหรับเอเย่นต์ (Quick Actions) — โหลดมาจากเทมเพลตในฐานข้อมูลจริง ไม่ใช่ข้อความ hardcode
+  // รายการปุ่มลัดที่แสดงในหน้าแชท: หนึ่งปุ่มต่อหนึ่งเทมเพลต บวกปุ่มเพิ่ม/ลบเทมเพลต
   const quickActions = [
     ...templates.map(t => ({
       label: t.title,
