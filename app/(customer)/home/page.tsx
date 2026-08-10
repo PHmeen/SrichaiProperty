@@ -142,7 +142,7 @@ export default function CustomerHomePage() {
             {/* ฟอร์มกรอกคำค้นหา และ Dropdown ประเภทอสังหาฯ */}
             <div className="flex flex-col md:flex-row items-stretch bg-slate-50 rounded-xl border border-slate-200 p-1 gap-1.5">
               <div className="flex-1 flex items-center px-4 py-2">
-                <span className="text-xl mr-3 text-slate-400">📍</span>
+                <span className="text-xl mr-3 text-slate-400"></span>
                 <div className="flex flex-col text-left w-full">
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">ทำเลที่ตั้ง</span>
                   <input
@@ -163,7 +163,7 @@ export default function CustomerHomePage() {
                 className="relative md:w-48 flex items-center px-4 py-2 cursor-pointer select-none"
                 onClick={() => setIsTypeOpen(!isTypeOpen)}
               >
-                <span className="text-lg mr-3 text-slate-400">🏠</span>
+                <span className="text-lg mr-3 text-slate-400"></span>
                 <div className="flex flex-col text-left w-full">
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">ประเภทอสังหาฯ</span>
                   <div className="text-slate-800 font-semibold text-sm flex items-center justify-between">

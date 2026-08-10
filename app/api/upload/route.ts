@@ -17,7 +17,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
-    // ✅ ตรวจสอบประเภทไฟล์
+    //  ตรวจสอบประเภทไฟล์
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
       return NextResponse.json(
         { error: 'รองรับเฉพาะไฟล์รูปภาพ (JPEG, PNG, WEBP, GIF) หรือเอกสาร PDF เท่านั้น' },
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // ✅ ตรวจสอบขนาดไฟล์
+    //  ตรวจสอบขนาดไฟล์
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
         { error: 'ขนาดไฟล์ต้องไม่เกิน 5MB' },
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // ✅ ตั้งชื่อไฟล์ปลอดภัย — ไม่ใช้ชื่อไฟล์เดิมจาก client
+    //  ตั้งชื่อไฟล์ปลอดภัย — ไม่ใช้ชื่อไฟล์เดิมจาก client
     const ext = file.type === 'image/jpeg' ? '.jpg'
       : file.type === 'image/png' ? '.png'
       : file.type === 'image/webp' ? '.webp'
