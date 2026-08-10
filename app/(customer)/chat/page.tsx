@@ -1,16 +1,20 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
-import SharedChatView, { SharedChatSession } from '@/components/common/SharedChatView';
+import SharedChatView, { SharedChatSession, OutgoingChatPayload } from '@/components/common/SharedChatView';
 
 interface ChatMessage {
   id: string | number;
   sender: 'user' | 'other';
   text: string;
   time: string;
+  fileUrl?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  isRead?: boolean;
 }
 
 interface ChatSession {
@@ -20,11 +24,15 @@ interface ChatSession {
   isActive: boolean;
   lastMessage: string;
   time: string;
+  unreadCount?: number;
+  hasMoreMessages?: boolean;
   propertyTitle: string;
   propertyPrice: string;
   propertyImage: string;
   messages: ChatMessage[];
 }
+
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
 
 /**
  * ==============================================================================
@@ -40,8 +48,10 @@ function ChatContent() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(initialSessionId);
+  const [isTypingState, setIsTypingState] = useState<{ [key: string]: boolean }>({});
 
   const socketRef = useRef<Socket | null>(null);
+  const joinedRoomRef = useRef<string | null>(null);
 
   // 1. โหลดข้อมูลห้องแชทของลูกค้า
   const fetchChatData = useCallback(() => {
@@ -65,38 +75,108 @@ function ChatContent() {
     fetchChatData();
   }, [sessionStatus, fetchChatData]);
 
-  // 2. เชื่อมต่อ Socket.io รับ-ส่งข้อความเรียลไทม์
+  // 2. เชื่อมต่อ Socket.io ครั้งเดียวตอนล็อกอินสำเร็จ (ไม่ reconnect ทุกครั้งที่สลับห้อง)
   useEffect(() => {
-    if (!selectedSessionId) return;
+    if (sessionStatus !== 'authenticated') return;
+    let cancelled = false;
 
-    const socket = io('http://localhost:3001', {
-      transports: ['websocket'],
-      autoConnect: true
-    });
-    socketRef.current = socket;
+    (async () => {
+      const res = await fetch('/api/chat/socket-token');
+      if (!res.ok) return;
+      const { token } = await res.json();
+      if (cancelled || !token) return;
 
-    socket.on('connect', () => {
-      socket.emit('join-room', selectedSessionId);
-    });
+      const socket = io(SOCKET_URL, {
+        transports: ['websocket'],
+        autoConnect: true,
+        auth: { token }
+      });
+      socketRef.current = socket;
 
-    socket.on('receive-message', () => {
-      fetchChatData();
-    });
+      socket.on('connect', () => {
+        if (joinedRoomRef.current) {
+          socket.emit('join-room', joinedRoomRef.current);
+        }
+      });
+
+      socket.on('receive-message', () => {
+        fetchChatData();
+      });
+
+      socket.on('client-typing', (data: { isTyping: boolean }) => {
+        if (joinedRoomRef.current) {
+          setIsTypingState(prev => ({ ...prev, [joinedRoomRef.current as string]: data.isTyping }));
+        }
+      });
+
+      socket.on('room-error', (data: { error: string }) => {
+        console.error('Chat room error:', data.error);
+      });
+    })();
 
     return () => {
-      socket.disconnect();
+      cancelled = true;
+      socketRef.current?.disconnect();
+      socketRef.current = null;
     };
-  }, [selectedSessionId, fetchChatData]);
+  }, [sessionStatus, fetchChatData]);
 
-  // 3. ฟังก์ชันส่งข้อความ
-  const handleSendMessage = async (textToSend: string) => {
-    if (!textToSend.trim() || !selectedSessionId) return;
+  // 3. สลับห้อง: ออกจากห้องเดิม เข้าห้องใหม่ ผ่าน connection เดียวกัน (ไม่ต่อ socket ใหม่)
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!selectedSessionId) return;
+
+    if (socket?.connected) {
+      if (joinedRoomRef.current && joinedRoomRef.current !== selectedSessionId) {
+        socket.emit('leave-room', joinedRoomRef.current);
+      }
+      socket.emit('join-room', selectedSessionId);
+    }
+    joinedRoomRef.current = selectedSessionId;
+  }, [selectedSessionId]);
+
+  // 4. ทำเครื่องหมายว่าอ่านข้อความในห้องที่เปิดอยู่แล้ว
+  const handleOpenSession = useCallback((sessionId: string) => {
+    fetch('/api/chat/messages', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId })
+    })
+      .then(() => setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, unreadCount: 0 } : s)))
+      .catch(err => console.error('Mark read failed:', err));
+  }, []);
+
+  // 5. แจ้งอีกฝ่ายว่ากำลังพิมพ์อยู่หรือไม่ (ผ่าน socket เท่านั้น ไม่บันทึกลง DB)
+  const handleTyping = useCallback((typing: boolean) => {
+    if (socketRef.current?.connected && selectedSessionId) {
+      socketRef.current.emit('typing', { roomId: selectedSessionId, isTyping: typing });
+    }
+  }, [selectedSessionId]);
+
+  // 5b. โหลดข้อความเก่ากว่านี้ในห้องที่เลือก (cursor pagination ตาม message id ที่เก่าที่สุดที่มีอยู่)
+  const handleLoadOlderMessages = useCallback(async (sessionId: string, oldestMessageId: string | number) => {
+    try {
+      const res = await fetch(`/api/chat/messages?sessionId=${sessionId}&before=${oldestMessageId}`);
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSessions(prev => prev.map(s => s.id === sessionId
+          ? { ...s, messages: [...data.messages, ...s.messages], hasMoreMessages: data.hasMore }
+          : s));
+      }
+    } catch (err) {
+      console.error('Load older messages failed:', err);
+    }
+  }, []);
+
+  // 6. ฟังก์ชันส่งข้อความ (ข้อความตัวหนังสือ / ไฟล์แนบ / ตำแหน่ง)
+  const handleSendMessage = async (payload: OutgoingChatPayload) => {
+    if (!selectedSessionId) return;
 
     try {
       const res = await fetch('/api/chat/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: selectedSessionId, content: textToSend })
+        body: JSON.stringify({ sessionId: selectedSessionId, content: payload.text, fileUrl: payload.fileUrl, latitude: payload.latitude, longitude: payload.longitude })
       });
 
       const data = await res.json();
@@ -108,6 +188,8 @@ function ChatContent() {
           });
         }
         fetchChatData();
+      } else {
+        alert(data.error || 'เกิดข้อผิดพลาดในการส่งข้อความ');
       }
     } catch {
       alert('เกิดข้อผิดพลาดในการส่งข้อความ');
@@ -122,7 +204,7 @@ function ChatContent() {
     );
   }
 
-  // 4. แปลงข้อมูล sessions ของลูกค้าให้อยู่ในรูปแบบ SharedChatSession
+  // 6. แปลงข้อมูล sessions ของลูกค้าให้อยู่ในรูปแบบ SharedChatSession
   const sharedSessions: SharedChatSession[] = sessions.map(s => ({
     id: s.id,
     name: s.name,
@@ -130,13 +212,19 @@ function ChatContent() {
     isActive: s.isActive,
     lastMessage: s.lastMessage,
     time: s.time,
+    unreadCount: s.unreadCount,
+    hasMoreMessages: s.hasMoreMessages,
     propertyTitle: s.propertyTitle,
     propertyPrice: s.propertyPrice,
     messages: s.messages.map(m => ({
       id: m.id,
       sender: m.sender,
       text: m.text,
-      time: m.time
+      time: m.time,
+      fileUrl: m.fileUrl,
+      latitude: m.latitude,
+      longitude: m.longitude,
+      isRead: m.isRead
     }))
   }));
 
@@ -147,6 +235,10 @@ function ChatContent() {
       selectedSessionId={selectedSessionId}
       onSelectSession={(id) => setSelectedSessionId(id)}
       onSendMessage={handleSendMessage}
+      onOpenSession={handleOpenSession}
+      onTyping={handleTyping}
+      onLoadOlderMessages={handleLoadOlderMessages}
+      isTyping={selectedSessionId ? isTypingState[selectedSessionId] : false}
     />
   );
 }

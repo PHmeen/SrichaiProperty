@@ -20,6 +20,7 @@ export async function GET() {
     }
 
     const isAgent = user.role_id === 'agent';
+    const MESSAGE_PAGE_SIZE = 30;
 
     const sessions = await db.chat_sessions.findMany({
       where: isAgent ? { agent_id: user.id } : { customer_id: user.id },
@@ -35,27 +36,54 @@ export async function GET() {
             property_images: { orderBy: { order_index: 'asc' }, take: 1 }
           }
         },
+        // โหลดเฉพาะข้อความล่าสุด N รายการต่อห้อง กันหน้าโหลดช้าเมื่อห้องมีประวัติแชทยาวมาก
+        // (ข้อความเก่ากว่านี้โหลดเพิ่มทีหลังผ่าน GET /api/chat/messages?sessionId=...&before=...)
         messages: {
-          orderBy: { created_at: 'asc' }
+          orderBy: { created_at: 'desc' },
+          take: MESSAGE_PAGE_SIZE
         }
       },
       orderBy: { created_at: 'desc' }
     });
 
+    const sessionIds = sessions.map(s => s.id);
+
+    // นับจำนวนข้อความทั้งหมดต่อห้อง (เทียบกับจำนวนที่โหลดมา เพื่อรู้ว่ายังมีข้อความเก่ากว่านี้ให้โหลดเพิ่มไหม)
+    const totalCounts = sessionIds.length
+      ? await db.messages.groupBy({ by: ['session_id'], where: { session_id: { in: sessionIds } }, _count: { _all: true } })
+      : [];
+    const totalCountMap = new Map(totalCounts.map(c => [c.session_id, c._count._all]));
+
+    // นับข้อความที่ยังไม่อ่านจากฐานข้อมูลทั้งหมด (ไม่ใช่แค่ใน 30 ข้อความล่าสุดที่โหลดมาแสดง)
+    const unreadCounts = sessionIds.length
+      ? await db.messages.groupBy({
+          by: ['session_id'],
+          where: { session_id: { in: sessionIds }, sender_id: { not: user.id }, is_read: false }
+        , _count: { _all: true } })
+      : [];
+    const unreadCountMap = new Map(unreadCounts.map(c => [c.session_id, c._count._all]));
+
     const formatted = sessions.map(s => {
+      // กลับลำดับข้อความที่โหลดมา (desc -> asc) เพื่อแสดงเก่าไปใหม่ตามปกติ
+      s.messages.reverse();
+      const hasMoreMessages = (totalCountMap.get(s.id) || 0) > s.messages.length;
       const otherUser = isAgent ? s.users_chat_sessions_customer_idTousers : s.users_chat_sessions_agent_idTousers;
       const otherName = otherUser ? `${otherUser.first_name} ${otherUser.last_name}`.trim() : (isAgent ? 'ลูกค้า' : 'นายหน้า');
       const avatarUrl = otherUser?.profile_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(otherName)}&background=1d4ed8&color=fff`;
       const propImage = s.properties?.property_images[0]?.image_url || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80';
       const lastMsg = s.messages[s.messages.length - 1];
+      const lastMsgPreview = lastMsg ? (lastMsg.content || (lastMsg.file_url ? '📎 ไฟล์แนบ' : lastMsg.latitude ? '📍 ตำแหน่งที่แชร์' : '')) : 'เริ่มบทสนทนาใหม่';
+      const unreadCount = unreadCountMap.get(s.id) || 0;
 
       return {
         id: s.id,
         name: otherName,
         avatar: avatarUrl,
-        lastMessage: lastMsg?.content || 'เริ่มบทสนทนาใหม่',
+        lastMessage: lastMsgPreview,
         time: lastMsg ? new Date(lastMsg.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '',
         isActive: true,
+        unreadCount,
+        hasMoreMessages,
         propertyId: s.property_id,
         propertyTitle: s.properties?.title || 'อสังหาฯ ที่สนใจ',
         propertyPrice: s.properties ? '฿' + Number(s.properties.price).toLocaleString() : '',
@@ -64,6 +92,10 @@ export async function GET() {
           id: m.id,
           sender: m.sender_id === user.id ? 'user' : 'other',
           text: m.content || '',
+          fileUrl: m.file_url,
+          latitude: m.latitude ? Number(m.latitude) : null,
+          longitude: m.longitude ? Number(m.longitude) : null,
+          isRead: m.is_read,
           time: new Date(m.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
         }))
       };

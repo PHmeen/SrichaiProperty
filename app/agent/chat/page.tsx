@@ -1,79 +1,196 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
-import SharedChatView, { SharedChatSession } from '@/components/common/SharedChatView';
-import { AgentContact as Contact, AgentChatMessage as Message } from '@/types';
+import SharedChatView, { SharedChatSession, OutgoingChatPayload } from '@/components/common/SharedChatView';
 
-export type { Contact, Message };
+interface ChatMessage {
+  id: string | number;
+  sender: 'user' | 'other';
+  text: string;
+  time: string;
+  fileUrl?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  isRead?: boolean;
+}
+
+interface ChatSession {
+  id: string;
+  name: string;
+  avatar: string;
+  isActive: boolean;
+  lastMessage: string;
+  time: string;
+  unreadCount?: number;
+  hasMoreMessages?: boolean;
+  propertyTitle: string;
+  propertyPrice: string;
+  messages: ChatMessage[];
+}
+
+interface QuickReplyTemplate {
+  id: string;
+  title: string;
+  content: string;
+}
+
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
 
 /**
  * ==============================================================================
  * AGENT CHAT PAGE (หน้าแชทสำหรับเอเย่นต์ / นายหน้า)
  * ==============================================================================
- * เรียกใช้งาน SharedChatView ร่วมกับฝั่งลูกค้า เพื่อความสวยงาม เป็นเอกภาพ และไม่โค้ดซ้ำ
+ * ใช้ API ชุดเดียวกับฝั่งลูกค้า (/api/chat/sessions, /api/chat/messages) เนื่องจาก
+ * รองรับการแยก customer_id / agent_id ตามห้องแชทอยู่แล้ว ลดโค้ดซ้ำซ้อนกับ
+ * /api/agent/portal?type=chat ที่เคยแยกไว้ต่างหาก
  */
-export default function AgentChatPage() {
+function AgentChatContent() {
   const { status } = useSession();
-  const [selectedContactId, setSelectedContactId] = useState<string>('');
+  const searchParams = useSearchParams();
+  const initialSessionId = searchParams.get('sessionId');
+
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(initialSessionId);
   const [isTypingState, setIsTypingState] = useState<{ [key: string]: boolean }>({});
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [templates, setTemplates] = useState<QuickReplyTemplate[]>([]);
 
   const socketRef = useRef<Socket | null>(null);
+  const joinedRoomRef = useRef<string | null>(null);
 
-  // 1. โหลดข้อมูลห้องแชทของนายหน้าจาก Database
-  const fetchChatData = () => {
-    fetch('/api/agent/portal?type=chat')
+  // 1. โหลดข้อมูลห้องแชทของนายหน้าจากฐานข้อมูลจริง
+  const fetchChatData = useCallback(() => {
+    fetch('/api/chat/sessions')
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data)) {
-          setContacts(data);
-          if (data.length > 0) {
-            setSelectedContactId(prev => prev || data[0].id);
+        if (data.success && Array.isArray(data.sessions)) {
+          setSessions(data.sessions);
+          if (data.sessions.length > 0) {
+            const matched = data.sessions.find((s: ChatSession) => s.id === initialSessionId);
+            setSelectedSessionId(prev => prev || (matched ? matched.id : data.sessions[0].id));
           }
         }
       })
-      .catch(err => console.error('Error fetching chat sessions:', err));
-  };
+      .catch(err => console.error('Error fetching chat sessions:', err))
+      .finally(() => setLoading(false));
+  }, [initialSessionId]);
+
+  // 1b. โหลดเทมเพลตข้อความตอบกลับด่วนของนายหน้าจากฐานข้อมูลจริง
+  const fetchTemplates = useCallback(() => {
+    fetch('/api/agent/quick-replies')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && Array.isArray(data.templates)) {
+          setTemplates(data.templates);
+        }
+      })
+      .catch(err => console.error('Error fetching quick-reply templates:', err));
+  }, []);
 
   useEffect(() => {
     if (status === 'authenticated') {
       fetchChatData();
+      fetchTemplates();
     }
-  }, [status]);
+  }, [status, fetchChatData, fetchTemplates]);
 
-  // 2. เชื่อมต่อ Socket.io รับ-ส่งข้อความแบบเรียลไทม์
+  // 2. เชื่อมต่อ Socket.io ครั้งเดียว พร้อม JWT token ยืนยันตัวตน
   useEffect(() => {
-    if (!selectedContactId) return;
+    if (status !== 'authenticated') return;
+    let cancelled = false;
 
-    const socket = io('http://localhost:3001', {
-      transports: ['websocket'],
-      autoConnect: true,
-    });
-    socketRef.current = socket;
+    (async () => {
+      const res = await fetch('/api/chat/socket-token');
+      if (!res.ok) return;
+      const { token } = await res.json();
+      if (cancelled || !token) return;
 
-    socket.on('connect', () => {
-      socket.emit('join-room', selectedContactId);
-    });
+      const socket = io(SOCKET_URL, {
+        transports: ['websocket'],
+        autoConnect: true,
+        auth: { token }
+      });
+      socketRef.current = socket;
 
-    socket.on('receive-message', () => {
-      fetchChatData();
-    });
+      socket.on('connect', () => {
+        if (joinedRoomRef.current) {
+          socket.emit('join-room', joinedRoomRef.current);
+        }
+      });
 
-    socket.on('client-typing', (data: { isTyping: boolean }) => {
-      setIsTypingState(prev => ({
-        ...prev,
-        [selectedContactId]: data.isTyping
-      }));
-    });
+      socket.on('receive-message', () => {
+        fetchChatData();
+      });
+
+      socket.on('client-typing', (data: { isTyping: boolean }) => {
+        if (joinedRoomRef.current) {
+          setIsTypingState(prev => ({ ...prev, [joinedRoomRef.current as string]: data.isTyping }));
+        }
+      });
+
+      socket.on('room-error', (data: { error: string }) => {
+        console.error('Chat room error:', data.error);
+      });
+    })();
 
     return () => {
-      socket.disconnect();
+      cancelled = true;
+      socketRef.current?.disconnect();
+      socketRef.current = null;
     };
-  }, [selectedContactId]);
+  }, [status, fetchChatData]);
 
-  if (status === 'loading') {
+  // 3. สลับห้อง: ออกจากห้องเดิม เข้าห้องใหม่ ผ่าน connection เดียวกัน
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!selectedSessionId) return;
+
+    if (socket?.connected) {
+      if (joinedRoomRef.current && joinedRoomRef.current !== selectedSessionId) {
+        socket.emit('leave-room', joinedRoomRef.current);
+      }
+      socket.emit('join-room', selectedSessionId);
+    }
+    joinedRoomRef.current = selectedSessionId;
+  }, [selectedSessionId]);
+
+  // 4. ทำเครื่องหมายว่าอ่านข้อความในห้องที่เปิดอยู่แล้ว
+  const handleOpenSession = useCallback((sessionId: string) => {
+    fetch('/api/chat/messages', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId })
+    })
+      .then(() => setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, unreadCount: 0 } : s)))
+      .catch(err => console.error('Mark read failed:', err));
+  }, []);
+
+  // แจ้งลูกค้าว่านายหน้ากำลังพิมพ์อยู่หรือไม่ (ผ่าน socket เท่านั้น ไม่บันทึกลง DB)
+  const handleTyping = useCallback((typing: boolean) => {
+    if (socketRef.current?.connected && selectedSessionId) {
+      socketRef.current.emit('typing', { roomId: selectedSessionId, isTyping: typing });
+    }
+  }, [selectedSessionId]);
+
+  // โหลดข้อความเก่ากว่านี้ในห้องที่เลือก (cursor pagination ตาม message id ที่เก่าที่สุดที่มีอยู่)
+  const handleLoadOlderMessages = useCallback(async (sessionId: string, oldestMessageId: string | number) => {
+    try {
+      const res = await fetch(`/api/chat/messages?sessionId=${sessionId}&before=${oldestMessageId}`);
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSessions(prev => prev.map(s => s.id === sessionId
+          ? { ...s, messages: [...data.messages, ...s.messages], hasMoreMessages: data.hasMore }
+          : s));
+      }
+    } catch (err) {
+      console.error('Load older messages failed:', err);
+    }
+  }, []);
+
+  if (status === 'loading' || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50">
         <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -81,85 +198,133 @@ export default function AgentChatPage() {
     );
   }
 
-  const activeContact = contacts.find(c => c.id === selectedContactId) || null;
-
-  // 3. ฟังก์ชันส่งข้อความ
-  const handleSendMessage = async (textToSend: string) => {
-    if (!textToSend.trim() || !activeContact) return;
+  // 5. ฟังก์ชันส่งข้อความ (ข้อความตัวหนังสือ / ไฟล์แนบ / ตำแหน่ง)
+  const handleSendMessage = async (payload: OutgoingChatPayload) => {
+    if (!selectedSessionId) return;
 
     try {
-      const response = await fetch('/api/agent/portal', {
+      const res = await fetch('/api/chat/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: activeContact.id,
-          content: textToSend
-        })
+        body: JSON.stringify({ sessionId: selectedSessionId, content: payload.text, fileUrl: payload.fileUrl, latitude: payload.latitude, longitude: payload.longitude })
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to save message');
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (socketRef.current?.connected) {
+          socketRef.current.emit('send-message', {
+            roomId: selectedSessionId,
+            message: data.message
+          });
+        }
+        fetchChatData();
+      } else {
+        console.error('Error sending message:', data.error);
       }
-
-      const savedMessage = await response.json();
-
-      if (socketRef.current?.connected) {
-        socketRef.current.emit('send-message', {
-          roomId: activeContact.id,
-          message: savedMessage
-        });
-      }
-
-      fetchChatData();
     } catch (err) {
       console.error('Error sending message:', err);
     }
   };
 
-  // 4. แปลงข้อมูล contacts ของนายหน้าให้อยู่ในโครงสร้าง SharedChatSession
-  const sharedSessions: SharedChatSession[] = contacts.map(c => ({
-    id: c.id,
-    name: c.name,
-    avatarLetter: c.avatarLetter || c.name.charAt(0),
-    isActive: true,
-    lastMessage: c.lastMessageSnippet,
-    time: c.lastMessageTime,
-    propertyTitle: c.propertyName,
-    propertyPrice: c.propertyPrice,
-    propertyCode: c.propertyCode,
-    messages: c.messages.map(m => ({
+  // 6. แปลงข้อมูล sessions ของนายหน้าให้อยู่ในโครงสร้าง SharedChatSession
+  const sharedSessions: SharedChatSession[] = sessions.map(s => ({
+    id: s.id,
+    name: s.name,
+    avatar: s.avatar,
+    isActive: s.isActive,
+    lastMessage: s.lastMessage,
+    time: s.time,
+    unreadCount: s.unreadCount,
+    hasMoreMessages: s.hasMoreMessages,
+    propertyTitle: s.propertyTitle,
+    propertyPrice: s.propertyPrice,
+    messages: s.messages.map(m => ({
       id: m.id,
-      sender: m.sender === 'client' ? 'other' : 'agent',
-      text: m.content,
-      time: m.time
+      sender: m.sender === 'user' ? 'agent' : 'other',
+      text: m.text,
+      time: m.time,
+      fileUrl: m.fileUrl,
+      latitude: m.latitude,
+      longitude: m.longitude,
+      isRead: m.isRead
     }))
   }));
 
-  // ปุ่มลัดสำหรับเอเย่นต์ (Quick Actions)
-  const quickActions = [
-    {
-      label: '📍 ส่งพิกัดจุดนัดพบ',
-      action: () => handleSendMessage('📍 [พิกัดจุดนัดพบ] แผนที่เดินทางหน้าโครงการ: https://maps.google.com/?q=7.0089,100.4975')
-    },
-    {
-      label: '📄 ส่งไฟล์เอกสารบ้าน',
-      action: () => handleSendMessage('📄 [แนบเอกสาร] โบรชัวร์โครงการและแบบแปลนบ้าน.pdf')
-    },
-    {
-      label: '📋 ขอเบอร์ติดต่อกลับ',
-      action: () => handleSendMessage('📋 [ขอเบอร์ติดต่อกลับ] สะดวกรบกวนขอเบอร์โทรศัพท์ติดต่อกลับเพื่อคุยรายละเอียดเพิ่มเติมด้วยครับ')
+  // เพิ่มเทมเพลตข้อความตอบกลับด่วนใหม่ (บันทึกลงฐานข้อมูลจริง)
+  const handleAddTemplate = async () => {
+    const title = prompt('ชื่อหัวข้อเทมเพลต (เช่น "แจ้งเลื่อนนัด"):');
+    if (!title?.trim()) return;
+    const content = prompt('ข้อความที่จะส่ง:');
+    if (!content?.trim()) return;
+
+    try {
+      const res = await fetch('/api/agent/quick-replies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        fetchTemplates();
+      } else {
+        alert(data.error || 'เพิ่มเทมเพลตไม่สำเร็จ');
+      }
+    } catch {
+      alert('เกิดข้อผิดพลาดขณะเพิ่มเทมเพลต');
     }
+  };
+
+  // ลบเทมเพลตข้อความตอบกลับด่วน (เลือกจากรายการ)
+  const handleDeleteTemplate = async () => {
+    if (templates.length === 0) return;
+    const list = templates.map((t, i) => `${i + 1}. ${t.title}`).join('\n');
+    const answer = prompt(`พิมพ์หมายเลขเทมเพลตที่ต้องการลบ:\n${list}`);
+    const idx = Number(answer) - 1;
+    if (Number.isNaN(idx) || idx < 0 || idx >= templates.length) return;
+
+    try {
+      const res = await fetch(`/api/agent/quick-replies?id=${templates[idx].id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        fetchTemplates();
+      } else {
+        alert(data.error || 'ลบเทมเพลตไม่สำเร็จ');
+      }
+    } catch {
+      alert('เกิดข้อผิดพลาดขณะลบเทมเพลต');
+    }
+  };
+
+  // ปุ่มลัดสำหรับเอเย่นต์ (Quick Actions) — โหลดมาจากเทมเพลตในฐานข้อมูลจริง ไม่ใช่ข้อความ hardcode
+  const quickActions = [
+    ...templates.map(t => ({
+      label: `💬 ${t.title}`,
+      action: () => handleSendMessage({ text: t.content })
+    })),
+    { label: '➕ เพิ่มเทมเพลต', action: handleAddTemplate },
+    ...(templates.length > 0 ? [{ label: '🗑️ ลบเทมเพลต', action: handleDeleteTemplate }] : [])
   ];
 
   return (
     <SharedChatView
       role="agent"
       sessions={sharedSessions}
-      selectedSessionId={selectedContactId}
-      onSelectSession={(id) => setSelectedContactId(id)}
+      selectedSessionId={selectedSessionId}
+      onSelectSession={(id) => setSelectedSessionId(id)}
       onSendMessage={handleSendMessage}
-      isTyping={selectedContactId ? isTypingState[selectedContactId] : false}
+      onOpenSession={handleOpenSession}
+      onTyping={handleTyping}
+      onLoadOlderMessages={handleLoadOlderMessages}
+      isTyping={selectedSessionId ? isTypingState[selectedSessionId] : false}
       quickActions={quickActions}
     />
+  );
+}
+
+export default function AgentChatPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center font-bold text-xs text-slate-500">🔄 กำลังโหลดระบบแชท...</div>}>
+      <AgentChatContent />
+    </Suspense>
   );
 }

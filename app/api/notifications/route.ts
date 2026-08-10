@@ -46,6 +46,7 @@ export async function GET() {
         content: n.content,
         isRead: Boolean(n.is_read),
         type: n.type || "info",
+        linkUrl: n.link_url || null,
         createdAt: n.created_at
       }))
     });

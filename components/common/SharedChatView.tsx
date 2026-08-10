@@ -10,6 +10,10 @@ export interface SharedChatMessage {
   sender: 'user' | 'other' | 'client' | 'agent';
   text: string;
   time: string;
+  fileUrl?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  isRead?: boolean;
 }
 
 export interface SharedChatSession {
@@ -20,10 +24,19 @@ export interface SharedChatSession {
   isActive?: boolean;
   lastMessage: string;
   time: string;
+  unreadCount?: number;
+  hasMoreMessages?: boolean;
   propertyTitle?: string;
   propertyPrice?: string;
   propertyCode?: string;
   messages: SharedChatMessage[];
+}
+
+export interface OutgoingChatPayload {
+  text?: string;
+  fileUrl?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 interface SharedChatViewProps {
@@ -31,13 +44,20 @@ interface SharedChatViewProps {
   sessions: SharedChatSession[];
   selectedSessionId: string | null;
   onSelectSession: (id: string) => void;
-  onSendMessage: (text: string) => Promise<void> | void;
+  onSendMessage: (payload: OutgoingChatPayload) => Promise<void> | void;
   onDeleteMessage?: (messageId: string | number) => Promise<void> | void;
   onDeleteSession?: (sessionId: string) => Promise<void> | void;
   onReportSession?: (sessionId: string, reason: string, details?: string) => Promise<void> | void;
+  onOpenSession?: (sessionId: string) => void;
+  onTyping?: (isTyping: boolean) => void;
+  onLoadOlderMessages?: (sessionId: string, oldestMessageId: string | number) => Promise<void> | void;
   isTyping?: boolean;
   quickActions?: { label: string; action: () => void }[];
 }
+
+const TYPING_IDLE_MS = 2000;
+
+const IMAGE_EXT_RE = /\.(jpe?g|png|webp|gif)$/i;
 
 // คอมโพเนนต์แสดงผลอวตารผู้สนทนา
 function UserAvatar({ sessionItem, size = 40 }: { sessionItem: SharedChatSession; size?: number }) {
@@ -69,13 +89,21 @@ export default function SharedChatView({
   onDeleteMessage,
   onDeleteSession,
   onReportSession,
+  onOpenSession,
+  onTyping,
+  onLoadOlderMessages,
   isTyping = false,
   quickActions = []
 }: SharedChatViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [messageInput, setMessageInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [mobileShowMessages, setMobileShowMessages] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isTypingRef = useRef(false);
 
   // เมนู ลบ/รายงาน
   const [showMenu, setShowMenu] = useState(false);
@@ -99,18 +127,102 @@ export default function SharedChatView({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeSession?.messages.length, selectedSessionId]);
 
-  // ส่งข้อความ
+  // แจ้งว่าเปิดห้องนี้แล้ว (ให้หน้าเรียก API mark-as-read)
+  useEffect(() => {
+    if (activeSession && onOpenSession) {
+      onOpenSession(activeSession.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSession?.id]);
+
+  // แจ้งสถานะ "กำลังพิมพ์..." แบบ debounce (หยุดพิมพ์ 2 วิ = ถือว่าเลิกพิมพ์)
+  const handleMessageInputChange = (value: string) => {
+    setMessageInput(value);
+    if (!onTyping) return;
+
+    if (!isTypingRef.current) {
+      isTypingRef.current = true;
+      onTyping(true);
+    }
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      isTypingRef.current = false;
+      onTyping(false);
+    }, TYPING_IDLE_MS);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
+  }, []);
+
+  // ส่งข้อความตัวหนังสือ
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageInput.trim() || sending) return;
     const txt = messageInput;
     setMessageInput('');
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    if (isTypingRef.current) {
+      isTypingRef.current = false;
+      onTyping?.(false);
+    }
     setSending(true);
     try {
-      await onSendMessage(txt);
+      await onSendMessage({ text: txt });
     } finally {
       setSending(false);
     }
+  };
+
+  // แนบไฟล์/รูปภาพ: อัปโหลดผ่าน /api/upload แล้วส่งเป็นข้อความ
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (res.ok && data.success && data.url) {
+        await onSendMessage({ fileUrl: data.url });
+      } else {
+        alert(data.error || 'อัปโหลดไฟล์ไม่สำเร็จ');
+      }
+    } catch {
+      alert('เกิดข้อผิดพลาดขณะอัปโหลดไฟล์');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // โหลดข้อความเก่ากว่านี้ในห้องเดียวกัน
+  const handleLoadOlderMessages = async () => {
+    if (!activeSession || !onLoadOlderMessages || activeSession.messages.length === 0 || loadingOlder) return;
+    setLoadingOlder(true);
+    try {
+      await onLoadOlderMessages(activeSession.id, activeSession.messages[0].id);
+    } finally {
+      setLoadingOlder(false);
+    }
+  };
+
+  // แชร์ตำแหน่งปัจจุบัน
+  const handleShareLocation = () => {
+    if (!navigator.geolocation) {
+      alert('อุปกรณ์นี้ไม่รองรับการแชร์ตำแหน่ง');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        await onSendMessage({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+      },
+      () => alert('ไม่สามารถเข้าถึงตำแหน่งของคุณได้ กรุณาอนุญาตการเข้าถึงตำแหน่ง'),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   };
 
   // ลบข้อความเดียว
@@ -189,7 +301,12 @@ export default function SharedChatView({
                       <h4 className="font-bold text-slate-900 truncate">{session.name}</h4>
                       <span className="text-[9px] text-slate-400 font-bold">{session.time}</span>
                     </div>
-                    <p className="text-slate-500 truncate text-[11px] font-normal">{session.lastMessage}</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-slate-500 truncate text-[11px] font-normal flex-1">{session.lastMessage}</p>
+                      {!!session.unreadCount && (
+                        <span className="shrink-0 min-w-[16px] h-4 px-1 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center">{session.unreadCount}</span>
+                      )}
+                    </div>
                     {(session.propertyTitle || session.propertyCode) && (
                       <span className="inline-block text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold mt-1 truncate max-w-full">🏠 {session.propertyTitle || session.propertyCode}</span>
                     )}
@@ -242,6 +359,13 @@ export default function SharedChatView({
 
               {/* Messages Area */}
               <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-slate-50/30">
+                {activeSession.hasMoreMessages && onLoadOlderMessages && (
+                  <div className="flex justify-center pb-2">
+                    <button onClick={handleLoadOlderMessages} disabled={loadingOlder} className="px-3 py-1.5 bg-white hover:bg-slate-100 disabled:opacity-50 text-slate-600 rounded-full text-[10px] font-bold border border-slate-200 transition cursor-pointer">
+                      {loadingOlder ? 'กำลังโหลด...' : 'โหลดข้อความเก่ากว่านี้'}
+                    </button>
+                  </div>
+                )}
                 {activeSession.messages.map((msg) => {
                   const isOutgoing = msg.sender === 'user' || msg.sender === 'agent';
                   return (
@@ -254,7 +378,19 @@ export default function SharedChatView({
                               <button onClick={() => handleDeleteSingleMessage(msg.id)} className={`text-[10px] p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition ${isOutgoing ? 'order-first' : 'order-last'}`} title="ลบข้อความนี้">🗑️</button>
                             )}
                             <Bubble variant={isOutgoing ? 'primary' : 'outline'}>
-                              <BubbleContent>{msg.text}</BubbleContent>
+                              <BubbleContent>
+                                {msg.fileUrl && IMAGE_EXT_RE.test(msg.fileUrl) ? (
+                                  <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer">
+                                    <Image src={msg.fileUrl} alt="ไฟล์แนบ" width={200} height={150} unoptimized className="rounded-lg object-cover max-w-[200px] max-h-[150px]" />
+                                  </a>
+                                ) : msg.fileUrl ? (
+                                  <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 underline">📄 เปิดไฟล์แนบ</a>
+                                ) : msg.latitude != null && msg.longitude != null ? (
+                                  <a href={`https://www.google.com/maps?q=${msg.latitude},${msg.longitude}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 underline">📍 ดูตำแหน่งบนแผนที่</a>
+                                ) : (
+                                  msg.text
+                                )}
+                              </BubbleContent>
                             </Bubble>
                           </div>
                           <MessageFooter>{msg.time}</MessageFooter>
@@ -277,7 +413,10 @@ export default function SharedChatView({
                   </div>
                 )}
                 <form onSubmit={handleFormSubmit} className="flex gap-2 items-center">
-                  <input type="text" value={messageInput} onChange={(e) => setMessageInput(e.target.value)} placeholder="พิมพ์ข้อความของคุณที่นี่..." className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs text-slate-800 font-medium transition" />
+                  <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" className="hidden" onChange={handleFileSelected} />
+                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="p-2.5 bg-slate-50 hover:bg-slate-100 disabled:opacity-50 text-slate-500 rounded-xl border border-slate-200 transition shrink-0 cursor-pointer" title="แนบไฟล์/รูปภาพ">{uploading ? '⏳' : '📎'}</button>
+                  <button type="button" onClick={handleShareLocation} className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-xl border border-slate-200 transition shrink-0 cursor-pointer" title="แชร์ตำแหน่ง">📍</button>
+                  <input type="text" value={messageInput} onChange={(e) => handleMessageInputChange(e.target.value)} placeholder="พิมพ์ข้อความของคุณที่นี่..." className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs text-slate-800 font-medium transition" />
                   <button type="submit" disabled={sending || !messageInput.trim()} className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold px-4 py-2.5 rounded-xl transition text-xs shadow-xs cursor-pointer disabled:cursor-not-allowed shrink-0">{sending ? 'กำลังส่ง...' : 'ส่ง 📤'}</button>
                 </form>
               </div>

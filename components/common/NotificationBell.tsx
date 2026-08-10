@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 interface NotificationItem {
   id: string;
@@ -9,11 +10,13 @@ interface NotificationItem {
   content: string;
   isRead: boolean;
   type: string;
+  linkUrl: string | null;
   createdAt: string;
 }
 
 export default function NotificationBell() {
   const { status } = useSession();
+  const router = useRouter();
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [open, setOpen] = useState(false);
@@ -191,7 +194,13 @@ export default function NotificationBell() {
                   ) : (
                     <div className="flex items-start gap-2">
                       <div
-                        onClick={() => !n.isRead && markRead(n.id)}
+                        onClick={() => {
+                          if (!n.isRead) markRead(n.id);
+                          if (n.linkUrl) {
+                            setOpen(false);
+                            router.push(n.linkUrl);
+                          }
+                        }}
                         className="flex-1 min-w-0 cursor-pointer"
                       >
                         <div className="flex justify-between items-start mb-1 gap-2">

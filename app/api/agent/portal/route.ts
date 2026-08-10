@@ -270,105 +270,12 @@ export async function GET(request: Request) {
       });
     }
 
-    // 3. หน้าระบบห้องแชท (Chat View)
-    if (type === 'chat') {
-      const sessions = await db.chat_sessions.findMany({
-        where: { agent_id: agent.id },
-        include: {
-          users_chat_sessions_customer_idTousers: {
-            select: { id: true, first_name: true, last_name: true, profile_image: true }
-          },
-          properties: {
-            include: {
-              property_images: { orderBy: { order_index: 'asc' }, take: 1 }
-            }
-          },
-          messages: {
-            orderBy: { created_at: 'asc' }
-          }
-        }
-      });
-
-      const formattedContacts = sessions.map(session => {
-        const customer = session.users_chat_sessions_customer_idTousers;
-        const customerName = customer ? `${customer.first_name} ${customer.last_name}` : 'ลูกค้าในระบบ';
-        const lastMsg = session.messages[session.messages.length - 1];
-        const propImage = session.properties?.property_images[0]?.image_url || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=120&q=80';
-
-        return {
-          id: session.id,
-          name: customerName,
-          avatarLetter: customerName.charAt(0),
-          avatarUrl: customer?.profile_image || undefined,
-          status: 'online',
-          lastMessageSnippet: lastMsg?.content || 'เริ่มห้องสนทนาใหม่',
-          lastMessageTime: lastMsg ? new Date(lastMsg.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '00:00',
-          propertyCode: session.property_id ? session.property_id.substring(0, 7).toUpperCase() : 'SC-XXX',
-          propertyName: session.properties?.title || 'อสังหาฯ ที่ลูกค้าสนใจ',
-          propertyPrice: '฿' + Number(session.properties?.price || 0).toLocaleString(),
-          propertyImage: propImage,
-          unreadCount: 0,
-          hasAppointment: false,
-          messages: session.messages.map(m => ({
-            id: m.id,
-            sender: m.sender_id === agent.id ? 'agent' : 'client',
-            content: m.content || '',
-            time: new Date(m.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: true }).toUpperCase(),
-            isRead: true
-          }))
-        };
-      });
-
-      return NextResponse.json(formattedContacts);
-    }
+    // หมายเหตุ: ห้องแชท (type=chat) ถูกย้ายไปรวมศูนย์ที่ /api/chat/sessions และ /api/chat/messages
+    // แล้ว (ใช้ร่วมกับฝั่งลูกค้า) เพื่อลดโค้ดซ้ำซ้อน — ดูหน้า app/agent/chat/page.tsx
 
     return NextResponse.json({ error: 'ไม่พบประเภทคำขอดังกล่าว' }, { status: 400 });
   } catch (error) {
     const err = error as Error;
     return NextResponse.json({ error: 'ไม่สามารถดึงข้อมูลระบบนายหน้าได้: ' + err.message }, { status: 500 });
-  }
-}
-
-// POST: บันทึกข้อความแชทใหม่ลงฐานข้อมูล
-export async function POST(request: Request) {
-  try {
-    const agent = await getAgent();
-    if (!agent || agent.role_id !== 'agent') {
-      return NextResponse.json({ error: 'สิทธิ์ไม่ถูกต้อง หรือยังไม่ได้เข้าสู่ระบบ' }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const { sessionId, content } = body;
-
-    if (!sessionId || !content) {
-      return NextResponse.json({ error: 'กรุณากรอกข้อมูลห้องสนทนาและข้อความให้ครบถ้วน' }, { status: 400 });
-    }
-
-    // ✅ ตรวจสอบว่านายหน้าเป็นสมาชิกของห้องแชทนี้จริง
-    const chatSession = await db.chat_sessions.findUnique({
-      where: { id: sessionId }
-    });
-    if (!chatSession || chatSession.agent_id !== agent.id) {
-      return NextResponse.json({ error: 'คุณไม่มีสิทธิ์ส่งข้อความในห้องสนทนานี้' }, { status: 403 });
-    }
-
-    const newMessage = await db.messages.create({
-      data: {
-        session_id: sessionId,
-        sender_id: agent.id,
-        content: content
-      }
-    });
-
-    return NextResponse.json({
-      id: newMessage.id,
-      sender: 'agent',
-      content: newMessage.content,
-      time: new Date(newMessage.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: true }).toUpperCase(),
-      isRead: true
-    });
-  } catch (error) {
-    const err = error as Error;
-    return NextResponse.json({ error: 'บันทึกข้อความลงฐานข้อมูลล้มเหลว: ' + err.message }, { status: 500 });
   }
 }
