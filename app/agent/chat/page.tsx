@@ -54,6 +54,7 @@ function AgentChatContent() {
 
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(initialSessionId);
+  const [syncedSessionId, setSyncedSessionId] = useState<string | null>(initialSessionId);
   const [isTypingState, setIsTypingState] = useState<{ [key: string]: boolean }>({});
   const [loading, setLoading] = useState(true);
   const [templates, setTemplates] = useState<QuickReplyTemplate[]>([]);
@@ -96,6 +97,13 @@ function AgentChatContent() {
       fetchTemplates();
     }
   }, [status, fetchChatData, fetchTemplates]);
+
+  // 1c. ถ้า sessionId ใน URL เปลี่ยน (เช่น คลิกลิงก์แจ้งเตือนขณะเปิดหน้านี้อยู่แล้ว) ให้สลับห้องตาม
+  // ปรับ state ระหว่าง render (ตามแนวทางของ React) แทนการใช้ effect เพื่อเลี่ยง cascading render
+  if (initialSessionId && initialSessionId !== syncedSessionId) {
+    setSyncedSessionId(initialSessionId);
+    setSelectedSessionId(initialSessionId);
+  }
 
   // 2. เชื่อมต่อ Socket.io ครั้งเดียว พร้อม JWT token ยืนยันตัวตน
   useEffect(() => {
@@ -252,9 +260,9 @@ function AgentChatContent() {
 
   // เพิ่มเทมเพลตข้อความตอบกลับด่วนใหม่ (บันทึกลงฐานข้อมูลจริง)
   const handleAddTemplate = async () => {
-    const title = prompt('ชื่อหัวข้อเทมเพลต (เช่น "แจ้งเลื่อนนัด"):');
+    const title = prompt('กรุณาระบุชื่อหัวข้อเทมเพลต (เช่น "แจ้งเลื่อนนัดหมาย")');
     if (!title?.trim()) return;
-    const content = prompt('ข้อความที่จะส่ง:');
+    const content = prompt('กรุณาระบุข้อความที่ต้องการบันทึกเป็นเทมเพลต');
     if (!content?.trim()) return;
 
     try {
@@ -278,7 +286,7 @@ function AgentChatContent() {
   const handleDeleteTemplate = async () => {
     if (templates.length === 0) return;
     const list = templates.map((t, i) => `${i + 1}. ${t.title}`).join('\n');
-    const answer = prompt(`พิมพ์หมายเลขเทมเพลตที่ต้องการลบ:\n${list}`);
+    const answer = prompt(`กรุณาระบุหมายเลขเทมเพลตที่ต้องการลบ:\n${list}`);
     const idx = Number(answer) - 1;
     if (Number.isNaN(idx) || idx < 0 || idx >= templates.length) return;
 
@@ -298,11 +306,11 @@ function AgentChatContent() {
   // ปุ่มลัดสำหรับเอเย่นต์ (Quick Actions) — โหลดมาจากเทมเพลตในฐานข้อมูลจริง ไม่ใช่ข้อความ hardcode
   const quickActions = [
     ...templates.map(t => ({
-      label: `💬 ${t.title}`,
+      label: t.title,
       action: () => handleSendMessage({ text: t.content })
     })),
-    { label: '➕ เพิ่มเทมเพลต', action: handleAddTemplate },
-    ...(templates.length > 0 ? [{ label: '🗑️ ลบเทมเพลต', action: handleDeleteTemplate }] : [])
+    { label: 'เพิ่มเทมเพลตข้อความ', action: handleAddTemplate },
+    ...(templates.length > 0 ? [{ label: 'ลบเทมเพลตข้อความ', action: handleDeleteTemplate }] : [])
   ];
 
   return (
@@ -310,7 +318,10 @@ function AgentChatContent() {
       role="agent"
       sessions={sharedSessions}
       selectedSessionId={selectedSessionId}
-      onSelectSession={(id) => setSelectedSessionId(id)}
+      onSelectSession={(id) => {
+        setSelectedSessionId(id);
+        setIsTypingState({});
+      }}
       onSendMessage={handleSendMessage}
       onOpenSession={handleOpenSession}
       onTyping={handleTyping}
@@ -323,7 +334,7 @@ function AgentChatContent() {
 
 export default function AgentChatPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center font-bold text-xs text-slate-500">🔄 กำลังโหลดระบบแชท...</div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center font-bold text-xs text-slate-500">กำลังโหลดระบบสนทนา...</div>}>
       <AgentChatContent />
     </Suspense>
   );
