@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
-import { io, Socket } from 'socket.io-client';
+import type { Channel } from 'pusher-js';
+import { getPusherClient } from '@/lib/pusher-client';
 import SharedChatView, { SharedChatSession, OutgoingChatPayload } from '@/components/common/SharedChatView';
 
 // ==============================================================================
@@ -44,9 +45,6 @@ interface QuickReplyTemplate {
   content: string;
 }
 
-// กำหนด URL ของ Socket.io Real-time Server (ดึงจาก env หรือใช้ localhost:3001)
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
-
 // ==============================================================================
 // 2. คอมโพเนนต์หลักฝั่งนายหน้า (Agent Chat Content)
 // ==============================================================================
@@ -54,7 +52,8 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001'
 // เนื่องจาก API แยกห้องแชทตาม customer_id / agent_id ของผู้ใช้ที่ล็อกอินอยู่อัตโนมัติ
 function AgentChatContent() {
   // สถานะการเข้าสู่ระบบของนายหน้า (NextAuth Session)
-  const { status } = useSession();
+  const { data: sessionData, status } = useSession();
+  const currentUserId = (sessionData?.user as { id?: string } | undefined)?.id;
   const searchParams = useSearchParams();
   const initialSessionId = searchParams.get('sessionId');
 
@@ -70,9 +69,8 @@ function AgentChatContent() {
   // State สำหรับเก็บรายการเทมเพลตตอบกลับด่วนของนายหน้า
   const [templates, setTemplates] = useState<QuickReplyTemplate[]>([]);
 
-  // Ref สำหรับเก็บ Socket Instance และห้องที่เข้าร่วมอยู่ปัจจุบัน
-  const socketRef = useRef<Socket | null>(null);
-  const joinedRoomRef = useRef<string | null>(null);
+  // Ref สำหรับเก็บ Pusher Channel ที่ subscribe อยู่ปัจจุบัน
+  const channelRef = useRef<Channel | null>(null);
 
   // ----------------------------------------------------------------------------
   // 3. ฟังก์ชันดึงข้อมูลจาก API (Data Fetching Functions)
@@ -109,7 +107,7 @@ function AgentChatContent() {
   }, []);
 
   // ----------------------------------------------------------------------------
-  // 4. Side Effects & Socket Real-time Listener
+  // 4. Side Effects & Pusher Real-time Listener
   // ----------------------------------------------------------------------------
 
   // เข้าหน้ามาแล้วต้องล็อกอินสำเร็จก่อน ถึงจะเริ่มโหลดข้อมูลห้องแชทและเทมเพลต
@@ -126,71 +124,38 @@ function AgentChatContent() {
     setSelectedSessionId(initialSessionId);
   }
 
-  // เชื่อมต่อ Socket.io ครั้งเดียวตอนล็อกอินสำเร็จ พร้อมส่ง JWT token ยืนยันตัวตนกับ Socket Server
+  // เชื่อมต่อ Pusher และ subscribe channel ของห้องแชทที่กำลังเปิดอยู่ (ยืนยันสิทธิ์ผ่าน /api/pusher/auth
+  // ด้วย NextAuth session cookie โดยอัตโนมัติ ไม่ต้องขอ JWT token เองแบบ Socket.io เดิม)
   useEffect(() => {
-    if (status !== 'authenticated') return;
-    let cancelled = false;
+    if (status !== 'authenticated' || !selectedSessionId) return;
 
-    (async () => {
-      // 1) ขอ JWT Token สำหรับเชื่อมต่อ Socket จาก API
-      const res = await fetch('/api/chat/socket-token');
-      if (!res.ok) return;
-      const { token } = await res.json();
-      if (cancelled || !token) return;
+    const pusher = getPusherClient();
+    const channelName = `private-chat-${selectedSessionId}`;
+    const channel = pusher.subscribe(channelName);
+    channelRef.current = channel;
 
-      // 2) สร้าง Socket Connection แนบ JWT token
-      const socket = io(SOCKET_URL, {
-        transports: ['websocket'],
-        autoConnect: true,
-        auth: { token }
-      });
-      socketRef.current = socket;
+    // เมื่อมีข้อความใหม่เข้ามาในห้องนี้ -> โหลดข้อมูลแชทอัปเดตหน้าจอทันที
+    channel.bind('new-message', () => {
+      fetchChatData();
+    });
 
-      // เมื่อเชื่อมต่อสำเร็จ (หรือหลุดแล้วต่อกลับมาใหม่) ให้เข้าร่วมห้องเดิมทันที
-      socket.on('connect', () => {
-        if (joinedRoomRef.current) {
-          socket.emit('join-room', joinedRoomRef.current);
-        }
-      });
+    // เมื่ออีกฝ่ายกำลังพิมพ์ข้อความ -> จำสถานะเฉพาะห้องที่กำลังเปิดอยู่ (ข้ามอีเวนต์ของตัวเอง)
+    channel.bind('client-typing', (data: { isTyping: boolean; userId?: string }) => {
+      if (data.userId === currentUserId) return;
+      setIsTypingState(prev => ({ ...prev, [selectedSessionId]: data.isTyping }));
+    });
 
-      // เมื่อมีข้อความใหม่เข้ามา -> โหลดข้อมูลแชทอัปเดตหน้าจอทันที
-      socket.on('receive-message', () => {
-        fetchChatData();
-      });
+    channel.bind('pusher:subscription_error', (status: number) => {
+      console.error('Chat room subscription error:', status);
+    });
 
-      // เมื่ออีกฝ่ายกำลังพิมพ์ข้อความ -> จำสถานะเฉพาะห้องที่กำลังเปิดอยู่
-      socket.on('client-typing', (data: { isTyping: boolean }) => {
-        if (joinedRoomRef.current) {
-          setIsTypingState(prev => ({ ...prev, [joinedRoomRef.current as string]: data.isTyping }));
-        }
-      });
-
-      socket.on('room-error', (data: { error: string }) => {
-        console.error('Chat room error:', data.error);
-      });
-    })();
-
-    // เมื่อออกจากหน้า ให้ตัดการเชื่อมต่อ Socket
+    // เมื่อสลับห้องหรือออกจากหน้า -> unsubscribe channel เดิมก่อนเสมอ
     return () => {
-      cancelled = true;
-      socketRef.current?.disconnect();
-      socketRef.current = null;
+      channel.unbind_all();
+      pusher.unsubscribe(channelName);
+      channelRef.current = null;
     };
-  }, [status, fetchChatData]);
-
-  // เมื่อเลือกสลับห้องแชท: สั่งออกจากห้องเดิม แล้วเข้าร่วมห้องใหม่ผ่าน Connection เดิม
-  useEffect(() => {
-    const socket = socketRef.current;
-    if (!selectedSessionId) return;
-
-    if (socket?.connected) {
-      if (joinedRoomRef.current && joinedRoomRef.current !== selectedSessionId) {
-        socket.emit('leave-room', joinedRoomRef.current);
-      }
-      socket.emit('join-room', selectedSessionId);
-    }
-    joinedRoomRef.current = selectedSessionId;
-  }, [selectedSessionId]);
+  }, [status, selectedSessionId, currentUserId, fetchChatData]);
 
   // ----------------------------------------------------------------------------
   // 5. ฟังก์ชันจัดการการกระทำในแชท (Chat Actions & Event Handlers)
@@ -207,11 +172,14 @@ function AgentChatContent() {
       .catch(err => console.error('Mark read failed:', err));
   }, []);
 
-  // แจ้งลูกค้าระยะไกลว่านายหน้ากำลังพิมพ์อยู่หรือไม่ (ส่งผ่าน Socket เท่านั้น ไม่บันทึกลง DB)
+  // แจ้งลูกค้าระยะไกลว่านายหน้ากำลังพิมพ์อยู่หรือไม่ (ยิงผ่าน API ไป Pusher เท่านั้น ไม่บันทึกลง DB)
   const handleTyping = useCallback((typing: boolean) => {
-    if (socketRef.current?.connected && selectedSessionId) {
-      socketRef.current.emit('typing', { roomId: selectedSessionId, isTyping: typing });
-    }
+    if (!selectedSessionId) return;
+    fetch('/api/chat/typing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: selectedSessionId, isTyping: typing })
+    }).catch(err => console.error('Send typing status failed:', err));
   }, [selectedSessionId]);
 
   // กดปุ่ม "โหลดข้อความเก่ากว่านี้" -> ดึงประวัติข้อความช่วงก่อนหน้ามาต่อด้านบน
@@ -253,13 +221,7 @@ function AgentChatContent() {
 
       const data = await res.json();
       if (res.ok && data.success) {
-        // 2) บันทึกสำเร็จ -> กระจายข้อความผ่าน Socket ให้อีกฝ่ายเห็นทันที
-        if (socketRef.current?.connected) {
-          socketRef.current.emit('send-message', {
-            roomId: selectedSessionId,
-            message: data.message
-          });
-        }
+        // 2) บันทึกสำเร็จ -> API ยิง event ผ่าน Pusher ให้อีกฝ่ายเห็นทันทีอยู่แล้ว (ดู /api/chat/messages)
         // 3) โหลดรายการห้องแชทใหม่ เพื่ออัปเดตข้อความล่าสุดฝั่งเราด้วย
         fetchChatData();
       } else {

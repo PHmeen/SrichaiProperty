@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
-import { io, Socket } from 'socket.io-client';
+import type { Channel } from 'pusher-js';
+import { getPusherClient } from '@/lib/pusher-client';
 import SharedChatView, { SharedChatSession, OutgoingChatPayload } from '@/components/common/SharedChatView';
 
 interface ChatMessage {
@@ -32,8 +33,6 @@ interface ChatSession {
   messages: ChatMessage[];
 }
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
-
 /**
  * ==============================================================================
  * CUSTOMER CHAT CONTENT (หน้าต่างแชทฝั่งผู้ใช้งาน / ลูกค้า)
@@ -41,7 +40,8 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001'
  * เรียกใช้งาน SharedChatView ร่วมกันกับฝั่งเอเย่นต์
  */
 function ChatContent() {
-  const { status: sessionStatus } = useSession();
+  const { data: sessionData, status: sessionStatus } = useSession();
+  const currentUserId = (sessionData?.user as { id?: string } | undefined)?.id;
   const searchParams = useSearchParams();
   const initialSessionId = searchParams.get('sessionId');
 
@@ -50,8 +50,7 @@ function ChatContent() {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(initialSessionId);
   const [isTypingState, setIsTypingState] = useState<{ [key: string]: boolean }>({});
 
-  const socketRef = useRef<Socket | null>(null);
-  const joinedRoomRef = useRef<string | null>(null);
+  const channelRef = useRef<Channel | null>(null);
 
   // 1. โหลดข้อมูลห้องแชทของลูกค้า
   const fetchChatData = useCallback(() => {
@@ -75,65 +74,35 @@ function ChatContent() {
     fetchChatData();
   }, [sessionStatus, fetchChatData]);
 
-  // 2. เชื่อมต่อ Socket.io ครั้งเดียวตอนล็อกอินสำเร็จ (ไม่ reconnect ทุกครั้งที่สลับห้อง)
+  // 2. เชื่อมต่อ Pusher และ subscribe channel ของห้องแชทที่กำลังเปิดอยู่ (ยืนยันสิทธิ์ผ่าน /api/pusher/auth
+  // ด้วย NextAuth session cookie โดยอัตโนมัติ ไม่ต้องขอ JWT token เองแบบ Socket.io เดิม)
   useEffect(() => {
-    if (sessionStatus !== 'authenticated') return;
-    let cancelled = false;
+    if (sessionStatus !== 'authenticated' || !selectedSessionId) return;
 
-    (async () => {
-      const res = await fetch('/api/chat/socket-token');
-      if (!res.ok) return;
-      const { token } = await res.json();
-      if (cancelled || !token) return;
+    const pusher = getPusherClient();
+    const channelName = `private-chat-${selectedSessionId}`;
+    const channel = pusher.subscribe(channelName);
+    channelRef.current = channel;
 
-      const socket = io(SOCKET_URL, {
-        transports: ['websocket'],
-        autoConnect: true,
-        auth: { token }
-      });
-      socketRef.current = socket;
+    channel.bind('new-message', () => {
+      fetchChatData();
+    });
 
-      socket.on('connect', () => {
-        if (joinedRoomRef.current) {
-          socket.emit('join-room', joinedRoomRef.current);
-        }
-      });
+    channel.bind('client-typing', (data: { isTyping: boolean; userId?: string }) => {
+      if (data.userId === currentUserId) return;
+      setIsTypingState(prev => ({ ...prev, [selectedSessionId]: data.isTyping }));
+    });
 
-      socket.on('receive-message', () => {
-        fetchChatData();
-      });
-
-      socket.on('client-typing', (data: { isTyping: boolean }) => {
-        if (joinedRoomRef.current) {
-          setIsTypingState(prev => ({ ...prev, [joinedRoomRef.current as string]: data.isTyping }));
-        }
-      });
-
-      socket.on('room-error', (data: { error: string }) => {
-        console.error('Chat room error:', data.error);
-      });
-    })();
+    channel.bind('pusher:subscription_error', (status: number) => {
+      console.error('Chat room subscription error:', status);
+    });
 
     return () => {
-      cancelled = true;
-      socketRef.current?.disconnect();
-      socketRef.current = null;
+      channel.unbind_all();
+      pusher.unsubscribe(channelName);
+      channelRef.current = null;
     };
-  }, [sessionStatus, fetchChatData]);
-
-  // 3. สลับห้อง: ออกจากห้องเดิม เข้าห้องใหม่ ผ่าน connection เดียวกัน (ไม่ต่อ socket ใหม่)
-  useEffect(() => {
-    const socket = socketRef.current;
-    if (!selectedSessionId) return;
-
-    if (socket?.connected) {
-      if (joinedRoomRef.current && joinedRoomRef.current !== selectedSessionId) {
-        socket.emit('leave-room', joinedRoomRef.current);
-      }
-      socket.emit('join-room', selectedSessionId);
-    }
-    joinedRoomRef.current = selectedSessionId;
-  }, [selectedSessionId]);
+  }, [sessionStatus, selectedSessionId, currentUserId, fetchChatData]);
 
   // 4. ทำเครื่องหมายว่าอ่านข้อความในห้องที่เปิดอยู่แล้ว
   const handleOpenSession = useCallback((sessionId: string) => {
@@ -146,11 +115,14 @@ function ChatContent() {
       .catch(err => console.error('Mark read failed:', err));
   }, []);
 
-  // 5. แจ้งอีกฝ่ายว่ากำลังพิมพ์อยู่หรือไม่ (ผ่าน socket เท่านั้น ไม่บันทึกลง DB)
+  // 5. แจ้งอีกฝ่ายว่ากำลังพิมพ์อยู่หรือไม่ (ยิงผ่าน API ไป Pusher เท่านั้น ไม่บันทึกลง DB)
   const handleTyping = useCallback((typing: boolean) => {
-    if (socketRef.current?.connected && selectedSessionId) {
-      socketRef.current.emit('typing', { roomId: selectedSessionId, isTyping: typing });
-    }
+    if (!selectedSessionId) return;
+    fetch('/api/chat/typing', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: selectedSessionId, isTyping: typing })
+    }).catch(err => console.error('Send typing status failed:', err));
   }, [selectedSessionId]);
 
   // 5b. โหลดข้อความเก่ากว่านี้ในห้องที่เลือก (cursor pagination ตาม message id ที่เก่าที่สุดที่มีอยู่)
@@ -181,12 +153,7 @@ function ChatContent() {
 
       const data = await res.json();
       if (res.ok && data.success) {
-        if (socketRef.current?.connected) {
-          socketRef.current.emit('send-message', {
-            roomId: selectedSessionId,
-            message: data.message
-          });
-        }
+        // API ยิง event ผ่าน Pusher ให้อีกฝ่ายเห็นทันทีอยู่แล้ว (ดู /api/chat/messages)
         fetchChatData();
       } else {
         alert(data.error || 'เกิดข้อผิดพลาดในการส่งข้อความ');
