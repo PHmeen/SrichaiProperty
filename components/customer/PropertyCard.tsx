@@ -117,11 +117,12 @@ export default function PropertyCard({ prop, isFav, toggleFavorite }: PropertyCa
       }`}>
         {/* รูปโปรไฟล์และชื่อนายหน้า */}
         <div className="flex items-center gap-2">
-          <Image 
-            src={prop.agentImage || getInitialsAvatar(prop.agentName)} 
+          <Image
+            src={prop.agentImage || getInitialsAvatar(prop.agentName)}
             alt={prop.agentName}
             width={28}
             height={28}
+            unoptimized={!prop.agentImage}
             className={`w-7 h-7 rounded-full object-cover ${prop.isPremium ? 'ring-2 ring-amber-400' : ''}`}
           />
           <div>

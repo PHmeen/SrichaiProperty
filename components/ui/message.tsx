@@ -52,7 +52,9 @@ export const MessageAvatar = React.forwardRef<HTMLDivElement, MessageAvatarProps
         {...props}
       >
         {src ? (
-          <Image src={src} alt="Avatar" fill className="object-cover" />
+          // unoptimized เสมอ: avatar เล็กมาก (~32px) ไม่คุ้มให้ Next.js Image Optimizer ประมวลผล
+          // และบางแหล่ง (เช่น ui-avatars.com) คืนเป็น SVG ที่ Optimizer บล็อกโดย default
+          <Image src={src} alt="Avatar" fill unoptimized className="object-cover" />
         ) : (
           <span>{fallback}</span>
         )}
