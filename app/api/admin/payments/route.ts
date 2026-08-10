@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { db } from "@/lib/db";
+import { notifyUser } from "@/lib/notify";
 
 async function isAdmin() {
   const session = await getServerSession(authOptions);
@@ -82,14 +83,11 @@ export async function PATCH(req: Request) {
         where: { id: agentId },
         data: { plan_type: "pro", plan_expired_at: expDate }
       }),
-      db.notifications.create({
-        data: {
-          user_id: agentId,
-          title: "🎉 บัญชีอัปเกรดเป็น Verified PRO แล้ว!",
-          content: "การชำระเงินของคุณได้รับการยืนยัน สามารถใช้สิทธิ์ PRO ได้ทันที 30 วัน",
-          type: "package",
-          is_read: false
-        }
+      notifyUser({
+        userId: agentId,
+        title: "🎉 บัญชีอัปเกรดเป็น Verified PRO แล้ว!",
+        content: "การชำระเงินของคุณได้รับการยืนยัน สามารถใช้สิทธิ์ PRO ได้ทันที 30 วัน",
+        type: "package"
       })
     ]);
   }

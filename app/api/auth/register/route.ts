@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { notifyUsers } from "@/lib/notify";
 
 //  API สำหรับ "สมัครสมาชิกใหม่" ทั้งลูกค้า (customer) และนายหน้า (agent)
 // รับ POST request จากฟอร์ม register แล้วสร้าง user ใหม่ลงฐานข้อมูล
@@ -91,19 +92,11 @@ export async function POST(request: Request) {
         select: { id: true }
       });
 
-      await Promise.allSettled(
-        admins.map(admin =>
-          db.notifications.create({
-            data: {
-              user_id: admin.id,
-              title: '👤 มีนายหน้าสมัครใหม่',
-              content: `"${firstName} ${lastName}" สมัครเป็นนายหน้า รอตรวจสอบเอกสาร KYC`,
-              type: 'agent_register',
-              is_read: false
-            }
-          })
-        )
-      );
+      await notifyUsers(admins.map(admin => admin.id), {
+        title: '👤 มีนายหน้าสมัครใหม่',
+        content: `"${firstName} ${lastName}" สมัครเป็นนายหน้า รอตรวจสอบเอกสาร KYC`,
+        type: 'agent_register'
+      });
     }
 
     // 10. สมัครสำเร็จ -> ส่งข้อมูล user (บางส่วน ไม่ส่ง password กลับ) ให้ frontend

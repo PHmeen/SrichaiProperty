@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { db } from "@/lib/db";
+import { notifyUser, notifyUsers } from "@/lib/notify";
 import fs from "fs";
 import path from "path";
 
@@ -71,21 +72,16 @@ export async function POST(req: Request) {
     const admins = await db.users.findMany({ where: { role_id: "admin" }, select: { id: true } });
 
     await Promise.allSettled([
-      ...admins.map(admin => db.notifications.create({
-        data: {
-          user_id: admin.id,
-          title: "💳 แจ้งชำระเงิน PRO ใหม่",
-          content: `txId:${transaction.id} agentId:${user.id} name:${agentName} email:${user.email} amount:599`,
-          type: "payment", is_read: false
-        }
-      })),
-      db.notifications.create({
-        data: {
-          user_id: user.id,
-          title: "✅ ส่งสลิปเรียบร้อย",
-          content: "ทีมงานได้รับสลิปแล้ว จะยืนยันและเปิด Verified PRO ภายใน 1 วันทำการ",
-          type: "payment", is_read: false
-        }
+      notifyUsers(admins.map(admin => admin.id), {
+        title: "💳 แจ้งชำระเงิน PRO ใหม่",
+        content: `txId:${transaction.id} agentId:${user.id} name:${agentName} email:${user.email} amount:599`,
+        type: "payment"
+      }),
+      notifyUser({
+        userId: user.id,
+        title: "✅ ส่งสลิปเรียบร้อย",
+        content: "ทีมงานได้รับสลิปแล้ว จะยืนยันและเปิด Verified PRO ภายใน 1 วันทำการ",
+        type: "payment"
       })
     ]);
 

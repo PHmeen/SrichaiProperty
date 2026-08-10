@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import { db } from '@/lib/db';
+import { notifyUsers } from '@/lib/notify';
 
 // POST: บันทึกรายงานพฤติกรรมไม่เหมาะสม / สแปม / ข้อความที่ไม่เหมาะสม
 export async function POST(request: Request) {
@@ -60,19 +61,11 @@ export async function POST(request: Request) {
       select: { id: true }
     });
 
-    await Promise.allSettled(
-      admins.map(admin =>
-        db.notifications.create({
-          data: {
-            user_id: admin.id,
-            title: '🚨 มีรายงานจากห้องแชท',
-            content: `ผู้ใช้ ${user.first_name} รายงาน: "${reason}"${details ? ` — ${details}` : ''}`,
-            type: 'report',
-            is_read: false
-          }
-        })
-      )
-    );
+    await notifyUsers(admins.map(admin => admin.id), {
+      title: '🚨 มีรายงานจากห้องแชท',
+      content: `ผู้ใช้ ${user.first_name} รายงาน: "${reason}"${details ? ` — ${details}` : ''}`,
+      type: 'report'
+    });
 
     return NextResponse.json({
       success: true,

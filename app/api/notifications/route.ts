@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { db } from "@/lib/db";
+import { getPusher } from "@/lib/pusher";
+import { notificationChannelName } from "@/lib/notificationChannel";
 
 interface SessionUser {
   user?: {
@@ -9,6 +11,12 @@ interface SessionUser {
     email?: string;
   };
 }
+
+// แจ้งอุปกรณ์/แท็บอื่นของผู้ใช้คนเดียวกันว่าสถานะการแจ้งเตือนเปลี่ยน (อ่านแล้ว/ลบ) ให้รีโหลดข้อมูลใหม่
+// ไม่ให้ Pusher ล่มแล้วทำให้ PATCH/DELETE ล้มเหลวไปด้วย
+const notifySync = (userId: string) =>
+  getPusher().trigger(notificationChannelName(userId), "notifications-changed", {})
+    .catch(err => console.error("Pusher trigger error (notifications-changed):", err));
 
 // GET: ดึงรายการแจ้งเตือนของผู้ใช้ที่ล็อกอินอยู่
 export async function GET() {
@@ -82,6 +90,7 @@ export async function PATCH(req: Request) {
         where: { user_id: user.id, is_read: false },
         data: { is_read: true }
       });
+      await notifySync(user.id);
       return NextResponse.json({ success: true, message: "อ่านการแจ้งเตือนทั้งหมดแล้ว" });
     }
 
@@ -90,6 +99,7 @@ export async function PATCH(req: Request) {
         where: { id: notificationId, user_id: user.id },
         data: { is_read: true }
       });
+      await notifySync(user.id);
       return NextResponse.json({ success: true, message: "อ่านการแจ้งเตือนสำเร็จ" });
     }
 
@@ -125,6 +135,7 @@ export async function DELETE(req: Request) {
       await db.notifications.deleteMany({
         where: { user_id: user.id }
       });
+      await notifySync(user.id);
       return NextResponse.json({ success: true, message: "ลบการแจ้งเตือนทั้งหมดแล้ว" });
     }
 
@@ -132,6 +143,7 @@ export async function DELETE(req: Request) {
       await db.notifications.deleteMany({
         where: { id: notificationId, user_id: user.id }
       });
+      await notifySync(user.id);
       return NextResponse.json({ success: true, message: "ลบการแจ้งเตือนสำเร็จ" });
     }
 

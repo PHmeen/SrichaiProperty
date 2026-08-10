@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { getPusher } from '@/lib/pusher';
 import { chatChannelName } from '@/lib/chatChannel';
 import { checkRateLimit } from '@/lib/rateLimit';
+import { notifyUser } from '@/lib/notify';
 
 const MESSAGE_PAGE_SIZE = 30;
 
@@ -145,14 +146,12 @@ export async function POST(request: Request) {
       const preview = hasText ? content.trim() : hasAttachment ? '📎 ส่งไฟล์แนบ' : '📍 แชร์ตำแหน่ง';
       // ผู้รับเป็นนายหน้าของห้องนี้ -> ลิงก์ไปหน้าแชทฝั่งนายหน้า, ถ้าเป็นลูกค้า -> ลิงก์ไปหน้าแชทฝั่งลูกค้า
       const recipientChatPath = recipientId === chatSession.agent_id ? '/agent/chat' : '/chat';
-      await db.notifications.create({
-        data: {
-          user_id: recipientId,
-          title: `💬 ข้อความใหม่จาก ${user.first_name}`,
-          content: preview.length > 100 ? preview.slice(0, 100) + '…' : preview,
-          type: 'chat',
-          link_url: `${recipientChatPath}?sessionId=${sessionId}`
-        }
+      await notifyUser({
+        userId: recipientId,
+        title: `💬 ข้อความใหม่จาก ${user.first_name}`,
+        content: preview.length > 100 ? preview.slice(0, 100) + '…' : preview,
+        type: 'chat',
+        linkUrl: `${recipientChatPath}?sessionId=${sessionId}`
       }).catch(err => console.error('Error creating chat notification:', err));
     }
 

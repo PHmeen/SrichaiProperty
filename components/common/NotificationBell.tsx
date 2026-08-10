@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { getPusherClient } from '@/lib/pusher-client';
+import { notificationChannelName } from '@/lib/notificationChannel';
 
 interface NotificationItem {
   id: string;
@@ -15,7 +17,8 @@ interface NotificationItem {
 }
 
 export default function NotificationBell() {
-  const { status } = useSession();
+  const { data: sessionData, status } = useSession();
+  const currentUserId = (sessionData?.user as { id?: string } | undefined)?.id;
   const router = useRouter();
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -40,9 +43,29 @@ export default function NotificationBell() {
 
   useEffect(() => {
     loadData();
-    const timer = setInterval(loadData, 10000);
-    return () => clearInterval(timer);
   }, [loadData]);
+
+  // เชื่อมต่อ Pusher เพื่อรับการแจ้งเตือนใหม่แบบ real-time (แทนการ poll ทุก 10 วินาทีแบบเดิม)
+  useEffect(() => {
+    if (status !== 'authenticated' || !currentUserId) return;
+
+    const pusher = getPusherClient();
+    const channelName = notificationChannelName(currentUserId);
+    const channel = pusher.subscribe(channelName);
+
+    channel.bind('new-notification', (notification: NotificationItem) => {
+      setNotifications(prev => [notification, ...prev].slice(0, 20));
+      setUnreadCount(prev => prev + 1);
+    });
+
+    // ซิงก์สถานะอ่านแล้ว/ลบ ข้ามแท็บ-อุปกรณ์ของผู้ใช้คนเดียวกัน (เช่น กดอ่านแล้วในมือถือ ให้เดสก์ท็อปอัปเดตตาม)
+    channel.bind('notifications-changed', () => loadData());
+
+    return () => {
+      channel.unbind_all();
+      pusher.unsubscribe(channelName);
+    };
+  }, [status, currentUserId, loadData]);
 
   // ปิดเมื่อคลิกนอกพื้นที่
   useEffect(() => {

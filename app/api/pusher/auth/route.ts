@@ -4,8 +4,10 @@ import { authOptions } from '@/lib/authOptions';
 import { db } from '@/lib/db';
 import { getPusher } from '@/lib/pusher';
 import { parseChatSessionId } from '@/lib/chatChannel';
+import { parseNotificationUserId } from '@/lib/notificationChannel';
 
-// POST: ยืนยันสิทธิ์ก่อนอนุญาตให้ subscribe private channel ของห้องแชท (private-chat-{sessionId})
+// POST: ยืนยันสิทธิ์ก่อนอนุญาตให้ subscribe private channel (ห้องแชท private-chat-{sessionId}
+// หรือช่องแจ้งเตือนส่วนตัว private-user-{userId})
 // pusher-js เรียก endpoint นี้อัตโนมัติทุกครั้งที่ subscribe channel ที่ขึ้นต้นด้วย "private-"
 // แทนที่ io.use() JWT middleware ของ socket-server.js เดิม โดยใช้ NextAuth session cookie แทน JWT
 export async function POST(request: Request) {
@@ -27,23 +29,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'ข้อมูลคำขอไม่ถูกต้อง' }, { status: 400 });
   }
 
-  // ยอมเฉพาะช่องทางแชทที่ตั้งชื่อตามรูปแบบ private-chat-{sessionId} เท่านั้น
+  // กรณีที่ 1: ห้องแชท private-chat-{sessionId} — ตรวจกับ DB ว่าเป็นสมาชิกห้องนี้จริง
   const roomId = parseChatSessionId(channel);
-  if (!roomId) {
-    return NextResponse.json({ error: 'ช่องทางไม่ถูกต้อง' }, { status: 400 });
+  if (roomId) {
+    const chatSession = await db.chat_sessions.findUnique({
+      where: { id: roomId },
+      select: { customer_id: true, agent_id: true }
+    });
+
+    const isMember = !!chatSession && (chatSession.customer_id === user.id || chatSession.agent_id === user.id);
+    if (!isMember) {
+      return NextResponse.json({ error: 'คุณไม่มีสิทธิ์เข้าห้องแชทนี้' }, { status: 403 });
+    }
+
+    const authResponse = getPusher().authorizeChannel(socketId, channel);
+    return NextResponse.json(authResponse);
   }
 
-  // ตรวจสอบกับฐานข้อมูลจริงว่าผู้ใช้เป็นสมาชิกของห้องแชทนี้ (customer_id หรือ agent_id) ก่อนอนุญาต
-  const chatSession = await db.chat_sessions.findUnique({
-    where: { id: roomId },
-    select: { customer_id: true, agent_id: true }
-  });
+  // กรณีที่ 2: ช่องแจ้งเตือนส่วนตัว private-user-{userId} — subscribe ได้เฉพาะช่องของตัวเองเท่านั้น
+  const notifyUserId = parseNotificationUserId(channel);
+  if (notifyUserId) {
+    if (notifyUserId !== user.id) {
+      return NextResponse.json({ error: 'คุณไม่มีสิทธิ์เข้าช่องทางนี้' }, { status: 403 });
+    }
 
-  const isMember = !!chatSession && (chatSession.customer_id === user.id || chatSession.agent_id === user.id);
-  if (!isMember) {
-    return NextResponse.json({ error: 'คุณไม่มีสิทธิ์เข้าห้องแชทนี้' }, { status: 403 });
+    const authResponse = getPusher().authorizeChannel(socketId, channel);
+    return NextResponse.json(authResponse);
   }
 
-  const authResponse = getPusher().authorizeChannel(socketId, channel);
-  return NextResponse.json(authResponse);
+  return NextResponse.json({ error: 'ช่องทางไม่ถูกต้อง' }, { status: 400 });
 }

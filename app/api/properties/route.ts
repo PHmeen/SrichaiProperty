@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { db } from "@/lib/db";
+import { notifyUser, notifyUsers } from "@/lib/notify";
 
 /**
  * ==============================================================================
@@ -214,14 +215,10 @@ export async function POST(request: Request) {
     // 2.10 ส่งการแจ้งเตือน (Notifications) ไปยังแอดมินทุกคนเพื่อแจ้งให้ทราบว่ามีประกาศใหม่รออนุมัติ
     const admins = await db.users.findMany({ where: { role_id: "admin" }, select: { id: true } });
     if (admins.length > 0) {
-      await db.notifications.createMany({
-        data: admins.map((admin) => ({
-          user_id: admin.id,
-          title: "📋 มีประกาศใหม่รออนุมัติ",
-          content: `ประกาศ "${title}" ถูกส่งเข้าคิวตรวจสอบ`,
-          type: "property_pending",
-          is_read: false
-        }))
+      await notifyUsers(admins.map((admin) => admin.id), {
+        title: "📋 มีประกาศใหม่รออนุมัติ",
+        content: `ประกาศ "${title}" ถูกส่งเข้าคิวตรวจสอบ`,
+        type: "property_pending"
       }).catch(() => {});
     }
 
@@ -266,16 +263,13 @@ export async function PATCH(request: Request) {
     // 3.4 ส่งการแจ้งเตือนไปยังนายหน้าเจ้าของประกาศเพื่อแจ้งผลการตรวจสอบ
     if (updatedProperty.agent_id) {
       const reasonText = isRejected && reason ? `\nเหตุผล: ${reason}` : "";
-      await db.notifications.create({
-        data: {
-          user_id: updatedProperty.agent_id,
-          title: isApproved ? "✅ ประกาศของคุณได้รับการอนุมัติแล้ว" : "❌ ประกาศของคุณไม่ผ่านการอนุมัติ",
-          content: isApproved
-            ? `ประกาศ "${updatedProperty.title}" ผ่านการตรวจสอบและแสดงบนเว็บไซต์เรียบร้อยแล้ว`
-            : `ประกาศ "${updatedProperty.title}" ไม่ผ่านการอนุมัติจากทีมงาน กรุณาตรวจสอบข้อมูลอีกครั้ง${reasonText}`,
-          type: "property",
-          is_read: false
-        }
+      await notifyUser({
+        userId: updatedProperty.agent_id,
+        title: isApproved ? "✅ ประกาศของคุณได้รับการอนุมัติแล้ว" : "❌ ประกาศของคุณไม่ผ่านการอนุมัติ",
+        content: isApproved
+          ? `ประกาศ "${updatedProperty.title}" ผ่านการตรวจสอบและแสดงบนเว็บไซต์เรียบร้อยแล้ว`
+          : `ประกาศ "${updatedProperty.title}" ไม่ผ่านการอนุมัติจากทีมงาน กรุณาตรวจสอบข้อมูลอีกครั้ง${reasonText}`,
+        type: "property"
       }).catch(() => {});
     }
 

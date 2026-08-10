@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { db } from "@/lib/db";
+import { notifyUser } from "@/lib/notify";
 
 /**
  * ==============================================================================
@@ -28,7 +29,7 @@ async function getAuthUser() {
 // Helper 3: ฟังก์ชันส่งการแจ้งเตือน (Notifications) ไปยังฐานข้อมูลแบบไม่ขัดจังหวะกระบวนการหลัก
 // (ใช้ .catch() ดักจับความผิดพลาดไว้เพื่อไม่ให้กระทบกับการทำธุรกรรมหลักข้างบน)
 const sendNotification = (userId: string, title: string, content: string, type = "appointment") =>
-  db.notifications.create({ data: { user_id: userId, title, content, type, is_read: false } }).catch(() => {});
+  notifyUser({ userId, title, content, type }).catch(() => {});
 
 // ==============================================================================
 // 1. GET: ดึงรายการนัดหมาย (รองรับมุมมองลูกค้า และ มุมมองนายหน้า)
