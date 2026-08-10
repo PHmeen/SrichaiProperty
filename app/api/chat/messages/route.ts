@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import { db } from '@/lib/db';
-import { getPusher, chatChannelName } from '@/lib/pusher';
+import { getPusher } from '@/lib/pusher';
+import { chatChannelName } from '@/lib/chatChannel';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 const MESSAGE_PAGE_SIZE = 30;
 
@@ -83,6 +85,11 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json({ error: 'ไม่พบผู้ใช้ในระบบ' }, { status: 404 });
+    }
+
+    // จำกัดอัตราการส่งข้อความกันสแปม/บอทยิงถล่ม (60 ข้อความ/นาที ต่อผู้ใช้)
+    if (!checkRateLimit(`chat-message:${user.id}`, 60, 60 * 1000)) {
+      return NextResponse.json({ error: 'คุณส่งข้อความบ่อยเกินไป กรุณาลองใหม่อีกครั้งในภายหลัง' }, { status: 429 });
     }
 
     const body = await request.json();
@@ -201,10 +208,16 @@ export async function PATCH(request: Request) {
     }
 
     // ทำเครื่องหมายอ่านแล้วเฉพาะข้อความที่ "อีกฝ่าย" ส่งมา (ไม่ใช่ข้อความของตัวเอง)
-    await db.messages.updateMany({
+    const { count } = await db.messages.updateMany({
       where: { session_id: sessionId, sender_id: { not: user.id }, is_read: false },
       data: { is_read: true }
     });
+
+    // แจ้งอีกฝ่ายผ่าน Pusher ว่าข้อความถูกอ่านแล้ว ให้เห็นสถานะ "อ่านแล้ว" ทันทีโดยไม่ต้องรีเฟรช
+    if (count > 0) {
+      await getPusher().trigger(chatChannelName(sessionId), 'messages-read', {})
+        .catch(err => console.error('Pusher trigger error:', err));
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

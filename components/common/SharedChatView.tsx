@@ -53,6 +53,8 @@ interface SharedChatViewProps {
   onLoadOlderMessages?: (sessionId: string, oldestMessageId: string | number) => Promise<void> | void;
   isTyping?: boolean;
   quickActions?: { label: string; action: () => void }[];
+  /** true เมื่อเชื่อมต่อระบบแชทเรียลไทม์ไม่สำเร็จ (แสดงแบนเนอร์เตือนผู้ใช้) */
+  connectionError?: boolean;
 }
 
 const TYPING_IDLE_MS = 2000;
@@ -93,7 +95,8 @@ export default function SharedChatView({
   onTyping,
   onLoadOlderMessages,
   isTyping = false,
-  quickActions = []
+  quickActions = [],
+  connectionError = false
 }: SharedChatViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [messageInput, setMessageInput] = useState('');
@@ -356,6 +359,12 @@ export default function SharedChatView({
                   </div>
                 )}
               </div>
+
+              {connectionError && (
+                <div className="px-4 py-1.5 bg-amber-50 border-b border-amber-200 text-amber-700 text-[10px] font-bold text-center shrink-0">
+                  ⚠️ การเชื่อมต่อแชทเรียลไทม์มีปัญหา ข้อความอาจไม่อัปเดตอัตโนมัติ กรุณารีเฟรชหน้า
+                </div>
+              )}
 
               {/* Messages Area */}
               <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-slate-50/30">

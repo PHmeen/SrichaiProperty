@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
-import type { Channel } from 'pusher-js';
-import { getPusherClient } from '@/lib/pusher-client';
+import { useChatRealtime } from '@/hooks/useChatRealtime';
 import SharedChatView, { SharedChatSession, OutgoingChatPayload } from '@/components/common/SharedChatView';
 
 interface ChatMessage {
@@ -48,9 +47,6 @@ function ChatContent() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(initialSessionId);
-  const [isTypingState, setIsTypingState] = useState<{ [key: string]: boolean }>({});
-
-  const channelRef = useRef<Channel | null>(null);
 
   // 1. โหลดข้อมูลห้องแชทของลูกค้า
   const fetchChatData = useCallback(() => {
@@ -76,33 +72,13 @@ function ChatContent() {
 
   // 2. เชื่อมต่อ Pusher และ subscribe channel ของห้องแชทที่กำลังเปิดอยู่ (ยืนยันสิทธิ์ผ่าน /api/pusher/auth
   // ด้วย NextAuth session cookie โดยอัตโนมัติ ไม่ต้องขอ JWT token เองแบบ Socket.io เดิม)
-  useEffect(() => {
-    if (sessionStatus !== 'authenticated' || !selectedSessionId) return;
-
-    const pusher = getPusherClient();
-    const channelName = `private-chat-${selectedSessionId}`;
-    const channel = pusher.subscribe(channelName);
-    channelRef.current = channel;
-
-    channel.bind('new-message', () => {
-      fetchChatData();
-    });
-
-    channel.bind('client-typing', (data: { isTyping: boolean; userId?: string }) => {
-      if (data.userId === currentUserId) return;
-      setIsTypingState(prev => ({ ...prev, [selectedSessionId]: data.isTyping }));
-    });
-
-    channel.bind('pusher:subscription_error', (status: number) => {
-      console.error('Chat room subscription error:', status);
-    });
-
-    return () => {
-      channel.unbind_all();
-      pusher.unsubscribe(channelName);
-      channelRef.current = null;
-    };
-  }, [sessionStatus, selectedSessionId, currentUserId, fetchChatData]);
+  const { isTyping, connectionError, sendTyping } = useChatRealtime({
+    enabled: sessionStatus === 'authenticated',
+    sessionId: selectedSessionId,
+    currentUserId,
+    onNewMessage: fetchChatData,
+    onMessagesRead: fetchChatData
+  });
 
   // 4. ทำเครื่องหมายว่าอ่านข้อความในห้องที่เปิดอยู่แล้ว
   const handleOpenSession = useCallback((sessionId: string) => {
@@ -114,16 +90,6 @@ function ChatContent() {
       .then(() => setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, unreadCount: 0 } : s)))
       .catch(err => console.error('Mark read failed:', err));
   }, []);
-
-  // 5. แจ้งอีกฝ่ายว่ากำลังพิมพ์อยู่หรือไม่ (ยิงผ่าน API ไป Pusher เท่านั้น ไม่บันทึกลง DB)
-  const handleTyping = useCallback((typing: boolean) => {
-    if (!selectedSessionId) return;
-    fetch('/api/chat/typing', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: selectedSessionId, isTyping: typing })
-    }).catch(err => console.error('Send typing status failed:', err));
-  }, [selectedSessionId]);
 
   // 5b. โหลดข้อความเก่ากว่านี้ในห้องที่เลือก (cursor pagination ตาม message id ที่เก่าที่สุดที่มีอยู่)
   const handleLoadOlderMessages = useCallback(async (sessionId: string, oldestMessageId: string | number) => {
@@ -200,12 +166,13 @@ function ChatContent() {
       role="customer"
       sessions={sharedSessions}
       selectedSessionId={selectedSessionId}
-      onSelectSession={(id) => setSelectedSessionId(id)}
+      onSelectSession={setSelectedSessionId}
       onSendMessage={handleSendMessage}
       onOpenSession={handleOpenSession}
-      onTyping={handleTyping}
+      onTyping={sendTyping}
       onLoadOlderMessages={handleLoadOlderMessages}
-      isTyping={selectedSessionId ? isTypingState[selectedSessionId] : false}
+      isTyping={isTyping}
+      connectionError={connectionError}
     />
   );
 }

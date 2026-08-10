@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import { db } from '@/lib/db';
 import { getPusher } from '@/lib/pusher';
+import { parseChatSessionId } from '@/lib/chatChannel';
 
 // POST: ยืนยันสิทธิ์ก่อนอนุญาตให้ subscribe private channel ของห้องแชท (private-chat-{sessionId})
 // pusher-js เรียก endpoint นี้อัตโนมัติทุกครั้งที่ subscribe channel ที่ขึ้นต้นด้วย "private-"
@@ -27,11 +28,10 @@ export async function POST(request: Request) {
   }
 
   // ยอมเฉพาะช่องทางแชทที่ตั้งชื่อตามรูปแบบ private-chat-{sessionId} เท่านั้น
-  const prefix = 'private-chat-';
-  if (!channel.startsWith(prefix)) {
+  const roomId = parseChatSessionId(channel);
+  if (!roomId) {
     return NextResponse.json({ error: 'ช่องทางไม่ถูกต้อง' }, { status: 400 });
   }
-  const roomId = channel.slice(prefix.length);
 
   // ตรวจสอบกับฐานข้อมูลจริงว่าผู้ใช้เป็นสมาชิกของห้องแชทนี้ (customer_id หรือ agent_id) ก่อนอนุญาต
   const chatSession = await db.chat_sessions.findUnique({

@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import { db } from '@/lib/db';
-import { getPusher, chatChannelName } from '@/lib/pusher';
+import { getPusher } from '@/lib/pusher';
+import { chatChannelName } from '@/lib/chatChannel';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 // POST: แจ้งอีกฝ่ายในห้องแชทว่ากำลังพิมพ์อยู่หรือไม่ (ไม่บันทึกลง DB, ยิงผ่าน Pusher เท่านั้น)
 // แทนที่ event 'typing' ของ socket-server.js เดิม
@@ -16,6 +18,11 @@ export async function POST(request: Request) {
     const user = await db.users.findUnique({ where: { email: session.user.email } });
     if (!user) {
       return NextResponse.json({ error: 'ไม่พบผู้ใช้ในระบบ' }, { status: 404 });
+    }
+
+    // จำกัดอัตราการแจ้งสถานะพิมพ์กันสแปม (30 ครั้ง/นาที ต่อผู้ใช้ ฝั่ง UI debounce ไว้แล้ว 2 วิ/ครั้งอยู่แล้ว)
+    if (!checkRateLimit(`chat-typing:${user.id}`, 30, 60 * 1000)) {
+      return NextResponse.json({ error: 'คุณส่งสถานะพิมพ์บ่อยเกินไป' }, { status: 429 });
     }
 
     const body = await request.json();

@@ -17,8 +17,3 @@ export function getPusher(): Pusher {
   }
   return instance;
 }
-
-// ชื่อ private channel ของห้องแชท (ต้องขึ้นต้นด้วย "private-" ตามข้อกำหนดของ Pusher)
-export function chatChannelName(sessionId: string): string {
-  return `private-chat-${sessionId}`;
-}
