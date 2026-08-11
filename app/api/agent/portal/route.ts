@@ -126,12 +126,13 @@ export async function GET(request: Request) {
             orderBy: { order_index: 'asc' },
             take: 1
           },
-          _count: { 
-            select: { 
-              appointments: true,
+          _count: {
+            select: {
+              // ไม่นับนัดหมายที่ถูกยกเลิก/ปฏิเสธ เพื่อให้ยอดนัดหมายตรงกับความเป็นจริง
+              appointments: { where: { status: { notIn: ['cancelled', 'rejected'] } } },
               chat_sessions: true,
               saved_properties: true
-            } 
+            }
           }
         },
         orderBy: { created_at: 'desc' }
@@ -151,12 +152,17 @@ export async function GET(request: Request) {
         totalViews += p.views_count;
       });
 
-      // ดึงสถิติตามช่วงเวลา (Appointments, Chats, Saves) ของแต่ละทรัพย์
+      // ดึงสถิติตามช่วงเวลา (Views, Appointments, Chats, Saves) ของแต่ละทรัพย์
       const propertyIds = properties.map(p => p.id);
-      
-      const [allAppointments, allChats, allSaves] = await Promise.all([
-        db.appointments.findMany({
+
+      const [allViews, allAppointments, allChats, allSaves] = await Promise.all([
+        db.property_views.findMany({
           where: { property_id: { in: propertyIds } },
+          select: { property_id: true, viewed_at: true }
+        }),
+        db.appointments.findMany({
+          // ไม่นับนัดหมายที่ถูกยกเลิก/ปฏิเสธ ทั้งในกราฟและในรายชื่อลูกค้านัดหมาย
+          where: { property_id: { in: propertyIds }, status: { notIn: ['cancelled', 'rejected'] } },
           include: {
             users_appointments_customer_idTousers: {
               select: { first_name: true, last_name: true, phone: true }
@@ -175,6 +181,7 @@ export async function GET(request: Request) {
       ]);
 
       const formattedProperties = properties.map(p => {
+        const propViews = allViews.filter(v => v.property_id === p.id);
         const propApts = allAppointments.filter(a => a.property_id === p.id);
         const propChats = allChats.filter(c => c.property_id === p.id);
         const propSaves = allSaves.filter(s => s.property_id === p.id);
@@ -197,6 +204,7 @@ export async function GET(request: Request) {
           chatsCount: p._count.chat_sessions,
           savesCount: p._count.saved_properties,
           createdAt: p.created_at,
+          rawViews: propViews.map(v => v.viewed_at.toISOString()),
           rawAppointments: propApts.map(a => a.created_at.toISOString()),
           rawChats: propChats.map(c => c.created_at.toISOString()),
           rawSaves: propSaves.map(s => s.created_at.toISOString()),
@@ -214,9 +222,9 @@ export async function GET(request: Request) {
         };
       });
 
-      // ดึงนัดหมายล่าสุด 5 รายการ
+      // ดึงนัดหมายล่าสุด 5 รายการ (ไม่รวมที่ถูกยกเลิก/ปฏิเสธ เพราะไม่ต้องดำเนินการต่อแล้ว)
       const recentAppointments = await db.appointments.findMany({
-        where: { agent_id: agent.id },
+        where: { agent_id: agent.id, status: { notIn: ['cancelled', 'rejected'] } },
         include: {
           properties: true,
           users_appointments_customer_idTousers: {

@@ -24,10 +24,16 @@ export async function POST(
     const { id } = await context.params;
 
     // 2. อัปเดตเพิ่มยอดเข้าชมแบบ Atomic Increment (+1) ในตาราง properties
-    await db.properties.update({
-      where: { id },
-      data: { views_count: { increment: 1 } }
-    });
+    //    และบันทึก Log การเข้าชมครั้งนี้ไว้ในตาราง property_views เพื่อใช้ทำกราฟเทรนด์รายวัน/เดือน/ปี
+    await db.$transaction([
+      db.properties.update({
+        where: { id },
+        data: { views_count: { increment: 1 } }
+      }),
+      db.property_views.create({
+        data: { property_id: id }
+      })
+    ]);
 
     return NextResponse.json({ success: true });
   } catch {

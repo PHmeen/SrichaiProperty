@@ -42,6 +42,7 @@ interface PropertyData {
   appointments: number;
   chatsCount?: number;
   savesCount?: number;
+  rawViews?: string[];
   rawAppointments?: string[];
   rawChats?: string[];
   rawSaves?: string[];
@@ -99,17 +100,32 @@ export default function AgentDashboardPage() {
     isPro?: boolean;
     recentAppointments?: AppointmentData[];
   } | null>(null);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const isLoadingDashboard = !dbData && !dashboardError;
 
   const loadDashboard = useCallback(() => {
     fetch('/api/agent/portal?type=dashboard')
-      .then(res => res.json())
-      .then(data => setDbData(data))
-      .catch(err => console.error('Error fetching dashboard:', err));
+      .then(res => {
+        if (!res.ok) throw new Error('โหลดข้อมูลแผงควบคุมไม่สำเร็จ');
+        return res.json();
+      })
+      .then(data => {
+        setDashboardError(null);
+        setDbData(data);
+      })
+      .catch(err => {
+        console.error('Error fetching dashboard:', err);
+        setDashboardError('ไม่สามารถโหลดข้อมูลแผงควบคุมได้ กรุณาลองใหม่อีกครั้ง');
+      });
   }, []);
 
   useEffect(() => {
     if (status === 'authenticated') loadDashboard();
   }, [status, loadDashboard]);
+
+  // คีย์วันที่แบบ local time (Asia/Bangkok ตามเครื่องผู้ใช้) เพื่อไม่ให้เพี้ยนข้ามวันแบบ UTC
+  const toLocalDayKey = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
   const handleDelete = async (propertyId: string) => {
     if (!confirm('ยืนยันลบประกาศนี้หรือไม่? การลบจะไม่สามารถย้อนกลับได้')) return;
@@ -135,10 +151,11 @@ export default function AgentDashboardPage() {
   };
 
   // 🎯 สถิติกราฟคำนวณตรงจากฐานข้อมูลจริงตามช่วงเวลา (วัน / เดือน / ปี)
+  // ใช้ local date/time ล้วน (ไม่ผสม toISOString ที่เป็น UTC) เพื่อไม่ให้วันที่เพี้ยนข้ามเขต เวลา
   const modalChartData = useMemo(() => {
     if (!selectedProperty) return [];
 
-    const totalViews = selectedProperty.views || 0;
+    const viewDates = (selectedProperty.rawViews || []).map(d => new Date(d));
     const aptDates = (selectedProperty.rawAppointments || []).map(d => new Date(d));
     const chatDates = (selectedProperty.rawChats || []).map(d => new Date(d));
     const saveDates = (selectedProperty.rawSaves || []).map(d => new Date(d));
@@ -149,15 +166,14 @@ export default function AgentDashboardPage() {
         const date = new Date();
         date.setDate(date.getDate() - i);
         const dayLabel = date.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric' });
-        const dateString = date.toISOString().split('T')[0];
+        const dayKey = toLocalDayKey(date);
 
-        const apts = aptDates.filter(d => d.toISOString().split('T')[0] === dateString).length;
-        const chats = chatDates.filter(d => d.toISOString().split('T')[0] === dateString).length;
-        const saves = saveDates.filter(d => d.toISOString().split('T')[0] === dateString).length;
+        const views = viewDates.filter(d => toLocalDayKey(d) === dayKey).length;
+        const apts = aptDates.filter(d => toLocalDayKey(d) === dayKey).length;
+        const chats = chatDates.filter(d => toLocalDayKey(d) === dayKey).length;
+        const saves = saveDates.filter(d => toLocalDayKey(d) === dayKey).length;
 
-        const views = i === 0 ? totalViews : 0;
-
-        result.push({ timeframe: dayLabel, views: views, appointments: apts, chats: chats, saves: saves });
+        result.push({ timeframe: dayLabel, views, appointments: apts, chats, saves });
       }
       return result;
     } else if (chartTimeframe === 'month') {
@@ -168,13 +184,12 @@ export default function AgentDashboardPage() {
         const monthLabel = date.toLocaleDateString('th-TH', { month: 'short' });
         const yearMonth = `${date.getFullYear()}-${date.getMonth()}`;
 
+        const views = viewDates.filter(d => `${d.getFullYear()}-${d.getMonth()}` === yearMonth).length;
         const apts = aptDates.filter(d => `${d.getFullYear()}-${d.getMonth()}` === yearMonth).length;
         const chats = chatDates.filter(d => `${d.getFullYear()}-${d.getMonth()}` === yearMonth).length;
         const saves = saveDates.filter(d => `${d.getFullYear()}-${d.getMonth()}` === yearMonth).length;
 
-        const views = i === 0 ? totalViews : 0;
-
-        result.push({ timeframe: monthLabel, views: views, appointments: apts, chats: chats, saves: saves });
+        result.push({ timeframe: monthLabel, views, appointments: apts, chats, saves });
       }
       return result;
     } else {
@@ -184,13 +199,12 @@ export default function AgentDashboardPage() {
         const year = currentYear - i;
         const yearLabel = (year + 543).toString();
 
+        const views = viewDates.filter(d => d.getFullYear() === year).length;
         const apts = aptDates.filter(d => d.getFullYear() === year).length;
         const chats = chatDates.filter(d => d.getFullYear() === year).length;
         const saves = saveDates.filter(d => d.getFullYear() === year).length;
 
-        const views = i === 0 ? totalViews : 0;
-
-        result.push({ timeframe: yearLabel, views: views, appointments: apts, chats: chats, saves: saves });
+        result.push({ timeframe: yearLabel, views, appointments: apts, chats, saves });
       }
       return result;
     }
@@ -266,6 +280,22 @@ export default function AgentDashboardPage() {
             + ลงประกาศใหม่ {isPro ? '(สิทธิ์ PRO ไม่จำกัด)' : `(เหลือ ${remainingQuota} สิทธิ์ฟรี)`}
           </Link>
         </section>
+
+        {/* สถานะโหลดข้อมูล / ข้อผิดพลาดจากการเชื่อมต่อ API */}
+        {isLoadingDashboard && !dbData && (
+          <section className="bg-white rounded-2xl p-4 border border-slate-200/80 flex items-center gap-3 text-slate-500">
+            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin shrink-0" />
+            กำลังโหลดข้อมูลแผงควบคุม...
+          </section>
+        )}
+        {dashboardError && (
+          <section className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center justify-between gap-3 text-red-700">
+            <span>⚠️ {dashboardError}</span>
+            <button onClick={loadDashboard} className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-[11px] shrink-0 border-0 cursor-pointer">
+              ลองใหม่
+            </button>
+          </section>
+        )}
 
         {/* 4 Cards Summary */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -597,27 +627,27 @@ export default function AgentDashboardPage() {
               </ChartContainer>
             </div>
 
-            {/* 👥 รายชื่อลูกค้านัดหมายเข้าชมบ้านหลังนี้ (แสดงเฉพาะเมื่อมีคนนัดจริงเท่านั้น ให้ UI สะอาดกระชับ) */}
-            {selectedProperty.appointmentLeads && selectedProperty.appointmentLeads.length > 0 && (
-              <div className="bg-emerald-50/40 rounded-3xl border border-emerald-100 p-5 space-y-3 shadow-xs">
-                <div className="flex items-center justify-between border-b border-emerald-100 pb-2.5">
-                  <h4 className="font-extrabold text-emerald-950 text-xs md:text-sm flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    👥 รายชื่อลูกค้านัดหมายชมบ้านหลังนี้
-                  </h4>
-                  <span className="text-[11px] bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full font-extrabold">
-                    {selectedProperty.appointmentLeads.length} รายการนัด
-                  </span>
-                </div>
+            {/* 👥 รายชื่อลูกค้านัดหมายเข้าชมบ้านหลังนี้ */}
+            <div className="bg-emerald-50/40 rounded-3xl border border-emerald-100 p-5 space-y-3 shadow-xs">
+              <div className="flex items-center justify-between border-b border-emerald-100 pb-2.5">
+                <h4 className="font-extrabold text-emerald-950 text-xs md:text-sm flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  👥 รายชื่อลูกค้านัดหมายชมบ้านหลังนี้
+                </h4>
+                <span className="text-[11px] bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full font-extrabold">
+                  {selectedProperty.appointmentLeads?.length || 0} รายการนัด
+                </span>
+              </div>
 
+              {selectedProperty.appointmentLeads && selectedProperty.appointmentLeads.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {selectedProperty.appointmentLeads.map((apt, idx) => (
-                    <div key={idx} className="p-3 bg-white rounded-2xl border border-emerald-100 shadow-2xs flex items-center justify-between">
+                  {selectedProperty.appointmentLeads.map((apt) => (
+                    <div key={apt.id} className="p-3 bg-white rounded-2xl border border-emerald-100 shadow-2xs flex items-center justify-between">
                       <div>
                         <strong className="text-xs font-extrabold text-slate-900 block">{apt.customerName}</strong>
                         <span className="text-[10px] text-slate-500 font-medium block mt-0.5">🕒 วันที่ {apt.date} ({apt.timeSlot})</span>
                       </div>
-                      <a 
+                      <a
                         href={`tel:${apt.customerPhone}`}
                         className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-[10px] transition shrink-0 shadow-xs"
                       >
@@ -626,8 +656,10 @@ export default function AgentDashboardPage() {
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-[11px] text-emerald-700/70 text-center py-3">ยังไม่มีลูกค้านัดชมบ้านหลังนี้</p>
+              )}
+            </div>
 
             {/* Bottom Actions Bar */}
             <div className="flex items-center gap-3 pt-2">

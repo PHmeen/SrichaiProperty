@@ -149,6 +149,7 @@ model properties {
   property_documents     property_documents[]
   property_images        property_images[]
   property_nearbies      property_nearbies[]
+  property_views         property_views[]
   reports                reports[]
   sale_transactions      sale_transactions[]
   saved_properties       saved_properties[]
@@ -231,6 +232,16 @@ model saved_properties {
   users       users      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([user_id, property_id])
+}
+
+/// ตาราง Log บันทึกทุกครั้งที่มีคนเปิดดูหน้ารายละเอียดอสังหาฯ (ใช้ทำกราฟเทรนด์ยอดเข้าชมรายวัน/เดือน/ปี)
+model property_views {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  property_id String     @db.Uuid // รหัสอสังหาฯ ที่ถูกเข้าชม
+  viewed_at   DateTime   @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  properties  properties @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([property_id, viewed_at], map: "idx_property_views_property_time")
 }
 
 
