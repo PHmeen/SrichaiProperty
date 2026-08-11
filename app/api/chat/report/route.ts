@@ -61,10 +61,12 @@ export async function POST(request: Request) {
       select: { id: true }
     });
 
+    const userName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'ผู้ใช้งาน';
     await notifyUsers(admins.map(admin => admin.id), {
-      title: '🚨 มีรายงานจากห้องแชท',
-      content: `ผู้ใช้ ${user.first_name} รายงาน: "${reason}"${details ? ` — ${details}` : ''}`,
-      type: 'report'
+      title: 'รายงานความไม่เหมาะสมในระบบสนทนา',
+      content: `ผู้ใช้งาน คุณ${userName} ได้ส่งรายงานความไม่เหมาะสม: "${reason}"${details ? ` (${details})` : ''}`,
+      type: 'report',
+      linkUrl: '/admin/dashboard'
     });
 
     return NextResponse.json({

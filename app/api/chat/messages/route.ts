@@ -143,12 +143,13 @@ export async function POST(request: Request) {
     // แจ้งเตือนอีกฝ่ายในห้องแชท (ไม่ให้การแจ้งเตือนล้มเหลวทำให้การส่งข้อความล้มเหลวไปด้วย)
     const recipientId = chatSession.customer_id === user.id ? chatSession.agent_id : chatSession.customer_id;
     if (recipientId) {
-      const preview = hasText ? content.trim() : hasAttachment ? '📎 ส่งไฟล์แนบ' : '📍 แชร์ตำแหน่ง';
+      const senderName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'ผู้สอบถาม';
+      const preview = hasText ? content.trim() : hasAttachment ? 'ส่งไฟล์แนบ' : 'แชร์ตำแหน่งสถานที่';
       // ผู้รับเป็นนายหน้าของห้องนี้ -> ลิงก์ไปหน้าแชทฝั่งนายหน้า, ถ้าเป็นลูกค้า -> ลิงก์ไปหน้าแชทฝั่งลูกค้า
       const recipientChatPath = recipientId === chatSession.agent_id ? '/agent/chat' : '/chat';
       await notifyUser({
         userId: recipientId,
-        title: `💬 ข้อความใหม่จาก ${user.first_name}`,
+        title: `ข้อความใหม่จาก คุณ${senderName}`,
         content: preview.length > 100 ? preview.slice(0, 100) + '…' : preview,
         type: 'chat',
         linkUrl: `${recipientChatPath}?sessionId=${sessionId}`

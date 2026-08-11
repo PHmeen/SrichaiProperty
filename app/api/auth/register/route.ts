@@ -93,9 +93,10 @@ export async function POST(request: Request) {
       });
 
       await notifyUsers(admins.map(admin => admin.id), {
-        title: '👤 มีนายหน้าสมัครใหม่',
-        content: `"${firstName} ${lastName}" สมัครเป็นนายหน้า รอตรวจสอบเอกสาร KYC`,
-        type: 'agent_register'
+        title: 'แจ้งลงทะเบียนบัญชีนายหน้าใหม่',
+        content: `คุณ ${firstName} ${lastName} ได้ลงทะเบียนในฐานะนายหน้าอสังหาริมทรัพย์ โปรดเข้าตรวจสอบเอกสารยืนยันตัวตน (KYC)`,
+        type: 'agent_register',
+        linkUrl: '/admin/dashboard'
       });
     }
 

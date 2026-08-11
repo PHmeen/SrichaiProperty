@@ -28,8 +28,8 @@ async function getAuthUser() {
 
 // Helper 3: ฟังก์ชันส่งการแจ้งเตือน (Notifications) ไปยังฐานข้อมูลแบบไม่ขัดจังหวะกระบวนการหลัก
 // (ใช้ .catch() ดักจับความผิดพลาดไว้เพื่อไม่ให้กระทบกับการทำธุรกรรมหลักข้างบน)
-const sendNotification = (userId: string, title: string, content: string, type = "appointment") =>
-  notifyUser({ userId, title, content, type }).catch(() => {});
+const sendNotification = (userId: string, title: string, content: string, type = "appointment", linkUrl?: string | null) =>
+  notifyUser({ userId, title, content, type, linkUrl }).catch(() => {});
 
 // ==============================================================================
 // 1. GET: ดึงรายการนัดหมาย (รองรับมุมมองลูกค้า และ มุมมองนายหน้า)
@@ -176,9 +176,21 @@ export async function POST(request: Request) {
     const timeLabel = dbTimeSlot === "morning" ? "ช่วงเช้า (10:00 - 12:00 น.)" : "ช่วงบ่าย (14:00 - 16:00 น.)";
 
     if (property.agent_id) {
-      sendNotification(property.agent_id, "🏠 มีคำขอนัดหมายดูบ้านใหม่", `${customerName} ได้ส่งคำขอนัดหมายดู "${property.title}" วันที่ ${date} (${timeLabel})`);
+      sendNotification(
+        property.agent_id,
+        "คำขอนัดหมายเข้าชมโครงการ",
+        `คุณ ${customerName} ได้ยื่นคำขอนัดหมายเข้าชม "${property.title}" สำหรับวันที่ ${date} (${timeLabel})`,
+        "appointment",
+        "/agent/appointments"
+      );
     }
-    sendNotification(user.id, "✅ ส่งคำขอนัดหมายเรียบร้อยแล้ว", `ส่งคำขอนัดชม "${property.title}" สำหรับวันที่ ${date} เรียบร้อยแล้ว ระบบกำลังส่งต่อให้นายหน้ายืนยัน`);
+    sendNotification(
+      user.id,
+      "บันทึกคำขอนัดหมายเข้าชมโครงการ",
+      `ยื่นคำขอนัดหมายเข้าชม "${property.title}" ประจำวันที่ ${date} เรียบร้อยแล้ว ระบบอยู่ระหว่างส่งเรื่องให้นายหน้าพิจารณา`,
+      "appointment",
+      "/customer/appointments"
+    );
 
     return NextResponse.json({ success: true, data: newAppointment });
   } catch (error) {
@@ -217,7 +229,13 @@ export async function PATCH(request: Request) {
         const updated = await db.appointments.update({ where: { id }, data: { status: "completed" } });
         if (appointment.customer_id) {
           const prop = appointment.property_id ? await db.properties.findUnique({ where: { id: appointment.property_id }, select: { title: true } }) : null;
-          sendNotification(appointment.customer_id, "✨ การนัดชมบ้านเสร็จสิ้นแล้ว", `การเข้าชมบ้าน "${prop?.title || "อสังหาฯ"}" เสร็จสิ้นเรียบร้อยแล้ว`, "review");
+          sendNotification(
+            appointment.customer_id,
+            "การนำชมโครงการเสร็จสิ้น",
+            `การเข้าชมโครงการ "${prop?.title || "อสังหาริมทรัพย์"}" เสร็จสมบูรณ์แล้ว ขอเชิญท่านร่วมบันทึกประเมินความพึงพอใจในการให้บริการ`,
+            "review",
+            "/customer/appointments"
+          );
         }
         return NextResponse.json({ success: true, data: updated });
       }
@@ -241,9 +259,11 @@ export async function PATCH(request: Request) {
       const propertyTitle = property?.title || "อสังหาริมทรัพย์";
 
       if (appointment.customer_id) {
-        const notiTitle = action === "confirm" ? "🎉 นายหน้ายืนยันการนัดชมบ้านแล้ว" : "❌ คำขอนัดหมายดูบ้านถูกปฏิเสธ";
-        const notiContent = action === "confirm" ? `นัดหมายชมบ้าน "${propertyTitle}" ได้รับการยืนยันเรียบร้อยแล้ว` : `คำขอนัดชมบ้าน "${propertyTitle}" ถูกปฏิเสธ`;
-        sendNotification(appointment.customer_id, notiTitle, notiContent);
+        const notiTitle = action === "confirm" ? "ยืนยันคำขอนัดหมายเข้าชมโครงการ" : "แจ้งเปลี่ยนแปลงคำขอนัดหมาย";
+        const notiContent = action === "confirm"
+          ? `รายการนัดหมายเข้าชม "${propertyTitle}" ได้รับการยืนยันจากนายหน้าเรียบร้อยแล้ว`
+          : `รายการนัดหมายเข้าชม "${propertyTitle}" ไม่สามารถดำเนินการได้ในวันดังกล่าว กรุณาเลือกช่วงเวลาอื่น`;
+        sendNotification(appointment.customer_id, notiTitle, notiContent, "appointment", "/customer/appointments");
       }
 
       return NextResponse.json({ success: true, data: updated });
@@ -346,9 +366,21 @@ export async function DELETE(request: Request) {
     const reasonText = reason ? ` (เหตุผล: ${reason})` : "";
 
     if (isCustomer && appointment.agent_id) {
-      sendNotification(appointment.agent_id, "🚨 ลูกค้ายกเลิกนัดหมายดูบ้าน", `ลูกค้า (${customerName}) ได้ยกเลิกคิวนัดชมบ้าน "${propertyTitle}" วันที่ ${dateStr}${reasonText}`);
+      sendNotification(
+        appointment.agent_id,
+        "แจ้งยกเลิกรายการนัดหมาย",
+        `ผู้ใช้ (${customerName}) ได้ยกเลิกรายการนัดหมายเข้าชม "${propertyTitle}" ประจำวันที่ ${dateStr}${reasonText}`,
+        "appointment",
+        "/agent/appointments"
+      );
     } else if (isAgent && appointment.customer_id) {
-      sendNotification(appointment.customer_id, "🚨 นายหน้าระบุยกเลิกนัดหมายดูบ้าน", `นายหน้าได้ยกเลิกคิวนัดชมบ้าน "${propertyTitle}" วันที่ ${dateStr}${reasonText}`);
+      sendNotification(
+        appointment.customer_id,
+        "แจ้งยกเลิกรายการนัดหมาย",
+        `นายหน้าผู้ดูแลโครงการได้ยกเลิกรายการนัดหมายเข้าชม "${propertyTitle}" ประจำวันที่ ${dateStr}${reasonText}`,
+        "appointment",
+        "/customer/appointments"
+      );
     }
 
     return NextResponse.json({ success: true, message: "ยกเลิกนัดหมายสำเร็จ", data: updated });

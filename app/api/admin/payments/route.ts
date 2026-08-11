@@ -85,9 +85,10 @@ export async function PATCH(req: Request) {
       }),
       notifyUser({
         userId: agentId,
-        title: "🎉 บัญชีอัปเกรดเป็น Verified PRO แล้ว!",
-        content: "การชำระเงินของคุณได้รับการยืนยัน สามารถใช้สิทธิ์ PRO ได้ทันที 30 วัน",
-        type: "package"
+        title: "อนุมัติสิทธิ์การใช้งาน Verified PRO",
+        content: "การชำระเงินได้รับการยืนยันเรียบร้อยแล้ว บัญชีของคุณได้รับการปรับสถานะเป็น Verified PRO ระยะเวลา 30 วัน",
+        type: "package",
+        linkUrl: "/agent/packages"
       })
     ]);
   }

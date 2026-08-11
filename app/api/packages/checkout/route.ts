@@ -73,15 +73,17 @@ export async function POST(req: Request) {
 
     await Promise.allSettled([
       notifyUsers(admins.map(admin => admin.id), {
-        title: "💳 แจ้งชำระเงิน PRO ใหม่",
-        content: `txId:${transaction.id} agentId:${user.id} name:${agentName} email:${user.email} amount:599`,
-        type: "payment"
+        title: "แจ้งชำระเงินค่าธรรมเนียมแพ็กเกจ Verified PRO",
+        content: `นายหน้า ${agentName} (${user.email}) ได้นำส่งหลักฐานการชำระเงินจำนวน 599 บาท อยู่ระหว่างรอการตรวจสอบ`,
+        type: "payment",
+        linkUrl: "/admin/payments"
       }),
       notifyUser({
         userId: user.id,
-        title: "✅ ส่งสลิปเรียบร้อย",
-        content: "ทีมงานได้รับสลิปแล้ว จะยืนยันและเปิด Verified PRO ภายใน 1 วันทำการ",
-        type: "payment"
+        title: "บันทึกการส่งหลักฐานการชำระเงิน",
+        content: "ระบบได้รับหลักฐานการชำระเงินค่าแพ็กเกจ Verified PRO เรียบร้อยแล้ว เจ้าหน้าที่จะดำเนินการตรวจสอบภายใน 1 วันทำการ",
+        type: "payment",
+        linkUrl: "/agent/packages"
       })
     ]);
 

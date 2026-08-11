@@ -216,9 +216,10 @@ export async function POST(request: Request) {
     const admins = await db.users.findMany({ where: { role_id: "admin" }, select: { id: true } });
     if (admins.length > 0) {
       await notifyUsers(admins.map((admin) => admin.id), {
-        title: "📋 มีประกาศใหม่รออนุมัติ",
-        content: `ประกาศ "${title}" ถูกส่งเข้าคิวตรวจสอบ`,
-        type: "property_pending"
+        title: "รายการประกาศใหม่รอการตรวจสอบ",
+        content: `ประกาศอสังหาริมทรัพย์ "${title}" ยื่นเรื่องเข้าสู่ระบบ อยู่ระหว่างรอการตรวจสอบอนุมัติ`,
+        type: "property_pending",
+        linkUrl: "/admin/dashboard"
       }).catch(() => {});
     }
 
@@ -262,14 +263,15 @@ export async function PATCH(request: Request) {
 
     // 3.4 ส่งการแจ้งเตือนไปยังนายหน้าเจ้าของประกาศเพื่อแจ้งผลการตรวจสอบ
     if (updatedProperty.agent_id) {
-      const reasonText = isRejected && reason ? `\nเหตุผล: ${reason}` : "";
+      const reasonText = isRejected && reason ? ` (เหตุผล: ${reason})` : "";
       await notifyUser({
         userId: updatedProperty.agent_id,
-        title: isApproved ? "✅ ประกาศของคุณได้รับการอนุมัติแล้ว" : "❌ ประกาศของคุณไม่ผ่านการอนุมัติ",
+        title: isApproved ? "ประกาศอสังหาริมทรัพย์ได้รับการอนุมัติ" : "แจ้งผลการตรวจสอบประกาศอสังหาริมทรัพย์",
         content: isApproved
-          ? `ประกาศ "${updatedProperty.title}" ผ่านการตรวจสอบและแสดงบนเว็บไซต์เรียบร้อยแล้ว`
-          : `ประกาศ "${updatedProperty.title}" ไม่ผ่านการอนุมัติจากทีมงาน กรุณาตรวจสอบข้อมูลอีกครั้ง${reasonText}`,
-        type: "property"
+          ? `รายการ "${updatedProperty.title}" ผ่านการตรวจสอบเรียบร้อยแล้ว และเปิดแสดงผลบนระบบศรีชัย พร็อพเพอร์ตี้`
+          : `รายการ "${updatedProperty.title}" จำเป็นต้องได้รับการปรับปรุงข้อมูลเพิ่มเติม${reasonText}`,
+        type: "property",
+        linkUrl: isApproved ? `/property/${updatedProperty.id}` : `/agent/properties`
       }).catch(() => {});
     }
 

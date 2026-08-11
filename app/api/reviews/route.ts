@@ -129,11 +129,13 @@ export async function POST(req: Request) {
 
     // ส่งการแจ้งเตือนไปยังนายหน้าผู้ดูแลการนัดหมาย
     if (appointment.agent_id) {
+      const customerName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'ลูกค้า';
       await notifyUser({
         userId: appointment.agent_id,
-        title: "⭐ คุณได้รับการรีวิวใหม่จากลูกค้า",
-        content: `${user.first_name} ให้ ${rating} ดาว: "${comment || 'ไม่มีข้อความคอมเมนต์'}"`,
-        type: "review"
+        title: "การประเมินความพึงพอใจการให้บริการ",
+        content: `คุณ ${customerName} ได้บันทึกการประเมินบริการระดับ ${rating} ดาว สำหรับการนำชมโครงการ${comment ? `: "${comment}"` : ''}`,
+        type: "review",
+        linkUrl: "/agent/appointments"
       }).catch(err => console.error("Notification trigger error:", err));
     }
 
