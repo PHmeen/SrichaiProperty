@@ -127,6 +127,9 @@ export default function AgentDashboardPage() {
   const toLocalDayKey = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+  // ตัดอักขระอื่นออกจากเบอร์โทร เหลือแต่ตัวเลขและ + นำหน้า ป้องกันลิงก์ tel: ผิดรูปแบบ
+  const toTelHref = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`;
+
   const handleDelete = async (propertyId: string) => {
     if (!confirm('ยืนยันลบประกาศนี้หรือไม่? การลบจะไม่สามารถย้อนกลับได้')) return;
     setDeletingId(propertyId);
@@ -472,7 +475,7 @@ export default function AgentDashboardPage() {
                         <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0"></span>
                         {apt.customerName}
                       </span>
-                      <a href={`tel:${apt.customerPhone}`} className="text-[10px] bg-blue-100/80 text-blue-800 font-black px-2 py-0.5 rounded-full hover:bg-blue-200 transition shrink-0">
+                      <a href={toTelHref(apt.customerPhone)} className="text-[10px] bg-blue-100/80 text-blue-800 font-black px-2 py-0.5 rounded-full hover:bg-blue-200 transition shrink-0">
                         📞 {apt.customerPhone}
                       </a>
                     </div>
@@ -648,7 +651,7 @@ export default function AgentDashboardPage() {
                         <span className="text-[10px] text-slate-500 font-medium block mt-0.5">🕒 วันที่ {apt.date} ({apt.timeSlot})</span>
                       </div>
                       <a
-                        href={`tel:${apt.customerPhone}`}
+                        href={toTelHref(apt.customerPhone)}
                         className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-[10px] transition shrink-0 shadow-xs"
                       >
                         📞 โทรหา
