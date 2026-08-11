@@ -246,12 +246,16 @@ export async function GET(request: Request) {
 
       const formattedAppointments = recentAppointments.map(apt => {
         const customer = apt.users_appointments_customer_idTousers;
-        const customerName = customer ? `${customer.first_name} ${customer.last_name}` : 'ลูกค้าทั่วไป';
+        const customerName = customer
+          ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'ลูกค้าทั่วไป'
+          : 'ลูกค้าทั่วไป';
         return {
           id: apt.id,
           status: apt.status,
           date: apt.appointment_date,
-          timeSlot: apt.time_slot === 'morning' ? '10:00 - 12:00 น. (ช่วงเช้า)' : '14:00 - 16:00 น. (ช่วงบ่าย)',
+          timeSlot: apt.time_slot === 'morning' ? '10:00 - 12:00 น. (ช่วงเช้า)'
+            : apt.time_slot === 'afternoon' ? '14:00 - 16:00 น. (ช่วงบ่าย)'
+            : (apt.time_slot || 'ไม่ระบุเวลา'),
           propertyTitle: apt.properties?.title || 'อสังหาริมทรัพย์',
           customerName,
           customerPhone: customer?.phone || '-'

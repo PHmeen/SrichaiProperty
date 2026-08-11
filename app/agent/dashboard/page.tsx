@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSession, signOut } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { FREE_LISTING_QUOTA } from '@/lib/constants';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { 
   ChartConfig, 
@@ -80,6 +82,7 @@ const propertyModalChartConfig = {
 
 export default function AgentDashboardPage() {
   const { data: session, status } = useSession();
+  const router = useRouter();
   const [filterType, setFilterType] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -121,7 +124,8 @@ export default function AgentDashboardPage() {
 
   useEffect(() => {
     if (status === 'authenticated') loadDashboard();
-  }, [status, loadDashboard]);
+    else if (status === 'unauthenticated') router.replace('/login/agent');
+  }, [status, loadDashboard, router]);
 
   // คีย์วันที่แบบ local time (Asia/Bangkok ตามเครื่องผู้ใช้) เพื่อไม่ให้เพี้ยนข้ามวันแบบ UTC
   const toLocalDayKey = (d: Date) =>
@@ -245,7 +249,7 @@ export default function AgentDashboardPage() {
   });
 
   const isPro = dbData?.isPro || false;
-  const remainingQuota = Math.max(0, 3 - (dbData?.totalCount || 0));
+  const remainingQuota = Math.max(0, FREE_LISTING_QUOTA - (dbData?.totalCount || 0));
 
   return (
     <div className="pt-16 min-h-screen bg-slate-50/50 text-slate-800 text-xs md:text-sm font-sans antialiased">
@@ -305,12 +309,12 @@ export default function AgentDashboardPage() {
           <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs space-y-2 transition-all hover:border-slate-300">
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">โควตาประกาศ</span>
             <strong className="text-xl font-black text-slate-900 block">
-              {dbData?.totalCount || 0} {isPro ? 'ประกาศ (PRO)' : '/ 3'}
+              {dbData?.totalCount || 0} {isPro ? 'ประกาศ (PRO)' : `/ ${FREE_LISTING_QUOTA}`}
             </strong>
             <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
               <div 
                 className={`h-full ${isPro ? 'bg-amber-500' : 'bg-blue-600'} rounded-full transition-all`}
-                style={{ width: isPro ? '100%' : `${Math.min(((dbData?.totalCount || 0) / 3) * 100, 100)}%` }}
+                style={{ width: isPro ? '100%' : `${Math.min(((dbData?.totalCount || 0) / FREE_LISTING_QUOTA) * 100, 100)}%` }}
               />
             </div>
           </div>

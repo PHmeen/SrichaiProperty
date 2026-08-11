@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import PendingApprovalBanner from '@/components/agent/PendingApprovalBanner';
+import { FREE_LISTING_QUOTA } from '@/lib/constants';
 
 interface AppointmentData {
   id: string;
@@ -175,7 +176,7 @@ export default function AgentHomePage() {
               <span className="text-[10px] font-black text-amber-600 group-hover:underline">อัปเกรด PRO →</span>
             </div>
             <strong className="text-xl font-black text-amber-600 block mt-1">
-              {dbData?.isPro ? 'ไม่จำกัด 👑' : `${Math.max(0, 3 - (dbData?.propertiesCount || 0))} / 3`}
+              {dbData?.isPro ? 'ไม่จำกัด 👑' : `${Math.max(0, FREE_LISTING_QUOTA - (dbData?.propertiesCount || 0))} / ${FREE_LISTING_QUOTA}`}
             </strong>
           </Link>
         </section>
