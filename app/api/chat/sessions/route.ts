@@ -81,7 +81,6 @@ export async function GET() {
         avatar: avatarUrl,
         lastMessage: lastMsgPreview,
         time: lastMsg ? new Date(lastMsg.created_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '',
-        isActive: true,
         unreadCount,
         hasMoreMessages,
         propertyId: s.property_id,

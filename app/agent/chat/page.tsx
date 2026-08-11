@@ -27,7 +27,6 @@ interface ChatSession {
   id: string;
   name: string;
   avatar: string;
-  isActive: boolean;
   lastMessage: string;
   time: string;
   unreadCount?: number;
@@ -158,6 +157,29 @@ function AgentChatContent() {
     }
   }, []);
 
+  // ลบข้อความเดียว
+  const handleDeleteMessage = useCallback(async (messageId: string | number) => {
+    const res = await fetch(`/api/chat/messages?messageId=${messageId}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      setSessions(prev => prev.map(s => ({ ...s, messages: s.messages.filter(m => m.id !== messageId) })));
+    } else {
+      alert(data.error || 'ไม่สามารถลบข้อความได้');
+    }
+  }, []);
+
+  // ลบห้องแชททั้งหมด
+  const handleDeleteSession = useCallback(async (sessionId: string) => {
+    const res = await fetch(`/api/chat/sessions?sessionId=${sessionId}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      setSessions(prev => prev.filter(s => s.id !== sessionId));
+      setSelectedSessionId(prev => (prev === sessionId ? null : prev));
+    } else {
+      alert(data.error || 'ไม่สามารถลบห้องแชทได้');
+    }
+  }, []);
+
   // ----------------------------------------------------------------------------
   // 6. ฟังก์ชันส่งข้อความและจัดการเทมเพลต (Send Message & Quick Reply)
   // ----------------------------------------------------------------------------
@@ -247,7 +269,6 @@ function AgentChatContent() {
     id: s.id,
     name: s.name,
     avatar: s.avatar,
-    isActive: s.isActive,
     lastMessage: s.lastMessage,
     time: s.time,
     unreadCount: s.unreadCount,
@@ -296,6 +317,8 @@ function AgentChatContent() {
       selectedSessionId={selectedSessionId}
       onSelectSession={setSelectedSessionId}
       onSendMessage={handleSendMessage}
+      onDeleteMessage={handleDeleteMessage}
+      onDeleteSession={handleDeleteSession}
       onOpenSession={handleOpenSession}
       onTyping={sendTyping}
       onLoadOlderMessages={handleLoadOlderMessages}

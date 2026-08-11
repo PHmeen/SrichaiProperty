@@ -21,7 +21,6 @@ export interface SharedChatSession {
   name: string;
   avatar?: string;
   avatarLetter?: string;
-  isActive?: boolean;
   lastMessage: string;
   time: string;
   unreadCount?: number;
@@ -94,7 +93,6 @@ function UserAvatar({ sessionItem, size = 40 }: { sessionItem: SharedChatSession
           {sessionItem.avatarLetter || sessionItem.name.charAt(0)}
         </div>
       )}
-      {sessionItem.isActive && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full" />}
     </div>
   );
 }
@@ -357,9 +355,6 @@ export default function SharedChatView({
                     <UserAvatar sessionItem={activeSession} size={36} />
                     <div>
                       <h3 className="font-extrabold text-slate-900 text-xs md:text-sm leading-tight">{activeSession.name}</h3>
-                      <span className="text-[9px] text-emerald-600 font-bold flex items-center gap-1 mt-0.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" /> กำลังออนไลน์
-                      </span>
                     </div>
                   </div>
 
