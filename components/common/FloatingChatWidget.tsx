@@ -5,16 +5,28 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 
+// ==============================================================================
+// FLOATING CHAT WIDGET COMPONENT (ปุ่มทางด่วนเข้าสู่ระบบแชทแบบลอยมุมขวาล่าง)
+// ==============================================================================
+/**
+ * คอมโพเนนต์ปุ่มแชทลอย (Floating Widget)
+ * แสดงผลมุมขวาล่างของทุกหน้าเว็บ เพื่อให้ผู้ใช้งานหรือนายหน้าสามารถกดเข้าสู่ห้องแชทได้อย่างสะดวกรวดเร็ว
+ */
 export default function FloatingChatWidget() {
   const { data: session } = useSession();
   const pathname = usePathname();
 
-  // ซ่อนปุ่มลอยเมื่อเปิดอยู่ที่หน้าแชทหลักแล้ว
+  // 1. ตรวจสอบตำแหน่งหน้าปัจจุบัน: ซ่อนปุ่มลอยนี้ทันทีเมื่อผู้ใช้งานเปิดอยู่ที่หน้าเพจแชทหลักแล้ว (/chat หรือ /agent/chat)
   if (pathname === '/chat' || pathname === '/agent/chat') return null;
 
+  // 2. ตรวจสอบบทบาทของผู้ใช้งาน (Role-Based Routing):
+  // - หากเป็นนายหน้า (agent) -> นำทางไปที่ /agent/chat
+  // - หากเป็นลูกค้า (customer) -> นำทางไปที่ /chat
   const userRole = (session?.user as { role?: string })?.role;
   const targetChatUrl = userRole === 'agent' ? '/agent/chat' : '/chat';
 
+  // 3. Render ปุ่มแชทลอย ( Floating Button UI )
+  // - หากยังไม่ได้เข้าสู่ระบบ จะนำทางไปหน้าล็อกอิน (/login)
   return (
     <Link
       href={session ? targetChatUrl : '/login'}
@@ -22,9 +34,12 @@ export default function FloatingChatWidget() {
       title="เปิดกล่องข้อความแชท"
       aria-label="เปิดกล่องข้อความแชท"
     >
+      {/* ไอคอนบอลลูนข้อความแชท */}
       <span className="transition-transform group-hover:scale-110">💬</span>
-      {/* จุดแสดงสถานะมีข้อความ/ออนไลน์ */}
+      
+      {/* จุดป้ายสีเขียวแสดงสถานะออนไลน์และพร้อมใช้งาน (Online Indicator Badge) */}
       <span className="absolute top-0 right-0 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full"></span>
     </Link>
   );
 }
+

@@ -5,62 +5,75 @@ import Image from 'next/image';
 import { Message, MessageAvatar, MessageContent, MessageFooter } from '@/components/ui/message';
 import { Bubble, BubbleContent } from '@/components/ui/bubble';
 
+// ==============================================================================
+// 1. INTERFACES & TYPES (กำหนดโครงสร้างข้อมูลหน้าจอแชทกลาง)
+// ==============================================================================
+
+/** โครงสร้างข้อความแชทที่ใช้งานใน SharedChatView */
 export interface SharedChatMessage {
-  id: string | number;
-  sender: 'user' | 'other' | 'client' | 'agent';
-  text: string;
-  time: string;
-  fileUrl?: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
-  isRead?: boolean;
+  id: string | number;                         // รหัสประจำข้อความ
+  sender: 'user' | 'other' | 'client' | 'agent';// ผู้ส่งข้อความ ('user'/'client' = ฝั่งผู้ใช้งาน, 'other'/'agent' = คู่สนทนา)
+  text: string;                                // เนื้อหาข้อความ
+  time: string;                                // เวลาแสดงผล (เช่น 14:30)
+  fileUrl?: string | null;                     // ลิงก์รูปภาพหรือไฟล์แนบ
+  latitude?: number | null;                    // ละติจูดพิกัดตำแหน่ง (ถ้ามี)
+  longitude?: number | null;                   // ลองจิจูดพิกัดตำแหน่ง (ถ้ามี)
+  isRead?: boolean;                            // สถานะอ่านแล้วหรือยัง
 }
 
+/** โครงสร้างห้องแชทแต่ละห้อง */
 export interface SharedChatSession {
-  id: string;
-  name: string;
-  avatar?: string;
-  avatarLetter?: string;
-  lastMessage: string;
-  time: string;
-  unreadCount?: number;
-  hasMoreMessages?: boolean;
-  propertyTitle?: string;
-  propertyPrice?: string;
-  propertyCode?: string;
-  messages: SharedChatMessage[];
+  id: string;                                  // รหัสประจำห้องแชท (UUID)
+  name: string;                                // ชื่อคู่สนทนา
+  avatar?: string;                             // รูปโปรไฟล์
+  avatarLetter?: string;                       // ตัวอักษรย่อสำหรับโปรไฟล์ (กรณีไม่มีรูป)
+  lastMessage: string;                         // ตัวอย่างข้อความล่าสุด
+  time: string;                                // เวลาข้อความล่าสุด
+  unreadCount?: number;                        // จำนวนข้อความที่ยังไม่อ่าน
+  hasMoreMessages?: boolean;                   // มีข้อความประวัติเก่าให้โหลดหรือไม่
+  propertyTitle?: string;                      // ชื่อทรัพย์อสังหาริมทรัพย์ที่สนใจ
+  propertyPrice?: string;                      // ราคาขาย/เช่า
+  propertyCode?: string;                       // รหัสทรัพย์สิน
+  messages: SharedChatMessage[];               // รายการข้อความในห้องนี้
 }
 
+/** ข้อมูลข้อความใหม่ที่กำลังจะส่งออก */
 export interface OutgoingChatPayload {
-  text?: string;
-  fileUrl?: string;
-  latitude?: number;
-  longitude?: number;
+  text?: string;                               // ข้อความตัวหนังสือ
+  fileUrl?: string;                            // ลิงก์ไฟล์แนบ
+  latitude?: number;                           // พิกัดละติจูด
+  longitude?: number;                          // พิกัดลองจิจูด
 }
 
+/** Props สำหรับ SharedChatView Component */
 interface SharedChatViewProps {
-  role?: 'customer' | 'agent';
-  sessions: SharedChatSession[];
-  selectedSessionId: string | null;
-  onSelectSession: (id: string) => void;
-  onSendMessage: (payload: OutgoingChatPayload) => Promise<void> | void;
-  onDeleteMessage?: (messageId: string | number) => Promise<void> | void;
-  onDeleteSession?: (sessionId: string) => Promise<void> | void;
-  onReportSession?: (sessionId: string, reason: string, details?: string) => Promise<void> | void;
-  onOpenSession?: (sessionId: string) => void;
-  onTyping?: (isTyping: boolean) => void;
-  onLoadOlderMessages?: (sessionId: string, oldestMessageId: string | number) => Promise<void> | void;
-  isTyping?: boolean;
-  quickActions?: { label: string; action: () => void }[];
-  /** true เมื่อเชื่อมต่อระบบแชทเรียลไทม์ไม่สำเร็จ (แสดงแบนเนอร์เตือนผู้ใช้) */
-  connectionError?: boolean;
+  role?: 'customer' | 'agent';                 // บทบาทของผู้ใช้งานขณะนี้ ('customer' หรือ 'agent')
+  sessions: SharedChatSession[];               // รายการห้องแชททั้งหมด
+  selectedSessionId: string | null;            // รหัสห้องแชทที่กำลังเลือกอยู่
+  onSelectSession: (id: string) => void;       // Event เลือกห้องแชท
+  onSendMessage: (payload: OutgoingChatPayload) => Promise<void> | void; // Event ส่งข้อความ
+  onDeleteMessage?: (messageId: string | number) => Promise<void> | void; // Event ลบข้อความเดียว
+  onDeleteSession?: (sessionId: string) => Promise<void> | void;          // Event ลบห้องแชททั้งห้อง
+  onReportSession?: (sessionId: string, reason: string, details?: string) => Promise<void> | void; // Event รายงานผู้ใช้
+  onOpenSession?: (sessionId: string) => void; // Event เปิดห้องแชท (สำหรับทำเครื่องหมายอ่านแล้ว)
+  onTyping?: (isTyping: boolean) => void;      // Event ส่งสัญญาณกำลังพิมพ์ข้อความ
+  onLoadOlderMessages?: (sessionId: string, oldestMessageId: string | number) => Promise<void> | void; // Event โหลดข้อความเก่า
+  isTyping?: boolean;                          // สถานะว่าคู่สนทนากำลังพิมพ์อยู่หรือไม่
+  quickActions?: { label: string; action: () => void }[]; // ปุ่มคำสั่งด่วน (Quick Actions)
+  connectionError?: boolean;                   // สถานะขัดข้องการเชื่อมต่อ Real-time
 }
 
+// เวลาหน่วงสถานะหยุดพิมพ์ (Idle 2 วินาที)
 const TYPING_IDLE_MS = 2000;
 
+// Regular Expression สำหรับตรวจสอบไฟล์รูปภาพ
 const IMAGE_EXT_RE = /\.(jpe?g|png|webp|gif)$/i;
 
-// ไอคอนชุดเดียวกับ NotificationBell (เส้น outline, stroke-[1.8]) แทนการใช้ emoji
+// ==============================================================================
+// 2. HELPER COMPONENTS & ICONS (ไอคอนและรูปโปรไฟล์อวตาร)
+// ==============================================================================
+
+/** คอมโพเนนต์แสดงผลไอคอน SVG เวกเตอร์แบบ Clean Outline */
 function Icon({ path, className = 'w-4 h-4' }: { path: string; className?: string }) {
   return (
     <svg className={`${className} stroke-[1.8]`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -69,6 +82,7 @@ function Icon({ path, className = 'w-4 h-4' }: { path: string; className?: strin
   );
 }
 
+/** พาธของไอคอน SVG หมวดหมู่ต่างๆ */
 const ICONS = {
   home: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
   attach: 'M21.44 11.05l-9.19 9.19a5 5 0 01-7.07-7.07l9.19-9.19a3.5 3.5 0 014.95 4.95l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48',
@@ -82,7 +96,7 @@ const ICONS = {
   dots: 'M6 12h.01M12 12h.01M18 12h.01'
 };
 
-// คอมโพเนนต์แสดงผลอวตารผู้สนทนา
+/** คอมโพเนนต์แสดงผลรูปโปรไฟล์อวตารผู้สนทนา */
 function UserAvatar({ sessionItem, size = 40 }: { sessionItem: SharedChatSession; size?: number }) {
   return (
     <div className="relative shrink-0">
@@ -97,11 +111,9 @@ function UserAvatar({ sessionItem, size = 40 }: { sessionItem: SharedChatSession
   );
 }
 
-/**
- * ==============================================================================
- * SHARED CHAT VIEW COMPONENT (ปรับปรุงโค้ดกระชับ ไม่ซ้ำซ้อน)
- * ==============================================================================
- */
+// ==============================================================================
+// 3. MAIN SHARED CHAT VIEW COMPONENT (หน้าจอโต้ตอบแชทกลาง)
+// ==============================================================================
 export default function SharedChatView({
   role = 'customer',
   sessions,
@@ -118,17 +130,21 @@ export default function SharedChatView({
   quickActions = [],
   connectionError = false
 }: SharedChatViewProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [messageInput, setMessageInput] = useState('');
-  const [sending, setSending] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [loadingOlder, setLoadingOlder] = useState(false);
-  const [mobileShowMessages, setMobileShowMessages] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isTypingRef = useRef(false);
+  // ----------------------------------------------------------------------------
+  // 3.1 States สำหรับฟอร์ม ค้นหา การอัปโหลด และสถานะ UI
+  // ----------------------------------------------------------------------------
+  const [searchQuery, setSearchQuery] = useState('');           // คำค้นหาห้องแชท
+  const [messageInput, setMessageInput] = useState('');         // ข้อความที่กำลังพิมพ์
+  const [sending, setSending] = useState(false);                 // สถานะกำลังส่งข้อความ
+  const [uploading, setUploading] = useState(false);             // สถานะกำลังอัปโหลดไฟล์
+  const [loadingOlder, setLoadingOlder] = useState(false);       // สถานะกำลังโหลดข้อความเก่า
+  const [mobileShowMessages, setMobileShowMessages] = useState(false); // ควบคุมแสดงผลในจอมือถือ
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);           // อ้างอิง Element เลือกไฟล์
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); // ตัวจับเวลาสถานะหยุดพิมพ์
+  const isTypingRef = useRef(false);                             // ธงเช็กสถานะกำลังพิมพ์
 
-  // เมนู ลบ/รายงาน
+  // States สำหรับป๊อบอัพเมนูรายงานความไม่เหมาะสม
   const [showMenu, setShowMenu] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('สแปม / ข้อความหลอกลวง');
@@ -136,21 +152,28 @@ export default function SharedChatView({
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [hoveredMessageId, setHoveredMessageId] = useState<string | number | null>(null);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);           // อ้างอิงจุดล่างสุดสำหรับ Auto Scroll
 
+  // ----------------------------------------------------------------------------
+  // 3.2 กรองข้อมูลห้องแชทตามคำค้นหา (ค้นจากชื่อคู่สนทนา หรือ ชื่อทรัพย์)
+  // ----------------------------------------------------------------------------
   const filteredSessions = sessions.filter(s =>
     s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (s.propertyTitle && s.propertyTitle.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (s.propertyCode && s.propertyCode.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  // ห้องแชทที่กำลังถูกเลือกเปิดดูอยู่ในขณะนี้
   const activeSession = sessions.find(s => s.id === selectedSessionId) || sessions[0] || null;
 
+  // ----------------------------------------------------------------------------
+  // 3.3 Effects: สกรอลล์ไปข้อความล่าสุดอัตโนมัติ และ แจ้งเปิดอ่านห้องแชท
+  // ----------------------------------------------------------------------------
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeSession?.messages.length, selectedSessionId]);
 
-  // แจ้งว่าเปิดห้องนี้แล้ว (ให้หน้าเรียก API mark-as-read)
+  // แจ้งไปยัง Parent Component ว่าเปิดห้องแชทนี้แล้ว (เพื่อให้ระบบอัปเดตอ่านแล้ว)
   useEffect(() => {
     if (activeSession && onOpenSession) {
       onOpenSession(activeSession.id);
@@ -158,7 +181,9 @@ export default function SharedChatView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSession?.id]);
 
-  // แจ้งสถานะ "กำลังพิมพ์..." แบบ debounce (หยุดพิมพ์ 2 วิ = ถือว่าเลิกพิมพ์)
+  // ----------------------------------------------------------------------------
+  // 3.4 ฟังก์ชันจัดการสถานะ "กำลังพิมพ์..." (Typing Indicator Debounce 2 วินาที)
+  // ----------------------------------------------------------------------------
   const handleMessageInputChange = (value: string) => {
     setMessageInput(value);
     if (!onTyping) return;
@@ -180,7 +205,9 @@ export default function SharedChatView({
     };
   }, []);
 
-  // ส่งข้อความตัวหนังสือ
+  // ----------------------------------------------------------------------------
+  // 3.5 ฟังก์ชันส่งข้อความตัวหนังสือหลัก (Submit Handler)
+  // ----------------------------------------------------------------------------
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageInput.trim() || sending) return;
@@ -199,7 +226,9 @@ export default function SharedChatView({
     }
   };
 
-  // แนบไฟล์/รูปภาพ: อัปโหลดผ่าน /api/upload แล้วส่งเป็นข้อความ
+  // ----------------------------------------------------------------------------
+  // 3.6 ฟังก์ชันอัปโหลดและส่งไฟล์แนบ/รูปภาพ (Upload File -> /api/upload)
+  // ----------------------------------------------------------------------------
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -222,7 +251,9 @@ export default function SharedChatView({
     }
   };
 
-  // โหลดข้อความเก่ากว่านี้ในห้องเดียวกัน
+  // ----------------------------------------------------------------------------
+  // 3.7 ฟังก์ชันดึงประวัติข้อความเก่าเพิ่มเติม (Load Older Messages)
+  // ----------------------------------------------------------------------------
   const handleLoadOlderMessages = async () => {
     if (!activeSession || !onLoadOlderMessages || activeSession.messages.length === 0 || loadingOlder) return;
     setLoadingOlder(true);
@@ -233,7 +264,9 @@ export default function SharedChatView({
     }
   };
 
-  // แชร์ตำแหน่งปัจจุบัน
+  // ----------------------------------------------------------------------------
+  // 3.8 ฟังก์ชันแชร์ตำแหน่งพิกัดปัจจุบัน (GPS Geolocation -> Google Maps)
+  // ----------------------------------------------------------------------------
   const handleShareLocation = () => {
     if (!navigator.geolocation) {
       alert('อุปกรณ์นี้ไม่รองรับการแชร์ตำแหน่ง');
@@ -248,7 +281,9 @@ export default function SharedChatView({
     );
   };
 
-  // ลบข้อความเดียว
+  // ----------------------------------------------------------------------------
+  // 3.9 ฟังก์ชันลบข้อความเดียวและการลบห้องแชท
+  // ----------------------------------------------------------------------------
   const handleDeleteSingleMessage = async (msgId: string | number) => {
     if (!confirm('ลบข้อความนี้ใช่หรือไม่?')) return;
     if (onDeleteMessage) {
@@ -260,7 +295,6 @@ export default function SharedChatView({
     }
   };
 
-  // ลบห้องแชท
   const handleDeleteChatSession = async () => {
     if (!activeSession || !confirm(`ลบห้องแชทกับ "${activeSession.name}" ทั้งหมดใช่หรือไม่?`)) return;
     setShowMenu(false);
@@ -275,7 +309,9 @@ export default function SharedChatView({
     }
   };
 
-  // รายงานผู้ใช้
+  // ----------------------------------------------------------------------------
+  // 3.10 ฟังก์ชันส่งรายงานพฤติกรรมไม่เหมาะสม (Report Form Submit)
+  // ----------------------------------------------------------------------------
   const handleReportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeSession) return;
@@ -298,12 +334,18 @@ export default function SharedChatView({
     }
   };
 
+  // ==============================================================================
+  // 4. RENDER UI LAYOUT (ส่วนการแสดงผลอินเทอร์เฟซทั้งหมด)
+  // ==============================================================================
   return (
     <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm flex flex-col h-screen pt-14">
       <div className="flex-1 max-w-5xl w-full mx-auto p-4 flex overflow-hidden gap-4 h-[calc(100vh-4rem)]">
         
-        {/* SIDEBAR (รายการแชทซ้าย) */}
+        {/* =================================================================== */}
+        {/* 4.1 SIDEBAR: รายการห้องแชทฝั่งซ้าย (Chat Sessions List) */}
+        {/* =================================================================== */}
         <div className={`w-full md:w-1/3 bg-white rounded-2xl shadow-sm border border-slate-200/80 flex flex-col overflow-hidden h-full shrink-0 ${mobileShowMessages ? 'hidden md:flex' : 'flex'}`}>
+          {/* Header ค้นหาห้องแชท */}
           <div className="p-4 border-b border-slate-100 bg-slate-50/50 space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-extrabold text-slate-900">{role === 'agent' ? 'กล่องข้อความเอเย่นต์' : 'กล่องข้อความ'}</h2>
@@ -312,6 +354,7 @@ export default function SharedChatView({
             <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="ค้นหาชื่อ หรือ ทรัพย์..." className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition placeholder-slate-400" />
           </div>
 
+          {/* รายการห้องแชท */}
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
             {filteredSessions.length === 0 ? (
               <div className="text-center py-10 text-slate-400 font-bold text-xs">ยังไม่มีบทสนทนา</div>
@@ -343,11 +386,13 @@ export default function SharedChatView({
           </div>
         </div>
 
-        {/* MAIN CHAT ROOM (ขวา) */}
+        {/* =================================================================== */}
+        {/* 4.2 MAIN CHAT ROOM: พื้นที่ห้องแชทฝั่งขวา (Active Chat Room) */}
+        {/* =================================================================== */}
         <div className={`w-full md:flex-1 bg-white rounded-2xl shadow-sm border border-slate-200/80 flex-col h-full overflow-hidden relative ${mobileShowMessages ? 'flex' : 'hidden md:flex'}`}>
           {activeSession ? (
             <>
-              {/* Header */}
+              {/* Header ห้องแชท และข้อมูลทรัพย์ */}
               <div className="border-b border-slate-100 flex flex-col bg-slate-50/80 backdrop-blur-sm z-10 shrink-0">
                 <div className="h-14 px-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -358,6 +403,7 @@ export default function SharedChatView({
                     </div>
                   </div>
 
+                  {/* ปุ่มเมนูตัวเลือก (รายงาน / ลบห้องแชท) */}
                   <div className="relative">
                     <button onClick={() => setShowMenu(!showMenu)} className="p-2 hover:bg-slate-200/60 rounded-full text-slate-500 transition cursor-pointer" title="เมนูตัวเลือก">
                       <Icon path={ICONS.dots} className="w-4 h-4" />
@@ -375,6 +421,7 @@ export default function SharedChatView({
                   </div>
                 </div>
 
+                {/* การ์ดสรุปข้อมูลทรัพย์สินที่กำลังสอบถาม */}
                 {(activeSession.propertyTitle || activeSession.propertyCode) && (
                   <div className="px-4 py-2 bg-[#f8fafc] border-t border-slate-100 flex items-center justify-between text-xs">
                     <div className="truncate pr-2">
@@ -388,14 +435,16 @@ export default function SharedChatView({
                 )}
               </div>
 
+              {/* แบนเนอร์เตือนหากการเชื่อมต่อ Real-time มีปัญหา */}
               {connectionError && (
                 <div className="px-4 py-1.5 bg-amber-50 border-b border-amber-200 text-amber-700 text-[10px] font-bold text-center shrink-0">
                   การเชื่อมต่อแชทเรียลไทม์มีปัญหา ข้อความอาจไม่อัปเดตอัตโนมัติ กรุณารีเฟรชหน้า
                 </div>
               )}
 
-              {/* Messages Area */}
+              {/* พื้นที่แสดงบอลลูนข้อความ (Messages List) */}
               <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-slate-50/30">
+                {/* ปุ่มโหลดข้อความประวัติย้อนหลัง */}
                 {activeSession.hasMoreMessages && onLoadOlderMessages && (
                   <div className="flex justify-center pb-2">
                     <button onClick={handleLoadOlderMessages} disabled={loadingOlder} className="px-3 py-1.5 bg-white hover:bg-slate-100 disabled:opacity-50 text-slate-600 rounded-full text-[10px] font-bold border border-slate-200 transition cursor-pointer">
@@ -403,6 +452,8 @@ export default function SharedChatView({
                     </button>
                   </div>
                 )}
+                
+                {/* ลูปแสดงผลข้อความแชท */}
                 {activeSession.messages.map((msg) => {
                   const isOutgoing = msg.sender === 'user' || msg.sender === 'agent';
                   return (
@@ -411,6 +462,7 @@ export default function SharedChatView({
                         {!isOutgoing && <MessageAvatar src={activeSession.avatar} fallback={activeSession.avatarLetter || activeSession.name.charAt(0)} />}
                         <MessageContent>
                           <div className="relative group/bubble flex items-center gap-2">
+                            {/* ปุ่มลบข้อความเมื่อโฮเวอร์ */}
                             {hoveredMessageId === msg.id && (
                               <button onClick={() => handleDeleteSingleMessage(msg.id)} className={`p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition ${isOutgoing ? 'order-first' : 'order-last'}`} title="ลบข้อความนี้">
                                 <Icon path={ICONS.trash} className="w-3 h-3" />
@@ -418,6 +470,7 @@ export default function SharedChatView({
                             )}
                             <Bubble variant={isOutgoing ? 'primary' : 'outline'}>
                               <BubbleContent>
+                                {/* แสดงผล: รูปภาพ / ลิงก์ไฟล์แนบ / พิกัด Google Maps / ข้อความตัวหนังสือ */}
                                 {msg.fileUrl && IMAGE_EXT_RE.test(msg.fileUrl) ? (
                                   <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer">
                                     <Image src={msg.fileUrl} alt="ไฟล์แนบ" width={200} height={150} unoptimized className="rounded-lg object-cover max-w-[200px] max-h-[150px]" />
@@ -438,12 +491,19 @@ export default function SharedChatView({
                     </div>
                   );
                 })}
+
+                {/* สัญญาณข้อความ "กำลังพิมพ์..." */}
                 {isTyping && <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-bold px-2 py-1"><span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" />{activeSession.name} กำลังพิมพ์...</div>}
+                
+                {/* Element สำหรับสั่งสกรอลล์ลงด้านล่างสุด */}
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Input Area */}
+              {/* =================================================================== */}
+              {/* 4.3 INPUT AREA: แถบพิมพ์ข้อความและส่งไฟล์ด้านล่าง */}
+              {/* =================================================================== */}
               <div className="p-3 border-t border-slate-100 bg-white space-y-2 shrink-0">
+                {/* แถบคำสั่งด่วน (Quick Actions) */}
                 {quickActions.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {quickActions.map((qa, idx) => (
@@ -451,15 +511,25 @@ export default function SharedChatView({
                     ))}
                   </div>
                 )}
+                
+                {/* ฟอร์มป้อนข้อความและปุ่มแนบไฟล์ */}
                 <form onSubmit={handleFormSubmit} className="flex gap-2 items-center">
                   <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" className="hidden" onChange={handleFileSelected} />
+                  
+                  {/* ปุ่มแนบไฟล์/รูปภาพ */}
                   <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="p-2.5 bg-slate-50 hover:bg-slate-100 disabled:opacity-50 text-slate-500 rounded-xl border border-slate-200 transition shrink-0 cursor-pointer" title="แนบไฟล์/รูปภาพ">
                     <Icon path={uploading ? ICONS.spinner : ICONS.attach} className={`w-4 h-4 ${uploading ? 'animate-spin' : ''}`} />
                   </button>
+
+                  {/* ปุ่มแชร์ตำแหน่งพิกัด GPS */}
                   <button type="button" onClick={handleShareLocation} className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-xl border border-slate-200 transition shrink-0 cursor-pointer" title="แชร์ตำแหน่ง">
                     <Icon path={ICONS.pin} className="w-4 h-4" />
                   </button>
+
+                  {/* ช่องพิมพ์ข้อความ */}
                   <input type="text" value={messageInput} onChange={(e) => handleMessageInputChange(e.target.value)} placeholder="พิมพ์ข้อความของคุณที่นี่..." className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs text-slate-800 font-medium transition" />
+                  
+                  {/* ปุ่มส่งข้อความ */}
                   <button type="submit" disabled={sending || !messageInput.trim()} className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold px-4 py-2.5 rounded-xl transition text-xs shadow-xs cursor-pointer disabled:cursor-not-allowed shrink-0 flex items-center gap-1.5">
                     {sending ? 'กำลังส่ง...' : <>ส่ง <Icon path={ICONS.send} className="w-3.5 h-3.5" /></>}
                   </button>
@@ -472,7 +542,9 @@ export default function SharedChatView({
         </div>
       </div>
 
-      {/* Modal รายงาน */}
+      {/* =================================================================== */}
+      {/* 4.4 REPORT MODAL: ป๊อบอัพส่งรายงานพฤติกรรมไม่เหมาะสม */}
+      {/* =================================================================== */}
       {showReportModal && activeSession && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-[9999] p-4">
           <div className="bg-white rounded-2xl p-5 max-w-md w-full shadow-2xl border border-slate-100">
