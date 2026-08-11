@@ -198,7 +198,7 @@ export async function GET(request: Request) {
           bedrooms: p.bedrooms || 0,
           bathrooms: p.bathrooms || 0,
           area_sqm: p.area_sqm ? Number(p.area_sqm) : 0,
-          image: p.property_images[0]?.image_url || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+          image: p.property_images[0]?.image_url || '/property-placeholder.svg',
           views: p.views_count,
           appointments: p._count.appointments,
           chatsCount: p._count.chat_sessions,

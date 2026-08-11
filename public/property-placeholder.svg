@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400">
+  <rect width="600" height="400" fill="#e2e8f0"/>
+  <g fill="#94a3b8">
+    <path d="M300 120 L420 220 L400 220 L400 300 L340 300 L340 250 L260 250 L260 300 L200 300 L200 220 L180 220 Z"/>
+  </g>
+  <text x="300" y="340" text-anchor="middle" font-family="sans-serif" font-size="18" fill="#94a3b8">ไม่มีรูปภาพ</text>
+</svg>
