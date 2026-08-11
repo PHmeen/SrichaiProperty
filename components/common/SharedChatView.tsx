@@ -61,6 +61,28 @@ const TYPING_IDLE_MS = 2000;
 
 const IMAGE_EXT_RE = /\.(jpe?g|png|webp|gif)$/i;
 
+// ไอคอนชุดเดียวกับ NotificationBell (เส้น outline, stroke-[1.8]) แทนการใช้ emoji
+function Icon({ path, className = 'w-4 h-4' }: { path: string; className?: string }) {
+  return (
+    <svg className={`${className} stroke-[1.8]`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d={path} />
+    </svg>
+  );
+}
+
+const ICONS = {
+  home: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
+  attach: 'M21.44 11.05l-9.19 9.19a5 5 0 01-7.07-7.07l9.19-9.19a3.5 3.5 0 014.95 4.95l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48',
+  pin: 'M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z',
+  send: 'M6 12L3.269 3.126A59.769 59.769 0 0121.485 12 59.768 59.768 0 013.27 20.876L5.999 12zm0 0h7.5',
+  trash: 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16',
+  flag: 'M3 21V4m0 0h11l-1.5 3.5L18 11H3',
+  close: 'M6 18L18 6M6 6l12 12',
+  file: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+  spinner: 'M12 3v3m0 12v3m9-9h-3M6 12H3m15.364-6.364l-2.121 2.121M8.757 15.243l-2.121 2.121m12.728 0l-2.121-2.121M8.757 8.757L6.636 6.636',
+  dots: 'M6 12h.01M12 12h.01M18 12h.01'
+};
+
 // คอมโพเนนต์แสดงผลอวตารผู้สนทนา
 function UserAvatar({ sessionItem, size = 40 }: { sessionItem: SharedChatSession; size?: number }) {
   return (
@@ -311,7 +333,10 @@ export default function SharedChatView({
                       )}
                     </div>
                     {(session.propertyTitle || session.propertyCode) && (
-                      <span className="inline-block text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold mt-1 truncate max-w-full">🏠 {session.propertyTitle || session.propertyCode}</span>
+                      <span className="inline-flex items-center gap-1 text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold mt-1 truncate max-w-full">
+                        <Icon path={ICONS.home} className="w-2.5 h-2.5 shrink-0" />
+                        {session.propertyTitle || session.propertyCode}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -339,11 +364,17 @@ export default function SharedChatView({
                   </div>
 
                   <div className="relative">
-                    <button onClick={() => setShowMenu(!showMenu)} className="p-2 hover:bg-slate-200/60 rounded-full text-slate-500 font-bold text-base transition cursor-pointer" title="เมนูตัวเลือก">⋮</button>
+                    <button onClick={() => setShowMenu(!showMenu)} className="p-2 hover:bg-slate-200/60 rounded-full text-slate-500 transition cursor-pointer" title="เมนูตัวเลือก">
+                      <Icon path={ICONS.dots} className="w-4 h-4" />
+                    </button>
                     {showMenu && (
                       <div className="absolute right-0 top-10 bg-white border border-slate-200 rounded-xl shadow-lg w-44 py-1 z-50 text-xs">
-                        <button onClick={() => { setShowMenu(false); setShowReportModal(true); }} className="w-full text-left px-3.5 py-2 hover:bg-slate-50 text-slate-700 font-medium flex items-center gap-2 cursor-pointer">🚩 รายงานพฤติกรรม</button>
-                        <button onClick={handleDeleteChatSession} className="w-full text-left px-3.5 py-2 hover:bg-red-50 text-rose-600 font-medium flex items-center gap-2 cursor-pointer border-t border-slate-100">🗑️ ลบห้องแชทนี้</button>
+                        <button onClick={() => { setShowMenu(false); setShowReportModal(true); }} className="w-full text-left px-3.5 py-2 hover:bg-slate-50 text-slate-700 font-medium flex items-center gap-2 cursor-pointer">
+                          <Icon path={ICONS.flag} className="w-3.5 h-3.5" /> รายงานพฤติกรรม
+                        </button>
+                        <button onClick={handleDeleteChatSession} className="w-full text-left px-3.5 py-2 hover:bg-red-50 text-rose-600 font-medium flex items-center gap-2 cursor-pointer border-t border-slate-100">
+                          <Icon path={ICONS.trash} className="w-3.5 h-3.5" /> ลบห้องแชทนี้
+                        </button>
                       </div>
                     )}
                   </div>
@@ -353,7 +384,9 @@ export default function SharedChatView({
                   <div className="px-4 py-2 bg-[#f8fafc] border-t border-slate-100 flex items-center justify-between text-xs">
                     <div className="truncate pr-2">
                       <span className="text-[9px] text-slate-400 font-bold block">ทรัพย์ที่สนใจ</span>
-                      <h5 className="font-extrabold text-slate-800 text-[11px] truncate">🏠 {activeSession.propertyTitle || activeSession.propertyCode}</h5>
+                      <h5 className="font-extrabold text-slate-800 text-[11px] truncate flex items-center gap-1">
+                        <Icon path={ICONS.home} className="w-3 h-3 shrink-0" /> {activeSession.propertyTitle || activeSession.propertyCode}
+                      </h5>
                     </div>
                     {activeSession.propertyPrice && <strong className="text-blue-600 font-extrabold text-xs block">{activeSession.propertyPrice}</strong>}
                   </div>
@@ -362,7 +395,7 @@ export default function SharedChatView({
 
               {connectionError && (
                 <div className="px-4 py-1.5 bg-amber-50 border-b border-amber-200 text-amber-700 text-[10px] font-bold text-center shrink-0">
-                  ⚠️ การเชื่อมต่อแชทเรียลไทม์มีปัญหา ข้อความอาจไม่อัปเดตอัตโนมัติ กรุณารีเฟรชหน้า
+                  การเชื่อมต่อแชทเรียลไทม์มีปัญหา ข้อความอาจไม่อัปเดตอัตโนมัติ กรุณารีเฟรชหน้า
                 </div>
               )}
 
@@ -384,7 +417,9 @@ export default function SharedChatView({
                         <MessageContent>
                           <div className="relative group/bubble flex items-center gap-2">
                             {hoveredMessageId === msg.id && (
-                              <button onClick={() => handleDeleteSingleMessage(msg.id)} className={`text-[10px] p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition ${isOutgoing ? 'order-first' : 'order-last'}`} title="ลบข้อความนี้">🗑️</button>
+                              <button onClick={() => handleDeleteSingleMessage(msg.id)} className={`p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition ${isOutgoing ? 'order-first' : 'order-last'}`} title="ลบข้อความนี้">
+                                <Icon path={ICONS.trash} className="w-3 h-3" />
+                              </button>
                             )}
                             <Bubble variant={isOutgoing ? 'primary' : 'outline'}>
                               <BubbleContent>
@@ -393,9 +428,9 @@ export default function SharedChatView({
                                     <Image src={msg.fileUrl} alt="ไฟล์แนบ" width={200} height={150} unoptimized className="rounded-lg object-cover max-w-[200px] max-h-[150px]" />
                                   </a>
                                 ) : msg.fileUrl ? (
-                                  <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 underline">📄 เปิดไฟล์แนบ</a>
+                                  <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 underline"><Icon path={ICONS.file} className="w-3.5 h-3.5" /> เปิดไฟล์แนบ</a>
                                 ) : msg.latitude != null && msg.longitude != null ? (
-                                  <a href={`https://www.google.com/maps?q=${msg.latitude},${msg.longitude}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 underline">📍 ดูตำแหน่งบนแผนที่</a>
+                                  <a href={`https://www.google.com/maps?q=${msg.latitude},${msg.longitude}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 underline"><Icon path={ICONS.pin} className="w-3.5 h-3.5" /> ดูตำแหน่งบนแผนที่</a>
                                 ) : (
                                   msg.text
                                 )}
@@ -423,10 +458,16 @@ export default function SharedChatView({
                 )}
                 <form onSubmit={handleFormSubmit} className="flex gap-2 items-center">
                   <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" className="hidden" onChange={handleFileSelected} />
-                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="p-2.5 bg-slate-50 hover:bg-slate-100 disabled:opacity-50 text-slate-500 rounded-xl border border-slate-200 transition shrink-0 cursor-pointer" title="แนบไฟล์/รูปภาพ">{uploading ? '⏳' : '📎'}</button>
-                  <button type="button" onClick={handleShareLocation} className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-xl border border-slate-200 transition shrink-0 cursor-pointer" title="แชร์ตำแหน่ง">📍</button>
+                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="p-2.5 bg-slate-50 hover:bg-slate-100 disabled:opacity-50 text-slate-500 rounded-xl border border-slate-200 transition shrink-0 cursor-pointer" title="แนบไฟล์/รูปภาพ">
+                    <Icon path={uploading ? ICONS.spinner : ICONS.attach} className={`w-4 h-4 ${uploading ? 'animate-spin' : ''}`} />
+                  </button>
+                  <button type="button" onClick={handleShareLocation} className="p-2.5 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-xl border border-slate-200 transition shrink-0 cursor-pointer" title="แชร์ตำแหน่ง">
+                    <Icon path={ICONS.pin} className="w-4 h-4" />
+                  </button>
                   <input type="text" value={messageInput} onChange={(e) => handleMessageInputChange(e.target.value)} placeholder="พิมพ์ข้อความของคุณที่นี่..." className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs text-slate-800 font-medium transition" />
-                  <button type="submit" disabled={sending || !messageInput.trim()} className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold px-4 py-2.5 rounded-xl transition text-xs shadow-xs cursor-pointer disabled:cursor-not-allowed shrink-0">{sending ? 'กำลังส่ง...' : 'ส่ง 📤'}</button>
+                  <button type="submit" disabled={sending || !messageInput.trim()} className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold px-4 py-2.5 rounded-xl transition text-xs shadow-xs cursor-pointer disabled:cursor-not-allowed shrink-0 flex items-center gap-1.5">
+                    {sending ? 'กำลังส่ง...' : <>ส่ง <Icon path={ICONS.send} className="w-3.5 h-3.5" /></>}
+                  </button>
                 </form>
               </div>
             </>
@@ -441,8 +482,8 @@ export default function SharedChatView({
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-[9999] p-4">
           <div className="bg-white rounded-2xl p-5 max-w-md w-full shadow-2xl border border-slate-100">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-extrabold text-slate-900 text-sm">🚩 รายงานข้อความ / ผู้ใช้</h3>
-              <button onClick={() => setShowReportModal(false)} className="text-slate-400 hover:text-slate-600 font-bold text-sm">✕</button>
+              <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5"><Icon path={ICONS.flag} className="w-4 h-4" /> รายงานข้อความ / ผู้ใช้</h3>
+              <button onClick={() => setShowReportModal(false)} className="text-slate-400 hover:text-slate-600"><Icon path={ICONS.close} className="w-4 h-4" /></button>
             </div>
             <form onSubmit={handleReportSubmit} className="mt-4 space-y-3 text-xs">
               <div>
