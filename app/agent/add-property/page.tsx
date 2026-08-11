@@ -1,16 +1,34 @@
 'use client';
 
+/**
+ * ==============================================================================
+ * PAGE: /agent/add-property/page.tsx
+ * ==============================================================================
+ * วัตถุประสงค์หลัก:
+ * หน้าสำหรับ นายหน้า (Agent) ในการส่งคำขอลงประกาศขาย/เช่าอสังหาริมทรัพย์ใหม่ในระบบ
+ * ประกอบด้วย 5 ส่วนสำคัญ (Cards Section) ได้แก่:
+ * 
+ * 1. ข้อมูลทั่วไป (General Info): หัวข้อประกาศ, ประเภทอสังหาฯ (บ้าน/ทาวน์โฮม/คอนโด), ประเภทลงประกาศ (ขาย/เช่า), รายละเอียด
+ * 2. ราคาและรายละเอียดเชิงลึก (Price & Specs): ราคาขาย/เช่า, ค่าส่วนกลาง, ห้องนอน/ห้องน้ำ/ที่จอดรถ/จำนวนชั้น, ขนาดพื้นที่, สิทธิ์ถือครอง
+ * 3. ทำเลที่ตั้ง (Location): ระบบเลือกสถานที่แบบสัมพันธ์กัน (Cascading Dropdowns: จังหวัด -> อำเภอ -> ตำบล) และที่อยู่รายละเอียด
+ * 4. สื่อประกอบและเอกสารสิทธิ์ (Media & Ownership Doc): ระบบอัปโหลดรูปภาพหลายรูป (ImageUploader) และไฟล์เอกสารโฉนด/เอกสารสิทธิ์ (พร้อมคำเตือน PDPA)
+ * 5. ปฏิทินกำหนดวันเวลาเปิดให้เข้าชม (Viewing Schedule Calendar): เลือกวันและช่วงเวลา (รอบเช้า/รอบบ่าย) ที่สะดวกให้นัดชมบ้าน
+ * ==============================================================================
+ */
+
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import ImageUploader from '@/components/property/ImageUploader';
 
+// โครงสร้างข้อมูลสล็อตเวลาสำหรับให้นัดชมสถานที่
 interface ViewingSlot {
-  date: string; // YYYY-MM-DD
-  timeSlot: 'morning' | 'afternoon';
+  date: string; // วันที่ในรูปแบบ YYYY-MM-DD
+  timeSlot: 'morning' | 'afternoon'; // รอบเช้า (09:00-12:00) หรือ รอบบ่าย (13:00-17:00)
 }
 
+// ชื่อเดือนภาษาไทยสำหรับแสดงผลบนปฏิทิน
 const MONTH_NAMES_TH = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
@@ -19,48 +37,71 @@ const MONTH_NAMES_TH = [
 export default function AgentAddPropertyPage() {
   const router = useRouter();
 
-  // === Form State (สั้น กระชับ เป็นระเบียบ) ===
+  // ----------------------------------------------------------------------------
+  // [1] State สำหรับเก็บข้อมูลฟอร์มลงประกาศ (Form State)
+  // ----------------------------------------------------------------------------
   const [f, setF] = useState({
     title: '', typeId: '1', listingType: 'ขาย', description: '',
     price: '', commonFee: '', bedrooms: '3', bathrooms: '2', parking: '1', floors: '1',
     landArea: '', usableArea: '', ownership: 'ขายขาด (Freehold)',
     provinceId: '', amphureId: '', address: '',
     image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
-    doc: ''
+    doc: '' // URL ของไฟล์เอกสารสิทธิ์ (PDF/Image)
   });
 
+  // ----------------------------------------------------------------------------
+  // [2] State สำหรับตัวเลือกสถานที่แบบสัมพันธ์ (Cascading Dropdowns State)
+  // ----------------------------------------------------------------------------
   const [provinces, setProvinces] = useState<{ id: number; name_th: string }[]>([]);
   const [amphures, setAmphures] = useState<{ id: number; name_th: string }[]>([]);
   const [districts, setDistricts] = useState<{ id: number; name_th: string }[]>([]);
+  
+  // State ยินยอมข้อตกลง PDPA และเงื่อนไขบริการ
   const [agreed1, setAgreed1] = useState(false);
   const [agreed2, setAgreed2] = useState(false);
+  
+  // State อัปโหลดรูปภาพและไฟล์เอกสาร
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [docFileName, setDocFileName] = useState<string>('');
   const [docUploading, setDocUploading] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // === วันเวลาที่เปิดให้ลูกค้าเข้าชมบ้านหลังนี้ (เลือกไว้ล่วงหน้า บันทึกจริงตอนกดส่งประกาศ) ===
+  // ----------------------------------------------------------------------------
+  // [3] State สำหรับปฏิทินเลือกวันเวลาเปิดให้นัดชมบ้าน (Viewing Schedule State)
+  // ----------------------------------------------------------------------------
   const today = new Date();
   const [calYear, setCalYear] = useState(today.getFullYear());
   const [calMonth, setCalMonth] = useState(today.getMonth()); // 0-11
   const [viewingSlots, setViewingSlots] = useState<ViewingSlot[]>([]);
   const [selectedCalDate, setSelectedCalDate] = useState<string | null>(null);
 
+  // ----------------------------------------------------------------------------
+  // [4] Effect: ดึงรายชื่อจังหวัดทั้งหมดจาก API เมื่อเริ่มต้นหน้าเพจ
+  // ----------------------------------------------------------------------------
   useEffect(() => {
     fetch('/api/locations?type=provinces').then(r => r.json()).then(d => Array.isArray(d) && setProvinces(d));
   }, []);
 
+  // ----------------------------------------------------------------------------
+  // [5] ฟังก์ชันเมื่อเปลี่ยนจังหวัด -> ดึงรายชื่ออำเภอในจังหวัดนั้น
+  // ----------------------------------------------------------------------------
   const handleProvince = (pId: string) => {
     setF(prev => ({ ...prev, provinceId: pId, amphureId: '' }));
-    setDistricts([]);
+    setDistricts([]); // ล้างตัวเลือกตำบลเดิม
     if (pId) fetch(`/api/locations?type=amphures&provinceId=${pId}`).then(r => r.json()).then(d => Array.isArray(d) && setAmphures(d));
   };
 
+  // ----------------------------------------------------------------------------
+  // [6] ฟังก์ชันเมื่อเปลี่ยนอำเภอ -> ดึงรายชื่อตำบลในอำเภอนั้น
+  // ----------------------------------------------------------------------------
   const handleAmphure = (aId: string) => {
     setF(prev => ({ ...prev, amphureId: aId }));
     if (aId) fetch(`/api/locations?type=districts&amphureId=${aId}`).then(r => r.json()).then(d => Array.isArray(d) && setDistricts(d));
   };
 
+  // ----------------------------------------------------------------------------
+  // [7] ฟังก์ชันเลื่อนปฏิทินไปเดือนก่อนหน้า / เดือนถัดไป
+  // ----------------------------------------------------------------------------
   const handleCalPrevMonth = () => {
     if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); }
     else setCalMonth(m => m - 1);
@@ -71,8 +112,10 @@ export default function AgentAddPropertyPage() {
     else setCalMonth(m => m + 1);
   };
 
+  // ดึงรายการสล็อตเวลาของวันที่กำหนด
   const getSlotsForDate = (dateStr: string) => viewingSlots.filter(s => s.date === dateStr);
 
+  // สลับการเลือก / ยกเลิกช่วงเวลา (รอบเช้า/รอบบ่าย) ของวันที่เลือก
   const toggleViewingSlot = (dateStr: string, timeSlot: 'morning' | 'afternoon') => {
     setViewingSlots(prev => {
       const exists = prev.some(s => s.date === dateStr && s.timeSlot === timeSlot);
@@ -81,8 +124,12 @@ export default function AgentAddPropertyPage() {
     });
   };
 
+  // ----------------------------------------------------------------------------
+  // [8] ฟังก์ชันกดส่งฟอร์ม (Form Submission) -> ส่งไปยัง POST /api/properties
+  // ----------------------------------------------------------------------------
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // 8.1 ตรวจสอบข้อมูลบังคับและตัวเลขป้อนเข้า (Validation)
     if (!f.title || !f.price || !f.provinceId || !f.amphureId) return alert('กรุณากรอกข้อมูลสำคัญ (*) ให้ครบถ้วน');
     if (Number(f.price) <= 0) return alert('กรุณากรอกราคาที่มากกว่า 0 บาท');
     if (f.landArea && Number(f.landArea) < 0) return alert('ขนาดที่ดินต้องไม่ติดลบ');
@@ -91,10 +138,12 @@ export default function AgentAddPropertyPage() {
     if (!agreed1 || !agreed2) return alert('กรุณากดยินยอมเงื่อนไขการลงประกาศ');
 
     setLoading(true);
+    // ค้นหาชื่อจังหวัดและอำเภอเพื่อนำมาประกอบข้อความทำเลที่ตั้ง (Location String)
     const prov = provinces.find(p => String(p.id) === String(f.provinceId))?.name_th || '';
     const amp = amphures.find(a => String(a.id) === String(f.amphureId))?.name_th || '';
 
     try {
+      // 8.2 ส่งข้อมูลประกาศใหม่ไปยัง API หลังบ้าน
       const res = await fetch('/api/properties', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

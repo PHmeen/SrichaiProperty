@@ -1,24 +1,38 @@
 // ==============================================================================
-//  โครงสร้างฐานข้อมูลระบบศรีชัยพรอพเพอร์ตี้ (Srichai Property Database Schema)
-//  ไฟล์: /prisma/schema.prisma
+// 🏢 โครงสร้างฐานข้อมูลระบบศรีชัยพรอพเพอร์ตี้ (Srichai Property Database Schema)
+// 📄 ไฟล์: /prisma/schema.prisma
 // ==============================================================================
-// วัตถุประสงค์หลัก:
-// 1. กำหนดสกีมาตารางฐานข้อมูลทั้งหมดในระบบด้วย Prisma ORM เชื่อมต่อกับ PostgreSQL
-// 2. แบ่งการทำงานออกเป็น 8 มอดูลหลัก (Users, Properties, Locations, Appointments,
-//    Chat System, Payments & Sales, Reports & Ads, System Configs)
+// 🎓 คู่มือสรุปอ่านสอบ (Database Systems & Prisma ORM Concepts):
+// 1. Primary Key (PK): กำหนดด้วย @id (ใช้ UUID, Autoincrement หรือ String)
+// 2. Foreign Key (FK): กำหนดด้วย @relation(fields: [...], references: [...])
+// 3. Foreign Key Constraints (Referential Actions):
+//    - Cascade: ลบข้อมูลแถวลูกทันทีเมื่อแถวแม่ถูกลบ
+//    - SetNull: ตั้งค่า FK เป็น NULL เมื่อแถวแม่ถูกลบ (ต้องเป็น optional field ?)
+//    - Restrict/NoAction: ป้องกันไม่ให้ลบแถวแม่ตราบใดที่ยังมีแถวลูกอ้างอิงอยู่
+// 4. Cardinality (ความสัมพันธ์ระหว่างตาราง):
+//    - 1:1 (One-to-One): เช่น appointments ↔ reviews
+//    - 1:N (One-to-Many): เช่น users ↔ properties, provinces ↔ amphures
+//    - N:M (Many-to-Many): เชื่อมด้วย Junction Table เช่น properties ↔ amenities ผ่าน property_amenities
+// 5. Composite Key: ใช้ @@id([...]) หรือ @@unique([...]) เพื่อกำหนดคีย์ร่วมกันหลายคอลัมน์
+// 6. Data Types:
+//    - @db.Uuid: Universally Unique Identifier 128-bit ป้องกัน PK ชนกันในระบบกระจาย
+//    - @db.Decimal(p, s): ทศนิยมความแม่นยำสูง (Precision=จำนวนหลักทั้งหมด, Scale=จำนวนหลักหลังจุด) เหมาะกับเงินและพิกัด
+//    - @db.VarChar(n): ข้อความความยาวไม่เกิน n ตัวอักษร
+//    - @db.Timestamptz(6): วันและเวลาที่รองรับ Timezone
+// 7. Indexes (@@index): สร้าง Index บนคอลัมน์ที่ค้นหาบ่อยเพื่อเร่งความเร็ว Query (ลดการเกิด Full Table Scan)
 // ==============================================================================
 
 // ------------------------------------------------------------------------------
 // การตั้งค่าหลักของ Prisma (Prisma Configuration)
 // ------------------------------------------------------------------------------
 
-// ตัวสร้าง Prisma Client สำหรับนำไปใช้เขียนโค้ดภาษา TypeScript/JavaScript ควบคุม DB
+/// ตัวสร้าง Prisma Client สำหรับนำไปใช้เขียนโค้ดภาษา TypeScript/JavaScript ควบคุม DB
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["partialIndexes"]
 }
 
-// แหล่งข้อมูลฐานข้อมูล (เชื่อมต่อกับ PostgreSQL ผ่าน DATABASE_URL ใน .env)
+/// แหล่งข้อมูลฐานข้อมูล (เชื่อมต่อกับ PostgreSQL ผ่าน DATABASE_URL ใน .env)
 datasource db {
   provider = "postgresql"
 }
@@ -27,38 +41,43 @@ datasource db {
 // 1. ระบบผู้ใช้งานและสิทธิ์ (Users & Auth Module)
 // ==============================================================================
 
-/// ตารางบทบาท/สิทธิ์การใช้งานระบบ (เช่น admin, agent, customer)
+/// 👑 [1:Nกับ users] ตารางบทบาท/สิทธิ์การใช้งานระบบ (เช่น admin, agent, customer)
+/// - Primary Key: id (String) เช่น "admin", "agent", "customer"
+/// - Exam Note: เป็น Master Table สำหรับจำกัดประเภทของผู้ใช้งาน
 model roles {
-  id         String   @id @db.VarChar(10) // รหัสสิทธิ์ เช่น "admin", "agent", "customer"
-  name       String   @unique @db.VarChar(50) // ชื่อสิทธิ์ใช้งาน
-  created_at DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6) // วันเวลาที่สร้างสิทธิ์
-  users      users[]
+  id         String   @id @db.VarChar(10) // PK: รหัสสิทธิ์อ้างอิง (เช่น "admin", "agent", "customer")
+  name       String   @unique @db.VarChar(50) // ชื่อสิทธิ์ใช้งาน (ห้ามซ้ำ)
+  created_at DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6) // วันเวลาที่สร้างสิทธิ์ (UTC)
+  users      users[]  // ความสัมพันธ์ 1:N -> บทบาท 1 สิทธิ์ สามารถมีผู้ใช้งานได้หลายคน
 }
 
-/// ตารางผู้ใช้งานระบบหลัก (รองรับทั้ง ลูกค้าทั่วไป, นายหน้าฝากขาย, และแอดมินผู้ดูแลระบบ)
+/// 👤 [ตารางหลักของระบบ] ตารางผู้ใช้งานระบบ (รองรับทั้ง ลูกค้าทั่วไป, นายหน้าฝากขาย, และแอดมิน)
+/// - Primary Key: id (UUID)
+/// - Foreign Key: role_id -> roles(id)
+/// - Exam Note: ใช้ Single Table Inheritance ร่วมกับ Nullable Fields (เช่น line_id, kyc_doc) เก็บทั้ง Customer และ Agent ในตารางเดียว
 model users {
-  id                                                  String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // รหัสผู้ใช้ประจำตัว (UUID)
-  email                                               String                  @unique @db.VarChar(100) // อีเมลสำหรับเข้าสู่ระบบ (ห้ามซ้ำกัน)
-  password_hash                                       String                  @db.VarChar(255) // รหัสผ่านที่ผ่านการเข้ารหัสด้วย bcrypt
+  id                                                  String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // PK: รหัสผู้ใช้ประจำตัว (UUID สุ่มอัตโนมัติ)
+  email                                               String                  @unique @db.VarChar(100) // อีเมลเข้าสู่ระบบ (UNIQUE Constraint ห้ามซ้ำ)
+  password_hash                                       String                  @db.VarChar(255) // รหัสผ่านที่ผ่านการ Hashing (เช่น bcrypt)
   first_name                                          String                  @db.VarChar(100) // ชื่อจริง
   last_name                                           String                  @db.VarChar(100) // นามสกุล
-  phone                                               String?                 @db.VarChar(15) // เบอร์โทรศัพท์ติดต่อ
-  profile_image                                       String?                 @db.VarChar(255) // URL รูปภาพโปรไฟล์
-  role_id                                             String?                 @db.VarChar(10) // รหัสสิทธิ์ใช้งาน (เชื่อมกับตาราง roles)
-  status                                              String?                 @default("pending") @db.VarChar(20) // สถานะบัญชี (เช่น approved, pending, banned)
-  is_verified                                         Boolean?                @default(false) // สถานะยืนยันตัวตนแล้วหรือยัง
-  plan_type                                           String?                 @default("basic") @db.VarChar(20) // แพ็กเกจใช้งานปัจจุบัน (basic / pro)
+  phone                                               String?                 @db.VarChar(15) // เบอร์โทรศัพท์ติดต่อ (Optional)
+  profile_image                                       String?                 @db.VarChar(255) // URL รูปภาพโปรไฟล์ (Optional)
+  role_id                                             String?                 @db.VarChar(10) // FK: เชื่อมกับ roles(id)
+  status                                              String?                 @default("pending") @db.VarChar(20) // สถานะบัญชี ("pending", "approved", "banned")
+  is_verified                                         Boolean?                @default(false) // สถานะยืนยันตัวตน (true/false)
+  plan_type                                           String?                 @default("basic") @db.VarChar(20) // แพ็กเกจใช้งาน ("basic", "pro")
   plan_expired_at                                     DateTime?               @db.Timestamptz(6) // วันหมดอายุแพ็กเกจ Pro
-  created_at                                          DateTime                @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6) // วันเวลาที่สมัครสมาชิก
+  created_at                                          DateTime                @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6) // วันเวลาสมัครสมาชิก
   
-  // ข้อมูลเพิ่มเติมเฉพาะสำหรับ นายหน้า (Agent Options)
-  line_id                                             String?                 @db.VarChar(50) // LINE ID สำหรับให้ลูกค้าติดต่อ
-  experience                                          String?                 @db.VarChar(50) // ประสบการณ์การทำงานนายหน้า
-  specialty_zone                                      String?                 @db.VarChar(150) // ทำเลที่เชี่ยวชาญเป็นพิเศษ
-  specialty_type                                      String?                 @db.VarChar(50) // ประเภทอสังหาฯ ที่เชี่ยวชาญเป็นพิเศษ
+  // ข้อมูลเฉพาะสำหรับ นายหน้า (Agent Specific Fields)
+  line_id                                             String?                 @db.VarChar(50) // LINE ID สำหรับติดต่อ
+  experience                                          String?                 @db.VarChar(50) // ประสบการณ์ทำงานนายหน้า
+  specialty_zone                                      String?                 @db.VarChar(150) // ทำเลที่เชี่ยวชาญพิเศษ
+  specialty_type                                      String?                 @db.VarChar(50) // ประเภทอสังหาฯ ที่เชี่ยวชาญ
   kyc_doc                                             String?                 @db.VarChar(255) // URL เอกสารยืนยันตัวตน (บัตรประชาชน/ใบอนุญาต)
 
-  // ความสัมพันธ์กับตารางอื่นๆ (Relations)
+  // ความสัมพันธ์ (Relations)
   roles                                               roles?                  @relation(fields: [role_id], references: [id], onUpdate: NoAction)
   agent_availabilities                                agent_availabilities[]
   appointments_appointments_agent_idTousers           appointments[]          @relation("appointments_agent_idTousers")
@@ -77,26 +96,29 @@ model users {
   saved_properties                                    saved_properties[]
 }
 
-/// ตารางเก็บวันเวลาที่นายหน้า (Agent) สะดวกรับนัดหมายพาลูกค้าชมบ้าน
+/// 📅 [1:N จาก users] ตารางเก็บวันเวลาที่นายหน้า (Agent) สะดวกรับนัดหมายทั่วไป
+/// - Composite Unique Key: @@unique([agent_id, available_date, time_slot])
+/// - Exam Note: ป้องกันไมให้นายหน้าลงเวลาซ้ำในวันและสล็อตเดียวกัน
 model agent_availabilities {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // รหัสรายการวันว่าง
-  agent_id       String?  @db.Uuid // รหัสนายหน้าผู้กำหนดวันว่าง
-  available_date DateTime @db.Date // วันที่สะดวกรับคิวนัด
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // PK: รหัสรายการวันว่าง
+  agent_id       String?  @db.Uuid // FK: รหัสนายหน้าผู้กำหนดวันว่าง
+  available_date DateTime @db.Date // วันที่สะดวกรับคิวนัด (YYYY-MM-DD)
   time_slot      String?  @db.VarChar(20) // ช่วงเวลาที่สะดวก (เช่น "09:00-10:00")
-  is_booked      Boolean? @default(false) // ถูกลูกค้าจองคิวไปแล้วหรือยัง (true/false)
+  is_booked      Boolean? @default(false) // สถานะถูกลูกค้าจองคิวไปแล้วหรือยัง
   created_at     DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  users          users?   @relation(fields: [agent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users          users?   @relation(fields: [agent_id], references: [id], onDelete: Cascade, onUpdate: NoAction) // OnDelete: Cascade ลบข้อมูลวันว่างอัตโนมัติเมื่อลบนายหน้า
 
-  @@unique([agent_id, available_date, time_slot])
+  @@unique([agent_id, available_date, time_slot]) // Composite Unique Constraint
 }
 
-/// ตารางประวัติการเข้าสู่ระบบของผู้ใช้งาน (Login Audit Logs)
+/// 🔐 [Audit Log] ตารางประวัติการเข้าสู่ระบบของผู้ใช้งาน (Login Audit Logs)
+/// - Exam Note: ใช้สำหรับ Security Tracking และตรวจสอบกิจกรรมผู้ใช้
 model login_histories {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // รหัสประวัติการล็อกอิน
-  user_id    String?  @db.Uuid // รหัสผู้ใช้งานที่ล็อกอิน
-  ip_address String?  @db.VarChar(45) // IP Address ขณะเข้าสู่ระบบ
-  user_agent String?  // ข้อมูลเบราว์เซอร์และอุปกรณ์ที่ใช้ล็อกอิน
-  created_at DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6) // วันเวลาที่ล็อกอิน
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // PK: รหัสประวัติการล็อกอิน
+  user_id    String?  @db.Uuid // FK: รหัสผู้ใช้งานที่ล็อกอิน
+  ip_address String?  @db.VarChar(45) // IP Address (รองรับทั้ง IPv4 และ IPv6)
+  user_agent String?  // ข้อมูล Browser/Device Agent
+  created_at DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6) // วันเวลาล็อกอิน
   users      users?   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
@@ -105,44 +127,48 @@ model login_histories {
 // 2. ระบบอสังหาริมทรัพย์ (Properties Module)
 // ==============================================================================
 
-/// ตารางหมวดหมู่ประเภทอสังหาริมทรัพย์ (บ้านเดี่ยว, คอนโด, ทาวน์โฮม, ที่ดิน ฯลฯ)
+/// 🏠 [Master Table] ตารางประเภทอสังหาริมทรัพย์ (บ้านเดี่ยว, คอนโด, ทาวน์โฮม, ที่ดิน ฯลฯ)
+/// - Primary Key: id (Autoincrement Int)
 model property_types {
-  id         Int          @id @default(autoincrement()) // รหัสประเภท
-  name       String       @unique @db.VarChar(50) // ชื่อประเภทอสังหาริมทรัพย์
+  id         Int          @id @default(autoincrement()) // PK: รหัสประเภท (ตัวเลขรันอัตโนมัติ)
+  name       String       @unique @db.VarChar(50) // ชื่อประเภทอสังหาฯ (ห้ามซ้ำ)
   created_at DateTime     @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  properties properties[]
+  properties properties[] // ความสัมพันธ์ 1:N ไปยังตารางประกาศ
 }
 
-/// ตารางหลักสำหรับเก็บข้อมูลประกาศอสังหาริมทรัพย์ (บ้าน/คอนโด/ที่ดิน)
+/// 🏢 [ตารางหลักของอสังหาฯ] ตารางประกาศอสังหาริมทรัพย์ (Properties Listing)
+/// - Primary Key: id (UUID)
+/// - Foreign Keys: agent_id, type_id, province_id, amphure_id, district_id
+/// - Performance Optimization: มีการสร้าง @@index หลายตัวเพื่อเร่งการค้นหาประกาศผ่าน Filter
 model properties {
-  id                     String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // รหัสประกาศอสังหาฯ (UUID)
-  title                  String                   @db.VarChar(150) // หัวข้อ/ชื่อประกาศขายหรือเช่า
-  price                  Decimal                  @db.Decimal(12, 2) // ราคาขายหรือเช่า (บาท)
-  listing_type           String                   @default("sale") @db.VarChar(10) // ประเภทประกาศ: sale (ขาย) หรือ rent (เช่า)
-  type_id                Int?                     // ประเภทอสังหาฯ (เชื่อมกับตาราง property_types)
-  location               String                   // ข้อความที่อยู่ทำเลที่ตั้ง
-  latitude               Decimal?                 @db.Decimal(10, 8) // พิกัดแผนที่ ละติจูด
-  longitude              Decimal?                 @db.Decimal(11, 8) // พิกัดแผนที่ ลองจิจูด
-  description            String?                  // ข้อความรายละเอียดอสังหาริมทรัพย์
+  id                     String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // PK: รหัสประกาศ (UUID)
+  title                  String                   @db.VarChar(150) // หัวข้อประกาศ
+  price                  Decimal                  @db.Decimal(12, 2) // ราคาขาย/เช่า (Decimal ความแม่นยำ 12 หลัก ทศนิยม 2 ตำแหน่ง)
+  listing_type           String                   @default("sale") @db.VarChar(10) // ประเภทการลง: "sale" (ขาย) หรือ "rent" (เช่า)
+  type_id                Int?                     // FK: อ้างอิงประเภทอสังหาริมทรัพย์ (property_types)
+  location               String                   // ข้อความที่อยู่ทำเลตั้ง
+  latitude               Decimal?                 @db.Decimal(10, 8) // พิกัดละติจูด (ความแม่นยำสูงระดับพิกัดบนแผนที่)
+  longitude              Decimal?                 @db.Decimal(11, 8) // พิกัดลองจิจูด
+  description            String?                  // รายละเอียดอสังหาฯ
   bedrooms               Int?                     @default(0) // จำนวนห้องนอน
   bathrooms              Int?                     @default(0) // จำนวนห้องน้ำ
   area_sqm               Decimal?                 @db.Decimal(8, 2) // ขนาดพื้นที่ (ตารางเมตร)
-  status                 String?                  @default("pending") @db.VarChar(20) // สถานะประกาศ (approved, pending, rejected, sold)
-  reject_reason          String?                  @db.VarChar(255) // เหตุผลที่แอดมินไม่อนุมัติประกาศ (กรณีถูกตีกลับ)
-  views_count            Int                      @default(0) // จำนวนครั้งที่มีคนเปิดดูหน้ารายละเอียดประกาศนี้
-  agent_id               String?                  @db.Uuid // รหัสนายหน้าผู้ดูแลประกาศนี้
-  province_id            Int?                     // รหัสจังหวัด
-  amphure_id             Int?                     // รหัสอำเภอ/เขต
-  district_id            Int?                     // รหัสตำบล/แขวง
+  status                 String?                  @default("pending") @db.VarChar(20) // สถานะประกาศ ("pending", "approved", "rejected", "sold")
+  reject_reason          String?                  @db.VarChar(255) // เหตุผลที่ไม่อนุมัติประกาศ (ถ้ามี)
+  views_count            Int                      @default(0) // จำนวนครั้งที่เข้าชมหน้านี้
+  agent_id               String?                  @db.Uuid // FK: รหัสนายหน้าผู้ดูแลประกาศ (users)
+  province_id            Int?                     // FK: อ้างอิงจังหวัด (provinces)
+  amphure_id             Int?                     // FK: อ้างอิงอำเภอ/เขต (amphures)
+  district_id            Int?                     // FK: อ้างอิงตำบล/แขวง (districts)
   created_at             DateTime                 @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
 
-  // ความสัมพันธ์กับตารางอื่นๆ (Relations)
+  // ความสัมพันธ์ (Relations)
   appointments           appointments[]
   chat_sessions          chat_sessions[]
   listing_package_orders listing_package_orders[]
   users                  users?                   @relation(fields: [agent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  property_types         property_types?          @relation(fields: [type_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  provinces              provinces?               @relation(fields: [province_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  property_types         property_types?          @relation(fields: [type_id], references: [id], onDelete: Restrict, onUpdate: NoAction) // OnDelete: Restrict ห้ามลบประเภทถ้านำไปใช้ในบ้านแล้ว
+  provinces              provinces?               @relation(fields: [province_id], references: [id], onDelete: SetNull, onUpdate: NoAction) // OnDelete: SetNull ถ้าลบจังหวัด ค่า FK ในบ้านจะเป็น NULL
   amphures               amphures?                @relation(fields: [amphure_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   districts              districts?               @relation(fields: [district_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   property_amenities     property_amenities[]
@@ -155,7 +181,7 @@ model properties {
   saved_properties       saved_properties[]
   property_viewing_slots property_viewing_slots[]
 
-  // การสร้าง Index เพื่อเร่งความเร็วในการค้นหา (Search Optimization)
+  // การสร้าง Index (Search Optimization) ช่วยให้ค้นหา/กรองข้อมูลตามนายหน้า, สถานะ, จังหวัด ได้เร็วยิ่งขึ้น
   @@index([agent_id], map: "idx_properties_agent")
   @@index([status], map: "idx_properties_status")
   @@index([listing_type], map: "idx_properties_listing_type")
@@ -164,84 +190,92 @@ model properties {
   @@index([district_id], map: "idx_properties_district")
 }
 
-/// ตารางอัลบั้มรูปภาพประกอบของอสังหาริมทรัพย์
+/// 🖼️ [1:N จาก properties] ตารางอัลบั้มรูปภาพประกอบอสังหาริมทรัพย์
+/// - Foreign Key: property_id -> properties(id) (OnDelete: Cascade ลบรูปทั้งหมดอัตโนมัติเมื่อลบบ้าน)
 model property_images {
-  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // รหัสรูปภาพ
-  property_id String?     @db.Uuid // รหัสอสังหาริมทรัพย์เจ้าของรูป
-  image_url   String      @db.VarChar(255) // URL หรือลิงก์ไฟล์รูปภาพ
-  order_index Int?        @default(0) // ลำดับการเรียงรูปภาพ
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // PK: รหัสรูปภาพ
+  property_id String?     @db.Uuid // FK: รหัสบ้านเจ้าของรูป
+  image_url   String      @db.VarChar(255) // URL ลิงก์เก็บไฟล์รูปภาพ
+  order_index Int?        @default(0) // ลำดับการจัดเรียงรูปภาพ
   created_at  DateTime    @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   properties  properties? @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
-/// ตารางไฟล์เอกสารแนบของอสังหาริมทรัพย์ (เช่น โฉนดที่ดิน, สัญญาฝากขาย)
+/// 📄 [1:N จาก properties] ตารางไฟล์เอกสารแนบอสังหาริมทรัพย์ (เช่น โฉนดที่ดิน, สัญญาฝากขาย)
 model property_documents {
-  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  property_id String?     @db.Uuid
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // PK: รหัสเอกสาร
+  property_id String?     @db.Uuid // FK: รหัสบ้านเจ้าของเอกสาร
   doc_url     String      @db.VarChar(255) // URL ไฟล์เอกสาร
-  doc_type    String?     @db.VarChar(50) // ประเภทเอกสาร (เช่น "deed" โฉนด)
-  status      String?     @default("pending") @db.VarChar(20) // สถานะการตรวจสอบเอกสาร
+  doc_type    String?     @db.VarChar(50) // ประเภทเอกสาร (เช่น "deed" = โฉนด)
+  status      String?     @default("pending") @db.VarChar(20) // สถานะการตรวจสอบเอกสาร ("pending", "approved")
   created_at  DateTime    @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   properties  properties? @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
-/// ตารางมาสเตอร์รายการสิ่งอำนวยความสะดวก (สระว่ายน้ำ, ฟิตเนส, รปภ. 24 ชม. ฯลฯ)
+/// ✨ [Master Table] ตารางรายการสิ่งอำนวยความสะดวก (สระว่ายน้ำ, ฟิตเนส, รปภ. ฯลฯ)
 model amenities {
-  id                 Int                  @id @default(autoincrement())
-  name               String               @unique @db.VarChar(100) // ชื่อสิ่งอำนวยความสะดวก
+  id                 Int                  @id @default(autoincrement()) // PK: รหัสสิ่งอำนวยความสะดวก
+  name               String               @unique @db.VarChar(100) // ชื่อสิ่งอำนวยความสะดวก (ห้ามซ้ำ)
   created_at         DateTime             @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   property_amenities property_amenities[]
 }
 
-/// ตารางเชื่อมความสัมพันธ์ อสังหาริมทรัพย์ - สิ่งอำนวยความสะดวก (Many-to-Many)
+/// 🔗 [Junction Table - Many to Many] ตารางเชื่อมความสัมพันธ์ อสังหาฯ ↔ สิ่งอำนวยความสะดวก (properties ↔ amenities)
+/// - Composite Primary Key: @@id([property_id, amenity_id])
+/// - Exam Note: รูปแบบตารางกลางสำหรับแก้ปัญหาความสัมพันธ์ N:M ในฐานข้อมูล Relational
 model property_amenities {
-  property_id String     @db.Uuid // รหัสอสังหาฯ
-  amenity_id  Int        // รหัสสิ่งอำนวยความสะดวก
+  property_id String     @db.Uuid // Composite PK Part 1 & FK 1
+  amenity_id  Int        // Composite PK Part 2 & FK 2
   amenities   amenities  @relation(fields: [amenity_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   properties  properties @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@id([property_id, amenity_id])
+  @@id([property_id, amenity_id]) // Composite PK
 }
 
-/// ตารางมาสเตอร์สถานที่ใกล้เคียง (สถานีรถไฟฟ้า, ห้างสรรพสินค้า, โรงพยาบาล)
+/// 📍 [Master Table] ตารางมาสเตอร์สถานที่ใกล้เคียง (สถานีรถไฟฟ้า, ห้างสรรพสินค้า, โรงพยาบาล)
 model nearby_places {
-  id                Int                 @id @default(autoincrement())
+  id                Int                 @id @default(autoincrement()) // PK: รหัสสถานที่
   name              String              @db.VarChar(150) // ชื่อสถานที่ใกล้เคียง
-  type              String?             @db.VarChar(50) // ประเภทสถานที่ (BTS, Mall, Hospital)
+  type              String?             @db.VarChar(50) // หมวดหมู่สถานที่ (เช่น "BTS", "Hospital", "School")
   created_at        DateTime            @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   property_nearbies property_nearbies[]
 }
 
-/// ตารางเชื่อมความสัมพันธ์ อสังหาริมทรัพย์ - สถานที่ใกล้เคียง (Many-to-Many)
+/// 🔗 [Junction Table - Many to Many] ตารางเชื่อมความสัมพันธ์ อสังหาฯ ↔ สถานที่ใกล้เคียง พร้อมระยะห่าง
+/// - Composite Primary Key: @@id([property_id, nearby_place_id])
+/// - Attribute on Relationship: เพิ่ม distance_meters เพื่อเก็บระยะห่างเฉพาะคู่นี้
 model property_nearbies {
-  property_id     String        @db.Uuid
-  nearby_place_id Int
-  distance_meters Decimal?      @db.Decimal(6, 1) // ระยะห่างจากบ้าน (เมตร)
+  property_id     String        @db.Uuid // Composite PK Part 1 & FK 1
+  nearby_place_id Int           // Composite PK Part 2 & FK 2
+  distance_meters Decimal?      @db.Decimal(6, 1) // ระยะห่างจากบ้านถึงสถานที่ (เมตร)
   nearby_places   nearby_places @relation(fields: [nearby_place_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   properties      properties    @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@id([property_id, nearby_place_id])
+  @@id([property_id, nearby_place_id]) // Composite PK
 }
 
-/// ตารางเก็บรายการอสังหาริมทรัพย์ที่ผู้ใช้กดถูกใจเป็น "รายการโปรด" (Favorites / Saved)
+/// ❤️ [Junction Table - Many to Many] ตารางรายการโปรด (Saved/Favorite Properties)
+/// - Composite Primary Key: @@id([user_id, property_id])
+/// - Exam Note: ระบุว่าผู้ใช้คนไหนกดถูกใจบ้านหลังไหนไว้ (ผู้ใช้ 1 คนถูกใจได้หลายบ้าน และบ้าน 1 หลังมีผู้ใช้ถูกใจได้หลายคน)
 model saved_properties {
-  user_id     String     @db.Uuid // รหัสผู้ใช้ที่กดถูกใจ
-  property_id String     @db.Uuid // รหัสอสังหาฯ ที่ถูกใจ
+  user_id     String     @db.Uuid // Composite PK Part 1 & FK: users(id)
+  property_id String     @db.Uuid // Composite PK Part 2 & FK: properties(id)
   created_at  DateTime   @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   properties  properties @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   users       users      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@id([user_id, property_id])
+  @@id([user_id, property_id]) // Composite PK
 }
 
-/// ตาราง Log บันทึกทุกครั้งที่มีคนเปิดดูหน้ารายละเอียดอสังหาฯ (ใช้ทำกราฟเทรนด์ยอดเข้าชมรายวัน/เดือน/ปี)
+/// 📊 [Log Table] ตารางบันทึกสถิติทุกครั้งที่มีการเปิดดูหน้ารายละเอียดอสังหาฯ
+/// - Exam Note: ใช้สร้าง Analytics Report / Graph ยอดวิวรายวัน-รายเดือน
 model property_views {
-  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  property_id String     @db.Uuid // รหัสอสังหาฯ ที่ถูกเข้าชม
-  viewed_at   DateTime   @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // PK: รหัส Log
+  property_id String     @db.Uuid // FK: รหัสบ้านที่ถูกเปิดชม
+  viewed_at   DateTime   @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6) // เวลาที่เปิดดู
   properties  properties @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@index([property_id, viewed_at], map: "idx_property_views_property_time")
+  @@index([property_id, viewed_at], map: "idx_property_views_property_time") // Composite Index สำหรับเร่งดึงรายงานตามช่วงเวลา
 }
 
 
@@ -249,42 +283,46 @@ model property_views {
 // 3. ระบบทำเลที่ตั้งและจังหวัด (Locations Module)
 // ==============================================================================
 
-/// ตารางข้อมูลจังหวัด (77 จังหวัดทั่วประเทศไทย)
+/// 🗺️ [Master Location Level 1] ตารางจังหวัด (77 จังหวัดในประเทศไทย)
+/// - Relation: 1:N กับ amphures (1 จังหวัดมีหลายอำเภอ)
 model provinces {
-  id         Int          @id
+  id         Int          @id // PK: รหัสจังหวัดตามมาตรฐานการปกครอง
   name_th    String       @db.VarChar(150) // ชื่อจังหวัดภาษาไทย
   name_en    String       @db.VarChar(150) // ชื่อจังหวัดภาษาอังกฤษ
   created_at DateTime     @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  amphures   amphures[]
-  properties properties[]
+  amphures   amphures[]   // 1:N ไปยังอำเภอ
+  properties properties[] // 1:N ไปยังอสังหาฯ
 }
 
-/// ตารางข้อมูลอำเภอ/เขต (ผูกกับจังหวัด)
+/// 🗺️ [Master Location Level 2] ตารางอำเภอ/เขต (ผูกกับ province_id)
+/// - Foreign Key: province_id -> provinces(id)
+/// - Relation: 1:N กับ districts (1 อำเภอมีหลายตำบล)
 model amphures {
-  id          Int          @id
+  id          Int          @id // PK: รหัสอำเภอ
   name_th     String       @db.VarChar(150) // ชื่ออำเภอภาษาไทย
   name_en     String       @db.VarChar(150) // ชื่ออำเภอภาษาอังกฤษ
-  province_id Int          // รหัสจังหวัดสังกัด
+  province_id Int          // FK: รหัสจังหวัดสังกัด
   created_at  DateTime     @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   provinces   provinces    @relation(fields: [province_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  districts   districts[]
+  districts   districts[]  // 1:N ไปยังตำบล
   properties  properties[]
 
-  @@index([province_id], map: "idx_amphures_province")
+  @@index([province_id], map: "idx_amphures_province") // Index เร่งกรองอำเภอตามจังหวัด
 }
 
-/// ตารางข้อมูลตำบล/แขวง และรหัสไปรษณีย์ (ผูกกับอำเภอ)
+/// 🗺️ [Master Location Level 3] ตารางตำบล/แขวง และรหัสไปรษณีย์ (ผูกกับ amphure_id)
+/// - Foreign Key: amphure_id -> amphures(id)
 model districts {
-  id         Int          @id
+  id         Int          @id // PK: รหัสตำบล
   name_th    String       @db.VarChar(150) // ชื่อตำบลภาษาไทย
   name_en    String       @db.VarChar(150) // ชื่อตำบลภาษาอังกฤษ
   zip_code   Int          // รหัสไปรษณีย์
-  amphure_id Int          // รหัสอำเภอสังกัด
+  amphure_id Int          // FK: รหัสอำเภอสังกัด
   created_at DateTime     @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   amphures   amphures     @relation(fields: [amphure_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   properties properties[]
 
-  @@index([amphure_id], map: "idx_districts_amphure")
+  @@index([amphure_id], map: "idx_districts_amphure") // Index เร่งกรองตำบลตามอำเภอ
 }
 
 
@@ -292,35 +330,41 @@ model districts {
 // 4. ระบบการนัดหมายและรีวิว (Appointments & Reviews Module)
 // ==============================================================================
 
-/// ตารางรายการนัดหมายเข้าชมอสังหาริมทรัพย์ ระหว่าง ลูกค้า กับ นายหน้า
+/// 📅 [ตารางหลักการนัดหมาย] ตารางรายการนัดหมายเข้าชมอสังหาริมทรัพย์ (ระหว่าง Customer ↔ Agent)
+/// - Foreign Keys: customer_id (users), agent_id (users), property_id (properties)
+/// - Exam Note: แสดงความสัมพันธ์แบบ Ternary/Multiple Relationships ที่มี User มี 2 บทบาท (Customer ผู้จอง & Agent ผู้ดูแล)
 model appointments {
-  id                                    String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // รหัสนัดหมาย
-  customer_id                           String?     @db.Uuid // รหัสลูกค้าผู้จองนัด
-  agent_id                              String?     @db.Uuid // รหัสนายหน้าผู้ดูแล
-  property_id                           String?     @db.Uuid // รหัสอสังหาฯ ที่ต้องการเข้าชม
-  appointment_date                      DateTime    @db.Date // วันที่นัดหมายเข้าชม
-  time_slot                             String?     @db.VarChar(20) // รอบเวลานัดหมาย (เช่น "10:00 - 11:00")
-  status                                String?     @default("pending") @db.VarChar(20) // สถานะนัดหมาย (pending, approved, rejected, completed, cancelled)
+  id                                    String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // PK: รหัสนัดหมาย (UUID)
+  customer_id                           String?     @db.Uuid // FK 1: รหัสลูกค้าผู้จองนัด (users)
+  agent_id                              String?     @db.Uuid // FK 2: รหัสนายหน้าผู้ดูแลนัด (users)
+  property_id                           String?     @db.Uuid // FK 3: รหัสบ้านที่นัดหมายเข้าชม (properties)
+  appointment_date                      DateTime    @db.Date // วันที่นัดเข้าชม
+  time_slot                             String?     @db.VarChar(20) // ช่วงเวลานัด (เช่น "10:00 - 11:00")
+  status                                String?     @default("pending") @db.VarChar(20) // สถานะนัด ("pending", "approved", "rejected", "completed", "cancelled")
   note                                  String?     // ข้อความหมายเหตุเพิ่มเติมจากลูกค้า
-  original_date                         DateTime?   @db.Date // วันที่ลูกค้าเลือกรอบแรก (ใช้แสดงขีดฆ่าถ้านายหน้าขอเลื่อนวัน)
-  original_time_slot                    String?     @db.VarChar(20) // รอบเวลาที่ลูกค้าเลือกรอบแรก
-  cancel_reason                         String?     @db.VarChar(255) // เหตุผลการยกเลิกนัดหมาย
+  original_date                         DateTime?   @db.Date // วันเดิมที่ลูกค้าเลือก (สำหรับแสดงขีดฆ่าถ้านายหน้าขอเลื่อนวัน)
+  original_time_slot                    String?     @db.VarChar(20) // รอบเวลาเดิมที่ลูกค้าเลือก
+  cancel_reason                         String?     @db.VarChar(255) // เหตุผลเมื่อมีการยกเลิกนัด
   created_at                            DateTime    @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+
+  // ความสัมพันธ์
   users_appointments_agent_idTousers    users?      @relation("appointments_agent_idTousers", fields: [agent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   users_appointments_customer_idTousers users?      @relation("appointments_customer_idTousers", fields: [customer_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   properties                            properties? @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  reviews                               reviews?
+  reviews                               reviews?    // 1:1 กับตาราง reviews
 
   @@index([agent_id], map: "idx_appointments_agent")
   @@index([customer_id], map: "idx_appointments_customer")
 }
 
-/// ตารางรีวิวและให้คะแนนการบริการของนายหน้าหลังจากพาลูกค้าชมบ้านเสร็จสิ้น
+/// ⭐ [1:1 กับ appointments] ตารางรีวิวและให้คะแนนบริการของนายหน้าหลังชมบ้านเสร็จ
+/// - Unique Foreign Key: appointment_id (ทำให้เกิดความสัมพันธ์แบบ 1 ต่อ 1 กับ appointments)
+/// - Exam Note: 1 การนัดหมายที่สถานะสำเร็จแล้ว สามารถเขียนรีวิวได้เพียง 1 ครั้งเท่านั้น
 model reviews {
-  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  appointment_id String?       @unique @db.Uuid // รหัสนัดหมายที่ถูกรีวิว
-  rating         Int?          // คะแนนดาว (1 ถึง 5 ดาว)
-  comment        String?       // ข้อความแสดงความคิดเห็นคำชม
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // PK: รหัสรีวิว
+  appointment_id String?       @unique @db.Uuid // FK & Unique Constraint: 1 นัดหมาย มีได้เพียง 1 รีวิว
+  rating         Int?          // คะแนนดาว (1 ถึง 5)
+  comment        String?       // ความคิดเห็น/คำติชม
   created_at     DateTime      @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   appointments   appointments? @relation(fields: [appointment_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
@@ -330,45 +374,48 @@ model reviews {
 // 5. ระบบแชทและการสื่อสาร (Chat System Module)
 // ==============================================================================
 
-/// ตารางห้องแชทพูดคุยระหว่าง ลูกค้า กับ นายหน้า (ต่อ 1 อสังหาริมทรัพย์)
+/// 💬 [ห้องแชทหลัก] ตารางห้องสนทนาระหว่าง Customer ↔ Agent (ต่อ 1 ประกาศอสังหาฯ)
+/// - Composite Unique Constraint: @@unique([customer_id, agent_id, property_id])
+/// - Exam Note: รับประกันว่าจะไม่เกิดห้องแชทซ้ำซ้อนสำหรับ ลูกค้า+นายหน้า+บ้าน ชุดเดียวกัน
 model chat_sessions {
-  id                                     String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // รหัสห้องแชท
-  customer_id                            String?     @db.Uuid // รหัสลูกค้า
-  agent_id                               String?     @db.Uuid // รหัสนายหน้า
-  property_id                            String?     @db.Uuid // รหัสอสังหาริมทรัพย์ที่สอบถาม
+  id                                     String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // PK: รหัสห้องแชท
+  customer_id                            String?     @db.Uuid // FK: รหัสลูกค้า
+  agent_id                               String?     @db.Uuid // FK: รหัสนายหน้า
+  property_id                            String?     @db.Uuid // FK: รหัสอสังหาฯ ที่สอบถาม
   created_at                             DateTime    @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   users_chat_sessions_agent_idTousers    users?      @relation("chat_sessions_agent_idTousers", fields: [agent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   users_chat_sessions_customer_idTousers users?      @relation("chat_sessions_customer_idTousers", fields: [customer_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   properties                             properties? @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  messages                               messages[]
+  messages                               messages[]  // 1:N ไปยังข้อความแชท
 
-  @@unique([customer_id, agent_id, property_id])
+  @@unique([customer_id, agent_id, property_id]) // ป้องกันเปิดห้องแชทซ้ำ
 }
 
-/// ตารางกล่องข้อความย่อยภายในห้องแชท (Chat Messages)
+/// ✉️ [1:N จาก chat_sessions] ตารางข้อความย่อยภายในห้องแชท (Chat Messages)
+/// - Foreign Keys: session_id (chat_sessions), sender_id (users)
 model messages {
-  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // รหัสข้อความ
-  session_id    String?        @db.Uuid // รหัสห้องแชท (เชื่อมกับ chat_sessions)
-  sender_id     String?        @db.Uuid // รหัสผู้ส่งข้อความ
-  content       String?        // ข้อความแชท
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // PK: รหัสข้อความ
+  session_id    String?        @db.Uuid // FK: อ้างอิงห้องแชท
+  sender_id     String?        @db.Uuid // FK: อ้างอิงผู้ส่งข้อความ (users)
+  content       String?        // ข้อความตัวหนังสือ
   file_url      String?        @db.VarChar(255) // URL ไฟล์เอกสารหรือรูปภาพแนบ
-  latitude      Decimal?       @db.Decimal(10, 8) // ละติจูดแชร์โลเคชัน
-  longitude     Decimal?       @db.Decimal(11, 8) // ลองจิจูดแชร์โลเคชัน
-  is_read       Boolean        @default(false) // ผู้รับเปิดอ่านข้อความนี้แล้วหรือยัง
+  latitude      Decimal?       @db.Decimal(10, 8) // ละติจูดกรณีส่งพิกัดตำแหน่ง
+  longitude     Decimal?       @db.Decimal(11, 8) // ลองจิจูดกรณีส่งพิกัดตำแหน่ง
+  is_read       Boolean        @default(false) // สถานะเปิดอ่านแล้วหรือยัง (true/false)
   created_at    DateTime       @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   users         users?         @relation(fields: [sender_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   chat_sessions chat_sessions? @relation(fields: [session_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([session_id], map: "idx_messages_session")
-  @@index([session_id, is_read], map: "idx_messages_unread")
+  @@index([session_id, is_read], map: "idx_messages_unread") // Partial/Composite index สำหรับเร่งดึงจำนวนข้อความที่ยังไม่ได้อ่าน
 }
 
-/// ตารางเทมเพลตข้อความตอบกลับด่วนของนายหน้า (Quick Reply Templates)
+/// ⚡ [1:N จาก users] ตารางเทมเพลตข้อความตอบกลับด่วนของนายหน้า (Quick Reply Templates)
 model quick_reply_templates {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  agent_id   String?  @db.Uuid // นายหน้าเจ้าของเทมเพลต
-  title      String   @db.VarChar(100) // ชื่อหัวข้อเทมเพลต
-  content    String   // ข้อความตอบกลับสำเร็จรูป
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // PK: รหัสเทมเพลต
+  agent_id   String?  @db.Uuid // FK: นายหน้าเจ้าของข้อความสำเร็จรูปนี้
+  title      String   @db.VarChar(100) // ชื่อหัวข้อเทมเพลต (เช่น "ขอพิกัดบ้านเพิ่มเติม")
+  content    String   // เนื้อหาข้อความตอบกลับด่วน
   created_at DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   users      users?   @relation(fields: [agent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
@@ -378,53 +425,57 @@ model quick_reply_templates {
 // 6. ระบบแพ็กเกจและการชำระเงิน (Payments & Sales Module)
 // ==============================================================================
 
-/// ตารางมาสเตอร์แพ็กเกจการลงประกาศ (Basic, Pro, VIP)
+/// 📦 [Master Table] ตารางแพ็กเกจลงประกาศอสังหาริมทรัพย์ (เช่น Basic, Pro, VIP)
 model listing_packages {
-  id                     Int                      @id @default(autoincrement())
-  name                   String                   @unique @db.VarChar(50) // ชื่อแพ็กเกจ
+  id                     Int                      @id @default(autoincrement()) // PK: รหัสแพ็กเกจ
+  name                   String                   @unique @db.VarChar(50) // ชื่อแพ็กเกจ (ห้ามซ้ำ)
   price                  Decimal                  @db.Decimal(10, 2) // ราคาแพ็กเกจ (บาท)
-  max_duration_days      Int                      // อายุจำนวนวันที่ลงประกาศได้
+  max_duration_days      Int                      // จำนวนวันที่รองรับการลงประกาศ (เช่น 30 วัน, 90 วัน)
   created_at             DateTime                 @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   listing_package_orders listing_package_orders[]
 }
 
-/// ตารางรายการคำสั่งซื้อแพ็กเกจลงประกาศของนายหน้า
+/// 🛒 [Transaction Table] ตารางรายการคำสั่งซื้อแพ็กเกจลงประกาศของนายหน้า
+/// - Foreign Keys: property_id (properties), package_id (listing_packages)
 model listing_package_orders {
-  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  property_id          String?                @db.Uuid // รหัสอสังหาฯ ที่ใช้แพ็กเกจ
-  package_id           Int?                   // รหัสแพ็กเกจที่ซื้อ
-  start_date           DateTime               @db.Date // วันเริ่มใช้งาน
-  end_date             DateTime               @db.Date // วันหมดอายุ
-  status               String?                @default("pending") @db.VarChar(20) // สถานะคำสั่งซื้อ (pending, paid, expired)
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // PK: รหัสคำสั่งซื้อ
+  property_id          String?                @db.Uuid // FK: รหัสอสังหาฯ ที่ใช้แพ็กเกจนี้
+  package_id           Int?                   // FK: รหัสแพ็กเกจที่สั่งซื้อ
+  start_date           DateTime               @db.Date // วันเริ่มผลแพ็กเกจ
+  end_date             DateTime               @db.Date // วันหมดอายุแพ็กเกจ
+  status               String?                @default("pending") @db.VarChar(20) // สถานะคำสั่งซื้อ ("pending", "paid", "expired")
   created_at           DateTime               @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   listing_packages     listing_packages?      @relation(fields: [package_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   properties           properties?            @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  payment_transactions payment_transactions[]
+  payment_transactions payment_transactions[] // 1:N ไปยังตารางการชำระเงิน
 }
 
-/// ตารางบันทึกการชำระเงินและสลิปหลักฐานการโอนเงิน
+/// 💳 [Transaction & Audit] ตารางหลักฐานสลิปและการชำระเงิน
+/// - Foreign Key: order_id -> listing_package_orders(id)
 model payment_transactions {
-  id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  order_id               String?                 @db.Uuid // รหัสคำสั่งซื้อที่อ้างอิง
-  amount                 Decimal                 @db.Decimal(10, 2) // จำนวนเงินที่ชำระ
-  payment_method         String?                 @db.VarChar(50) // ช่องทางชำระเงิน (PromptPay, Bank Transfer)
-  slip_url               String?                 @db.VarChar(255) // URL หลักฐานสลิปการโอนเงิน
-  status                 String?                 @default("pending") @db.VarChar(20) // สถานะตรวจสอบสลิป (pending, approved, rejected)
+  id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // PK: รหัสธุรกรรมการชำระเงิน
+  order_id               String?                 @db.Uuid // FK: อ้างอิงคำสั่งซื้อ
+  amount                 Decimal                 @db.Decimal(10, 2) // ยอดเงินที่โอนชำระ
+  payment_method         String?                 @db.VarChar(50) // วิธีการชำระเงิน (เช่น "PromptPay", "BankTransfer")
+  slip_url               String?                 @db.VarChar(255) // URL รูปภาพสลิปการโอนเงิน
+  status                 String?                 @default("pending") @db.VarChar(20) // สถานะตรวจสอบสลิป ("pending", "approved", "rejected")
   created_at             DateTime                @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   listing_package_orders listing_package_orders? @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
-/// ตารางประวัติการปิดการขายบ้านและคำนวณค่าคอมมิชชั่น
+/// 🤝 [Sales History] ตารางบันทึกการปิดการขายอสังหาฯ และคำนวณค่าคอมมิชชั่น
+/// - Foreign Keys: property_id, agent_id, buyer_id
+/// - Financial Calculation: เก็บ final_price, commission_rate และ commission_amount สุจริตแม่นยำด้วย Decimal
 model sale_transactions {
-  id                                      String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  property_id                             String?     @db.Uuid // รหัสอสังหาริมทรัพย์ที่ปิดการขายได้
-  agent_id                                String?     @db.Uuid // รหัสนายหน้าที่ขายได้
-  buyer_id                                String?     @db.Uuid // รหัสผู้ซื้อ
-  final_price                             Decimal     @db.Decimal(12, 2) // ราคาขายจริงที่ปิดได้
-  commission_rate                         Decimal     @db.Decimal(4, 2) // อัตราค่าคอมมิชชั่น (%)
-  commission_amount                       Decimal     @db.Decimal(10, 2) // ยอดเงินค่าคอมมิชชั่นสุทธิ
-  transaction_date                        DateTime    @db.Date // วันที่ปิดการขายสำเร็จ
-  agreement_file_url                      String?     @db.VarChar(255) // URL ไฟล์สัญญาซื้อขาย
+  id                                      String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // PK: รหัสรายการปิดการขาย
+  property_id                             String?     @db.Uuid // FK: อสังหาริมทรัพย์ที่ปิดการขายได้
+  agent_id                                String?     @db.Uuid // FK: นายหน้าที่ทำรายการขายสำเร็จ
+  buyer_id                                String?     @db.Uuid // FK: ผู้ซื้ออสังหาฯ (users)
+  final_price                             Decimal     @db.Decimal(12, 2) // ราคาขายจริงสุทธิที่ปิดได้ (บาท)
+  commission_rate                         Decimal     @db.Decimal(4, 2) // อัตราค่าคอมมิชชั่น (%) เช่น 3.00%
+  commission_amount                       Decimal     @db.Decimal(10, 2) // ยอดเงินค่าคอมมิชชั่นสุทธิที่นายหน้าจะได้รับ
+  transaction_date                        DateTime    @db.Date // วันที่เซ็นสัญญา/ปิดการขาย
+  agreement_file_url                      String?     @db.VarChar(255) // URL ไฟล์สัญญาซื้อขายแนบ
   created_at                              DateTime    @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   users_sale_transactions_agent_idTousers users?      @relation("sale_transactions_agent_idTousers", fields: [agent_id], references: [id], onUpdate: NoAction)
   users_sale_transactions_buyer_idTousers users?      @relation("sale_transactions_buyer_idTousers", fields: [buyer_id], references: [id], onUpdate: NoAction)
@@ -436,56 +487,59 @@ model sale_transactions {
 // 7. รายงาน การแจ้งเตือน และโฆษณา (Reports & Ads Module)
 // ==============================================================================
 
-/// ตารางการแจ้งเตือนในระบบของผู้ใช้งาน (Notifications Center)
+/// 🔔 [Notification Center] ตารางการแจ้งเตือนภายในระบบของผู้ใช้งาน
+/// - Foreign Key: user_id -> users(id)
+/// - Partial Index: @@index([user_id], where: raw("(is_read = false)")) เร่งการค้นหาเฉพาะการแจ้งเตือนที่ยังไม่ได้อ่าน
 model notifications {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id    String?  @db.Uuid // รหัสผู้รับการแจ้งเตือน
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // PK: รหัสการแจ้งเตือน
+  user_id    String?  @db.Uuid // FK: ผู้รับการแจ้งเตือน (users)
   title      String   @db.VarChar(150) // หัวข้อการแจ้งเตือน
   content    String   // ข้อความรายละเอียด
-  is_read    Boolean? @default(false) // สถานะอ่านแล้วหรือยัง (true/false)
-  type       String?  @db.VarChar(50) // ประเภทการแจ้งเตือน (appointment, chat, review)
-  link_url   String?  @db.VarChar(255) // ลิงก์ปลายทางเมื่อคลิกการแจ้งเตือนนี้ (เช่น /chat?sessionId=...)
+  is_read    Boolean? @default(false) // สถานะอ่านแล้วหรือยัง
+  type       String?  @db.VarChar(50) // หมวดหมู่แจ้งเตือน (เช่น "appointment", "chat", "review")
+  link_url   String?  @db.VarChar(255) // ลิงก์กดไปหน้าเกี่ยวข้อง (เช่น "/chat?sessionId=...")
   created_at DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   users      users?   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([user_id], map: "idx_notifications_user_unread", where: raw("(is_read = false)"))
 }
 
-/// ตารางการรายงานความผิดปกติ/ร้องเรียน (Report ประกาศ หรือ นายหน้า)
+/// 🚩 [Reporting System] ตารางรายงานความผิดปกติ/ร้องเรียน (ร้องเรียนประกาศ หรือ นายหน้า)
+/// - Foreign Keys: reporter_id (ผู้ร้องเรียน), reported_property_id (บ้านที่ถูกร้องเรียน), reported_agent_id (นายหน้าที่ถูกร้องเรียน)
 model reports {
-  id                                     String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  reporter_id                            String?     @db.Uuid // รหัสผู้แจ้งเรื่องร้องเรียน
-  reported_property_id                   String?     @db.Uuid // รหัสอสังหาฯ ที่ถูกร้องเรียน (ถ้ามี)
-  reported_agent_id                      String?     @db.Uuid // รหัสนายหน้าที่ถูกร้องเรียน (ถ้ามี)
-  reason                                 String      @db.VarChar(150) // สาเหตุที่ร้องเรียน
-  details                                String?     // รายละเอียดคำร้องเรียน
-  status                                 String?     @default("pending") @db.VarChar(20) // สถานะเรื่องร้องเรียน (pending, resolved, dismissed)
+  id                                     String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // PK: รหัสรายงาน
+  reporter_id                            String?     @db.Uuid // FK 1: ผู้แจ้งเรื่องร้องเรียน (users)
+  reported_property_id                   String?     @db.Uuid // FK 2: บ้านที่ถูกร้องเรียน (ถ้ามี)
+  reported_agent_id                      String?     @db.Uuid // FK 3: นายหน้าที่ถูกร้องเรียน (ถ้ามี)
+  reason                                 String      @db.VarChar(150) // สาเหตุที่ร้องเรียน (เช่น "ข้อมูลเท็จ", "สแปม")
+  details                                String?     // รายละเอียดคำร้องเรียนเพิ่มเติม
+  status                                 String?     @default("pending") @db.VarChar(20) // สถานะเรื่องร้องเรียน ("pending", "resolved", "dismissed")
   created_at                             DateTime    @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   users_reports_reported_agent_idTousers users?      @relation("reports_reported_agent_idTousers", fields: [reported_agent_id], references: [id], onUpdate: NoAction)
   properties                             properties? @relation(fields: [reported_property_id], references: [id], onUpdate: NoAction)
   users_reports_reporter_idTousers       users?      @relation("reports_reporter_idTousers", fields: [reporter_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
-/// ตารางแคมเปญโฆษณาและแบนเนอร์โปรโมตหน้าเว็บ
+/// 📢 [Marketing & Ads] ตารางแคมเปญโฆษณาและแบนเนอร์โปรโมตหน้าเว็บ
 model banner_campaigns {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // PK: รหัสแบนเนอร์
   title      String   @db.VarChar(100) // ชื่อแคมเปญโฆษณา
   image_url  String   @db.VarChar(255) // URL รูปภาพแบนเนอร์
-  link_url   String?  @db.VarChar(255) // ลิงก์เมื่อผู้ใช้กดแบนเนอร์
-  start_date DateTime @db.Date // วันเริ่มแสดงผล
-  end_date   DateTime @db.Date // วันสิ้นสุดแสดงผล
-  status     String?  @default("inactive") @db.VarChar(20) // สถานะแคมเปญ (active/inactive)
+  link_url   String?  @db.VarChar(255) // ลิงก์ปลายทางเมื่อผู้ใช้คลิก
+  start_date DateTime @db.Date // วันเริ่มแสดงแบนเนอร์
+  end_date   DateTime @db.Date // วันสิ้นสุดการแสดง
+  status     String?  @default("inactive") @db.VarChar(20) // สถานะแคมเปญ ("active", "inactive")
   created_at DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
 }
 
-/// ตารางโปรโมชันและโค้ดส่วนลดค่าบริการ
+/// 🏷️ [Marketing & Discounts] ตารางโปรโมชันและโค้ดส่วนลดค่าบริการ
 model promotions {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // PK: รหัสโปรโมชัน
   name          String   @db.VarChar(100) // ชื่อโปรโมชัน
-  discount_rate Decimal? @db.Decimal(4, 2) // อัตราส่วนลด (%)
+  discount_rate Decimal? @db.Decimal(4, 2) // อัตราส่วนลด % (เช่น 10.00%)
   start_date    DateTime @db.Date // วันเริ่มโปรโมชัน
   end_date      DateTime @db.Date // วันหมดอายุโปรโมชัน
-  code          String?  @unique @db.VarChar(20) // โค้ดส่วนลด (เช่น SAVE10)
+  code          String?  @unique @db.VarChar(20) // โค้ดส่วนลดสำหรับพิมพ์กรอก (เช่น "SAVE10", ห้ามซ้ำ)
   created_at    DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
 }
 
@@ -494,24 +548,27 @@ model promotions {
 // 8. การตั้งค่าระบบสล็อตวันเวลาดูบ้าน (System Configs & Slots Module)
 // ==============================================================================
 
-/// ตารางเก็บค่าการตั้งค่าทั่วไปของระบบ (Key-Value Configs)
+/// ⚙️ [Key-Value Store] ตารางเก็บค่าการตั้งค่าทั่วไปของระบบ
+/// - Exam Note: ใช้รูปแบบ Key-Value Pattern สำหรับระบบที่ต้องการความยืดหยุ่นในการเพิ่ม Config ใหม่โดยไม่ต้องปรับ Schema
 model system_configs {
-  key         String   @id @db.VarChar(50) // ชื่อคีย์การตั้งค่า
+  key         String   @id @db.VarChar(50) // PK: ชื่อคีย์การตั้งค่า (เช่น "site_name", "max_upload_size")
   value       String   @db.VarChar(255) // ค่าของการตั้งค่า
-  description String?  // คำอธิบายรายละเอียดการตั้งค่า
-  updated_at  DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  description String?  // คำอธิบายการใช้งานคีย์นี้
+  updated_at  DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6) // เวลาอัปเดตล่าสุด
 }
 
-/// ตารางวันเวลาที่นายหน้าเปิดให้จองเข้าชม "บ้านหลังนี้" โดยเฉพาะ (ผูกกับบ้านรายหลัง)
+/// 🕒 [1:N จาก properties] ตารางสล็อตเวลาว่างสำหรับเข้าชม "อสังหาฯ รายหลัง" (Specific Property Viewing Slots)
+/// - Composite Unique Constraint: @@unique([property_id, available_date, time_slot])
+/// - Exam Note: แตกต่างจาก agent_availabilities ตรงที่สล็อตนี้ระบุเฉพาะเจาะจงที่บ้านหลังนั้นๆ
 model property_viewing_slots {
-  id             String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // รหัสสล็อตวันว่าง
-  property_id    String     @db.Uuid // รหัสอสังหาริมทรัพย์
-  available_date DateTime   @db.Date // วันที่เปิดรับจอง
+  id             String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // PK: รหัสสล็อต
+  property_id    String     @db.Uuid // FK: รหัสอสังหาฯ (properties)
+  available_date DateTime   @db.Date // วันที่เปิดรับจองเข้าชม
   time_slot      String     @db.VarChar(20) // ช่วงเวลาที่เปิดรับจอง (เช่น "09:00 - 10:00")
-  is_booked      Boolean    @default(false) // สถานะถูกจองไปแล้วหรือยัง (true = จองแล้ว, false = ว่าง)
+  is_booked      Boolean    @default(false) // สถานะจองแล้วหรือยัง (true = ถูกจองแล้ว, false = ว่าง)
   created_at     DateTime   @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   properties     properties @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@unique([property_id, available_date, time_slot])
+  @@unique([property_id, available_date, time_slot]) // Composite Unique ห้ามสร้างช่วงเวลาซ้ำในบ้านหลังเดียวกัน
   @@index([property_id], map: "idx_property_viewing_slots_property")
 }

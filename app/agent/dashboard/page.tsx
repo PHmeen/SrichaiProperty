@@ -1,4 +1,19 @@
-﻿'use client';
+'use client';
+
+/**
+ * ==============================================================================
+ * หน้าต่างบริหารจัดการของนายหน้า (Agent Dashboard Page)
+ * ==============================================================================
+ * ไฟล์: app/agent/dashboard/page.tsx
+ * ประเภท: React Client Component ('use client')
+ * 
+ * หน้าที่หลัก (Main Responsibilities):
+ * 1. ตรวจสอบสิทธิ์การใช้งาน (Authentication & KYC Verification) ผ่าน NextAuth
+ * 2. โหลดและแสดงผลข้อมูลสถิติรวม (Analytics Overview) เช่น ยอดเข้าชม, มูลค่าพอร์ต, นัดหมาย
+ * 3. จัดการรายการประกาศอสังหาริมทรัพย์ (Property Management: ค้นหา, กรอง, คัดลอกลิงก์, แก้ไข, ลบ)
+ * 4. แสดงผลโมดอลสถิติเชิงลึก (PropertyStatsModal) และโมดอลอัปเกรดแพ็กเกจ (UpgradeProModal)
+ * ==============================================================================
+ */
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSession, signOut } from 'next-auth/react';
@@ -7,10 +22,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { FREE_LISTING_QUOTA } from '@/lib/constants';
 
+// นำเข้า คอมโพเนนต์ย่อยสำหรับระบบ Agent Dashboard
 import PendingApprovalBanner from '@/components/agent/PendingApprovalBanner';
 import UpgradeProModal from '@/components/agent/UpgradeProModal';
 import PropertyStatsModal, { PropertyData } from '@/components/agent/dashboard/PropertyStatsModal';
 
+// อินเทอร์เฟซ (Interface) นิยามโครงสร้างข้อมูลนัดหมายของลูกค้า
 interface AppointmentData {
   id: string;
   status: string;
@@ -21,17 +38,27 @@ interface AppointmentData {
 }
 
 export default function AgentDashboardPage() {
+  // --------------------------------------------------------------------------
+  // [ส่วนที่ 1: การจัดการสถานะ (State Management & NextAuth Session)]
+  // --------------------------------------------------------------------------
+  
+  // 1.1 Session State จาก NextAuth เพื่อเช็คผู้ใช้ที่ล็อกอินอยู่
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [filterType, setFilterType] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  
-  // State สำหรับ Large Modal แสดงรายละเอียดสถิติเชิงลึกแบบเต็มตา
-  const [selectedProperty, setSelectedProperty] = useState<PropertyData | null>(null);
 
+  // 1.2 State การค้นหาและคัดกรองข้อมูล
+  const [filterType, setFilterType] = useState('all'); // ตัวกรองสถานะประกาศ: 'all' | 'approved' | 'pending' | 'rejected'
+  const [searchTerm, setSearchTerm] = useState('');   // คำค้นหาตามชื่อประกาศอสังหาฯ
+
+  // 1.3 State การจัดการ Action ประจำแถว
+  const [deletingId, setDeletingId] = useState<string | null>(null); // เก็บ ID ของประกาศที่กำลังถูกลบ
+  const [copiedId, setCopiedId] = useState<string | null>(null);   // เก็บ ID ของประกาศที่เพิ่งกดคัดลอกลิงก์
+
+  // 1.4 State สำหรับควบคุมการเปิด/ปิด Modals
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);  // เปิด/ปิด Modal อัปเกรดเป็น PRO
+  const [selectedProperty, setSelectedProperty] = useState<PropertyData | null>(null); // เก็บข้อมูลอสังหาฯ ที่เลือกเพื่อดูสถิติเชิงลึกใน Modal
+
+  // 1.5 State เก็บข้อมูล Dashboard จาก API หลังบ้าน (/api/agent/portal?type=dashboard)
   const [dbData, setDbData] = useState<{
     properties: PropertyData[];
     totalPortfolioValue: string;
@@ -42,9 +69,15 @@ export default function AgentDashboardPage() {
     isPro?: boolean;
     recentAppointments?: AppointmentData[];
   } | null>(null);
-  const [dashboardError, setDashboardError] = useState<string | null>(null);
-  const isLoadingDashboard = !dbData && !dashboardError;
 
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const isLoadingDashboard = !dbData && !dashboardError; // คำนวณสถานะ Loading หากข้อมูลยังดึงไม่เสร็จและยังไม่มี Error
+
+  // --------------------------------------------------------------------------
+  // [ส่วนที่ 2: การดึงข้อมูลจาก API (Data Fetching with useCallback)]
+  // --------------------------------------------------------------------------
+  
+  // ฟังก์ชันดึงข้อมูล Dashboard จาก API หลังบ้าน
   const loadDashboard = useCallback(() => {
     fetch('/api/agent/portal?type=dashboard')
       .then(res => {
@@ -53,7 +86,7 @@ export default function AgentDashboardPage() {
       })
       .then(data => {
         setDashboardError(null);
-        setDbData(data);
+        setDbData(data); // บันทึกข้อมูลเข้า State
       })
       .catch(err => {
         console.error('Error fetching dashboard:', err);
@@ -61,22 +94,32 @@ export default function AgentDashboardPage() {
       });
   }, []);
 
+  // 2.2 Effect ตรวจสอบสถานะการเข้าสู่ระบบ (Authentication Guard)
   useEffect(() => {
-    if (status === 'authenticated') loadDashboard();
-    else if (status === 'unauthenticated') router.replace('/login/agent');
+    if (status === 'authenticated') {
+      loadDashboard(); // ถ้าล็อกอินแล้ว ให้ดึงข้อมูล Dashboard
+    } else if (status === 'unauthenticated') {
+      router.replace('/login/agent'); // ถ้ายังไม่ได้ล็อกอิน ให้เด้งไปหน้าเข้าสู่ระบบนายหน้า
+    }
   }, [status, loadDashboard, router]);
 
-  // ตัดอักขระอื่นออกจากเบอร์โทร เหลือแต่ตัวเลขและ + นำหน้า ป้องกันลิงก์ tel: ผิดรูปแบบ
+  // --------------------------------------------------------------------------
+  // [ส่วนที่ 3: ฟังก์ชันผู้ช่วยและการทำ Event Handler]
+  // --------------------------------------------------------------------------
+
+  // 3.1 ฟังก์ชันฟอร์แมตเบอร์โทรศัพท์สำหรับสร้าง href "tel:xxx" (ตัดตัวอักษรอื่นออกเหลือเฉพาะตัวเลขและเครื่องหมาย +)
   const toTelHref = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`;
 
+  // 3.2 ฟังก์ชันลบประกาศอสังหาริมทรัพย์ (Delete Property Handler)
   const handleDelete = async (propertyId: string) => {
     if (!confirm('ยืนยันลบประกาศนี้หรือไม่? การลบจะไม่สามารถย้อนกลับได้')) return;
     setDeletingId(propertyId);
     try {
       const res = await fetch(`/api/properties/${propertyId}`, { method: 'DELETE' });
       if (res.ok) {
+        // หากอสังหาฯ ที่ลบอยู่กำลังเปิดดูสถิติใน Modal ให้ปิด Modal ด้วย
         if (selectedProperty?.id === propertyId) setSelectedProperty(null);
-        loadDashboard();
+        loadDashboard(); // รีโหลดข้อมูล Dashboard เพื่ออัปเดตตัวเลขล่าสุด
       } else alert('ลบประกาศไม่สำเร็จ');
     } catch {
       alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
@@ -85,13 +128,19 @@ export default function AgentDashboardPage() {
     }
   };
 
+  // 3.3 ฟังก์ชันคัดลอกลิงก์สาธารณะของประกาศ (Copy Property Link to Clipboard)
   const handleCopyLink = (propertyId: string) => {
     const url = `${window.location.origin}/property/${propertyId}`;
     navigator.clipboard.writeText(url);
     setCopiedId(propertyId);
-    setTimeout(() => setCopiedId(null), 2000);
+    setTimeout(() => setCopiedId(null), 2000); // เคลียร์ข้อความแจ้งเตือนหลังผ่านไป 2 วินาที
   };
 
+  // --------------------------------------------------------------------------
+  // [ส่วนที่ 4: การตรวจสอบสิทธิ์ และการแสดงผลหน้า Loading / KYC Screen]
+  // --------------------------------------------------------------------------
+
+  // 4.1 แสดง Loading Spinner ขณะกำลังตรวจสอบ Session
   if (status === 'loading') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50">
@@ -100,6 +149,7 @@ export default function AgentDashboardPage() {
     );
   }
 
+  // 4.2 ตรวจสอบสถานะ KYC ของบัญชีนายหน้า (ถ้ายังรออนุมัติให้แสดงหน้าแจ้งเตือน)
   const user = session?.user as { name?: string | null; status?: string | null };
   if (user?.status === 'pending') {
     return (
@@ -114,6 +164,11 @@ export default function AgentDashboardPage() {
     );
   }
 
+  // --------------------------------------------------------------------------
+  // [ส่วนที่ 5: การคำนวณและกรองข้อมูลสำหรับแสดงผล (Filtering & Calculations)]
+  // --------------------------------------------------------------------------
+
+  // 5.1 กรองรายการประกาศตาม filterType และ searchTerm
   const filteredProperties = (dbData?.properties || []).filter(p => {
     const matchesStatus = filterType === 'all' ? true :
                           filterType === 'approved' ? p.status === 'approved' :
@@ -123,20 +178,24 @@ export default function AgentDashboardPage() {
     return matchesStatus && matchesSearch;
   });
 
+  // 5.2 คำนวณสถานะสิทธิ์ Pro และโควตาการลงประกาศที่เหลืออยู่
   const isPro = dbData?.isPro || false;
   const remainingQuota = Math.max(0, FREE_LISTING_QUOTA - (dbData?.totalCount || 0));
 
+  // --------------------------------------------------------------------------
+  // [ส่วนที่ 6: การเรนเดอร์ส่วนประกอบ UI (JSX Rendering)]
+  // --------------------------------------------------------------------------
   return (
     <div className="pt-16 min-h-screen bg-slate-50/50 text-slate-800 text-xs md:text-sm font-sans antialiased">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         
-        {/* Banner รออนุมัติประกาศ */}
+        {/* Banner แจ้งเตือนเมื่อมีประกาศที่รอ Admin ตรวจสอบอนุมัติ */}
         <PendingApprovalBanner
           pendingCount={dbData?.pendingApprovalCount || 0}
           onViewPending={() => setFilterType('pending')}
         />
 
-        {/* Banner PRO ชวนอัปเกรด (ถ้ายังไม่เป็น PRO) */}
+        {/* Banner เชิญชวนอัปเกรดเป็นแพ็กเกจ PRO (แสดงเฉพาะเมื่อยังไม่ใช่นายหน้า PRO) */}
         {!isPro && (
           <section className="bg-slate-900 rounded-3xl p-5 text-white flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg shadow-slate-900/10">
             <div className="flex items-center gap-3">
@@ -152,7 +211,7 @@ export default function AgentDashboardPage() {
           </section>
         )}
 
-        {/* Title Bar & Main Actions */}
+        {/* แถบหัวข้อหลัก และปุ่มสร้างประกาศใหม่ */}
         <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-xl md:text-2xl font-black text-slate-900">ภาพรวมการทำงาน ({user?.name || 'นายหน้า'}) 👋</h2>
@@ -163,7 +222,7 @@ export default function AgentDashboardPage() {
           </Link>
         </section>
 
-        {/* สถานะโหลดข้อมูล / ข้อผิดพลาดจากการเชื่อมต่อ API */}
+        {/* แสดงข้อความขณะกำลังโหลดข้อมูล หรือเมื่อมีข้อผิดพลาด */}
         {isLoadingDashboard && !dbData && (
           <section className="bg-white rounded-2xl p-4 border border-slate-200/80 flex items-center gap-3 text-slate-500">
             <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin shrink-0" />
@@ -179,8 +238,9 @@ export default function AgentDashboardPage() {
           </section>
         )}
 
-        {/* 4 Cards Summary */}
+        {/* การ์ดสรุปสถิติ 4 ใบ (Summary Cards Grid) */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* การ์ดที่ 1: โควตาประกาศ */}
           <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs space-y-2 transition-all hover:border-slate-300">
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">โควตาประกาศ</span>
             <strong className="text-xl font-black text-slate-900 block">
@@ -194,6 +254,7 @@ export default function AgentDashboardPage() {
             </div>
           </div>
 
+          {/* การ์ดที่ 2: ยอดเข้าชมรวม */}
           <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs space-y-2 transition-all hover:border-slate-300">
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">ยอดเข้าชมรวม</span>
             <strong className="text-xl font-black text-slate-900 block">{(dbData?.totalViews || 0).toLocaleString()} ครั้ง</strong>
@@ -202,12 +263,14 @@ export default function AgentDashboardPage() {
             </span>
           </div>
 
+          {/* การ์ดที่ 3: จำนวนลูกค้านัดชมสถานที่ */}
           <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs space-y-2 transition-all hover:border-slate-300">
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">ลูกค้านัดชมสถานที่</span>
             <strong className="text-xl font-black text-blue-600 block">{dbData?.pendingAptsCount || 0} รายการ</strong>
             <span className="text-[10px] text-slate-400 font-bold block">🎯 รอยืนยันการพบลูกค้า</span>
           </div>
 
+          {/* การ์ดที่ 4: มูลค่าพอร์ตโฟลิโอรวม */}
           <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs space-y-2 transition-all hover:border-slate-300">
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">มูลค่าพอร์ตโฟลิโอ</span>
             <strong className="text-xl font-black text-emerald-600 block">{dbData?.totalPortfolioValue || '0.0 ลบ.'}</strong>
@@ -215,10 +278,10 @@ export default function AgentDashboardPage() {
           </div>
         </section>
 
-        {/* 2 Column Layout */}
+        {/* เลย์เอาต์แบ่ง 2 ฝั่ง (2 Column Layout) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           
-          {/* ซ้าย: รายการประกาศอสังหาริมทรัพย์แต่ละหลัง */}
+          {/* ฝั่งซ้าย (2/3): ตารางแสดงรายการประกาศอสังหาริมทรัพย์ */}
           <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-5 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
               <div>
@@ -226,6 +289,7 @@ export default function AgentDashboardPage() {
                 <p className="text-[11px] text-slate-400 mt-0.5 font-medium">กดปุ่ม &quot;📊 ดูสถิติกราฟ&quot; เพื่อดูรายละเอียดเชิงลึกของบ้านแต่ละหลัง</p>
               </div>
               
+              {/* แถบกล่องค้นหาและตัวกรองสถานะ */}
               <div className="flex items-center gap-2">
                 <input
                   type="text"
@@ -247,6 +311,7 @@ export default function AgentDashboardPage() {
               </div>
             </div>
 
+            {/* ตารางแสดงข้อมูลอสังหาริมทรัพย์ */}
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[550px]">
                 <thead>
@@ -267,6 +332,7 @@ export default function AgentDashboardPage() {
                   ) : (
                     filteredProperties.map(p => (
                       <tr key={p.id} className="hover:bg-slate-50/80 transition group">
+                        {/* คอลัมน์ที่ 1: ภาพหน้าปก, ชื่อ และราคา */}
                         <td className="py-3 px-2 flex gap-3 items-center">
                           <div className="relative w-14 h-11 rounded-xl overflow-hidden border border-slate-200 shrink-0 shadow-2xs">
                             <Image src={p.image} alt="property" fill className="object-cover group-hover:scale-105 transition-transform duration-300" unoptimized />
@@ -277,6 +343,7 @@ export default function AgentDashboardPage() {
                           </div>
                         </td>
 
+                        {/* คอลัมน์ที่ 2: สถิติจำนวนคนเข้าชม และจำนวนนัดหมาย */}
                         <td className="py-3 px-2 text-center font-bold text-slate-600 text-[11px]">
                           <div className="inline-flex items-center gap-2 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-xl">
                             <span>👁️ {p.views.toLocaleString()}</span>
@@ -285,6 +352,7 @@ export default function AgentDashboardPage() {
                           </div>
                         </td>
 
+                        {/* คอลัมน์ที่ 3: ป้ายสถานะการอนุมัติ (Approved / Pending / Rejected) */}
                         <td className="py-3 px-2 text-center">
                           <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full border ${
                             p.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80' :
@@ -300,8 +368,10 @@ export default function AgentDashboardPage() {
                           )}
                         </td>
 
+                        {/* คอลัมน์ที่ 4: ปุ่มการจัดการ (ดูสถิติกราฟ, แชร์ลิงก์, แก้ไข, ลบ) */}
                         <td className="py-3 px-2 text-right">
                           <div className="flex items-center justify-end gap-1.5 text-xs font-bold">
+                            {/* ปุ่มเปิด Modal สถิติเชิงลึก */}
                             <button
                               onClick={() => setSelectedProperty(p)}
                               className="px-2.5 py-1.5 text-[10px] bg-blue-50 text-blue-700 border border-blue-200/80 hover:bg-blue-600 hover:text-white font-extrabold rounded-xl transition cursor-pointer shadow-2xs flex items-center gap-1"
@@ -309,6 +379,8 @@ export default function AgentDashboardPage() {
                             >
                               📊 สถิติ
                             </button>
+
+                            {/* ปุ่มคัดลอกลิงก์ไปแชร์ */}
                             <button
                               onClick={() => handleCopyLink(p.id)}
                               className="px-2.5 py-1.5 text-[10px] bg-slate-50 text-slate-600 border border-slate-200/80 hover:bg-slate-100 font-bold rounded-xl transition cursor-pointer"
@@ -316,9 +388,13 @@ export default function AgentDashboardPage() {
                             >
                               {copiedId === p.id ? '✓ คัดลอกแล้ว' : '🔗 แชร์'}
                             </button>
+
+                            {/* ปุ่มลิงก์ไปหน้าแก้ไขประกาศ */}
                             <Link href={`/agent/edit-property/${p.id}`} className="px-2.5 py-1.5 text-[10px] bg-slate-50 text-blue-600 border border-slate-200/80 hover:bg-blue-50 font-bold rounded-xl transition">
                               แก้ไข
                             </Link>
+
+                            {/* ปุ่มกดลบประกาศ */}
                             <button
                               onClick={() => handleDelete(p.id)}
                               disabled={deletingId === p.id}
@@ -336,7 +412,7 @@ export default function AgentDashboardPage() {
             </div>
           </div>
 
-          {/* ขวา: ตารางนัดหมายลูกค้าล่าสุด */}
+          {/* ฝั่งขวา (1/3): ตารางแสดงรายการลูกค้านัดหมายชมสถานที่ล่าสุด */}
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-5 space-y-4 text-left">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h4 className="font-extrabold text-slate-900 text-xs md:text-sm">📅 นัดหมายชมสถานที่ล่าสุด</h4>
@@ -354,6 +430,7 @@ export default function AgentDashboardPage() {
                         <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0"></span>
                         {apt.customerName}
                       </span>
+                      {/* ลิงก์โทรศัพท์ tel: ปรับแต่งเบอร์ให้ปลอดภัยก่อนสร้าง href */}
                       <a href={toTelHref(apt.customerPhone)} className="text-[10px] bg-blue-100/80 text-blue-800 font-black px-2 py-0.5 rounded-full hover:bg-blue-200 transition shrink-0">
                         📞 {apt.customerPhone}
                       </a>
@@ -370,6 +447,11 @@ export default function AgentDashboardPage() {
 
       </main>
 
+      {/* -------------------------------------------------------------------------- */}
+      {/* [ส่วนที่ 7: การเรนเดอร์ Modals ลอย]                                         */}
+      {/* -------------------------------------------------------------------------- */}
+
+      {/* 7.1 Modal แสดงสถิติเชิงลึกแบบกราฟและรายชื่อลูกค้านัดหมายเฉพาะทรัพย์นี้ */}
       {selectedProperty && (
         <PropertyStatsModal
           property={selectedProperty}
@@ -377,6 +459,7 @@ export default function AgentDashboardPage() {
         />
       )}
 
+      {/* 7.2 Modal เสนออัปเกรดแพ็กเกจเป็น Verified PRO Agent */}
       <UpgradeProModal
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
@@ -385,3 +468,4 @@ export default function AgentDashboardPage() {
     </div>
   );
 }
+
