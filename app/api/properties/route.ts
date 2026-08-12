@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { db } from "@/lib/db";
 import { notifyUser, notifyUsers } from "@/lib/notify";
+import { hasAgentSlotConflict } from "@/lib/services/viewingSlotService";
 
 /**
  * ==============================================================================
@@ -200,16 +201,28 @@ export async function POST(request: Request) {
     }
 
     // 2.9 บันทึกรอบเวลานัดหมายเข้าชมที่นายหน้าเปิดให้จอง ลงในตาราง property_viewing_slots
+    // กันไม่ให้เปิดวันว่างซ้อนกับ "บ้านหลังอื่น" ของนายหน้าคนเดียวกัน (ไม่งั้นจะถูกจอง 2 ที่พร้อมกันได้)
+    // รอบไหนชนกับบ้านหลังอื่น จะถูกกรองทิ้งเงียบๆ ส่วนรอบที่เหลือยังบันทึกได้ตามปกติ
     if (Array.isArray(viewingSlots) && viewingSlots.length > 0) {
-      await db.property_viewing_slots.createMany({
-        data: viewingSlots.map((slot: { date: string; timeSlot: string }) => ({
-          property_id: newProperty.id,
-          available_date: new Date(slot.date),
-          time_slot: slot.timeSlot,
-          is_booked: false
-        })),
-        skipDuplicates: true
-      });
+      const checkedSlots = await Promise.all(
+        viewingSlots.map(async (slot: { date: string; timeSlot: string }) => ({
+          slot,
+          conflict: await hasAgentSlotConflict(agent.id, newProperty.id, new Date(slot.date), slot.timeSlot)
+        }))
+      );
+      const nonConflicting = checkedSlots.filter((c) => !c.conflict).map((c) => c.slot);
+
+      if (nonConflicting.length > 0) {
+        await db.property_viewing_slots.createMany({
+          data: nonConflicting.map((slot) => ({
+            property_id: newProperty.id,
+            available_date: new Date(slot.date),
+            time_slot: slot.timeSlot,
+            is_booked: false
+          })),
+          skipDuplicates: true
+        });
+      }
     }
 
     // 2.10 ส่งการแจ้งเตือน (Notifications) ไปยังแอดมินทุกคนเพื่อแจ้งให้ทราบว่ามีประกาศใหม่รออนุมัติ
