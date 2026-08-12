@@ -128,6 +128,7 @@ export async function POST(request: Request) {
     const property = await db.properties.findUnique({ where: { id: propertyId } });
     if (!property) return NextResponse.json({ error: "ไม่พบข้อมูลอสังหาริมทรัพย์นี้" }, { status: 404 });
 
+    // 🔑 KEYWORD: กฎ 1 ลูกค้า 1 บ้าน จองซ้อนไม่ได้
     // 2.4 ตรวจสอบกฎธุรกิจ: ลูกค้า 1 คน จองค้างไว้ได้ทีละ 1 นัดต่อบ้าน 1 หลัง ( status: pending หรือ approved )
     const existing = await db.appointments.findFirst({
       where: { customer_id: user.id, property_id: property.id, status: { in: ["pending", "approved"] } }
@@ -139,6 +140,7 @@ export async function POST(request: Request) {
     // 2.5 แปลงข้อความรอบเวลาให้อยู่ในคีย์มาตรฐาน DB ('morning' หรือ 'afternoon')
     const dbTimeSlot = timeSlot.includes("13:") || timeSlot.includes("15:") || timeSlot.includes("บ่าย") || timeSlot.toLowerCase().includes("afternoon") ? "afternoon" : "morning";
 
+    // 🔑 KEYWORD: เช็ครอบว่างจริงก่อนจอง
     // 2.6 ตรวจสอบว่ารอบเวลานี้เปิดว่างจริงในตาราง property_viewing_slots และยังไม่มีคนจองคิวไปก่อน
     const targetSlot = await db.property_viewing_slots.findUnique({
       where: {
@@ -165,6 +167,7 @@ export async function POST(request: Request) {
       }
     });
 
+    // 🔑 KEYWORD: ล็อกรอบเวลาหลังจองสำเร็จ
     // 2.8 ล็อกรอบเวลานี้ในตาราง property_viewing_slots ทันทีเพื่อป้องกันไม่ให้ผู้อื่นจองซ้ำ (is_booked = true)
     await db.property_viewing_slots.updateMany({
       where: { property_id: property.id, available_date: new Date(date), time_slot: dbTimeSlot },
@@ -214,6 +217,7 @@ export async function PATCH(request: Request) {
     const appointment = await db.appointments.findUnique({ where: { id } });
     if (!appointment) return NextResponse.json({ error: "ไม่พบนัดหมายนี้ในระบบ" }, { status: 404 });
 
+    // 🔑 KEYWORD: นายหน้ารับปฏิเสธปิดงานนัดหมาย
     // --------------------------------------------------------------------------
     // (ก) กรณีฝั่งนายหน้าจัดการ: ยืนยัน (confirm), ปฏิเสธ (reject), หรือ ปิดงาน (complete)
     // --------------------------------------------------------------------------
@@ -269,6 +273,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ success: true, data: updated });
     }
 
+    // 🔑 KEYWORD: ลูกค้าขอเปลี่ยนวันนัด
     // --------------------------------------------------------------------------
     // (ข) กรณีฝั่งลูกค้าจัดการ: ขอเปลี่ยนวันและเวลานัดหมายใหม่
     // --------------------------------------------------------------------------
@@ -340,6 +345,7 @@ export async function DELETE(request: Request) {
     const isAgent = appointment.agent_id === user.id;
     if (!isCustomer && !isAgent) return NextResponse.json({ error: "คุณไม่มีสิทธิ์ยกเลิกนัดหมายนี้" }, { status: 403 });
 
+    // 🔑 KEYWORD: กันยกเลิกนัดซ้ำ
     // 4.5 ป้องกันการยกเลิกซ้ำในนัดที่ปิดงานไปแล้ว (completed, cancelled, rejected)
     if (["completed", "cancelled", "rejected"].includes(appointment.status || "")) {
       return NextResponse.json({ error: "นัดหมายนี้ถูกปิดไปแล้ว ไม่สามารถยกเลิกซ้ำได้" }, { status: 400 });
