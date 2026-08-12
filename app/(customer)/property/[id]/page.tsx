@@ -19,13 +19,123 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useApp } from '@/context/AppContext';
 
+function PinIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 21s7-6.5 7-11.5a7 7 0 1 0-14 0C5 14.5 12 21 12 21Z" />
+      <circle cx="12" cy="9.5" r="2.5" />
+    </svg>
+  );
+}
+
+function BedIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 18v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6M3 18v2M21 18v2M3 12V8a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v2" />
+    </svg>
+  );
+}
+
+function BathIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 12h16v3a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-3Z" />
+      <path d="M7 12V6a2 2 0 0 1 3.2-1.6M4 19v1M18 19v1" />
+    </svg>
+  );
+}
+
+function AreaIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3v6M3 3h6M21 21v-6M21 21h-6" />
+      <rect x="7" y="7" width="10" height="10" rx="1" />
+    </svg>
+  );
+}
+
+function ListIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+    </svg>
+  );
+}
+
+function ShareIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 17H7a5 5 0 0 1 0-10h2M15 7h2a5 5 0 0 1 0 10h-2M8 12h8" />
+    </svg>
+  );
+}
+
+function PhoneIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L14 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 2 6a2 2 0 0 1 2-2Z" />
+    </svg>
+  );
+}
+
+function ChatIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12a8 8 0 1 1-3.4-6.5L21 4l-1 4.5A8 8 0 0 1 21 12Z" />
+    </svg>
+  );
+}
+
+function CalendarIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="17" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+    </svg>
+  );
+}
+
+function ImagesIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="14" height="14" rx="2" />
+      <path d="M7 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM3 15l3.5-3.5a1.5 1.5 0 0 1 2.1 0L13 16M21 8v10a2 2 0 0 1-2 2H9" />
+    </svg>
+  );
+}
+
+function SearchIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="7" />
+      <path d="m21 21-4.3-4.3" />
+    </svg>
+  );
+}
+
+function CloseIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  );
+}
+
+function ChevronIcon({ className, direction }: { className?: string; direction: 'left' | 'right' }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+      <path d={direction === 'left' ? 'M15 18l-6-6 6-6' : 'M9 18l6-6-6-6'} />
+    </svg>
+  );
+}
+
 export default function PropertyDetailPage() {
   // ----------------------------------------------------------------------------
   // 1. ROUTER & GLOBAL CONTEXT
   // ----------------------------------------------------------------------------
   const params = useParams();
   const id = params.id; // รหัส ID อสังหาฯ จาก URL Parameter (เช่น /property/uuid)
-  
+
   const { properties, propertiesLoading, favorites, toggleFavorite } = useApp();
 
   // 1.1 ค้นหาข้อมูลอสังหาริมทรัพย์จาก ID ที่ตรงกันในฐานข้อมูล
@@ -93,8 +203,9 @@ export default function PropertyDetailPage() {
   // แสดงผลหน้ารอโหลดระหว่างที่ยังดึงรายการอสังหาฯ ทั้งหมดไม่เสร็จ
   if (propertiesLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500 font-bold">
-        🔄 กำลังโหลดข้อมูลอสังหาริมทรัพย์...
+      <div className="min-h-screen flex items-center justify-center gap-2 bg-slate-50 text-slate-500 font-bold">
+        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        กำลังโหลดข้อมูลอสังหาริมทรัพย์...
       </div>
     );
   }
@@ -103,7 +214,7 @@ export default function PropertyDetailPage() {
   if (!property) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 text-slate-500 font-bold gap-4 px-4 text-center">
-        <div className="text-4xl">🔍</div>
+        <SearchIcon className="w-9 h-9" />
         <p>ไม่พบประกาศอสังหาริมทรัพย์นี้ อาจถูกลบไปแล้วหรือยังไม่ได้รับการอนุมัติ</p>
         <Link href="/search" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs transition">
           กลับไปหน้าค้นหา
@@ -181,7 +292,7 @@ export default function PropertyDetailPage() {
           {/* ปุ่มแชร์ และ ปุ่มบันทึกรายการโปรด */}
           <div className="flex items-center gap-2">
             <button onClick={handleShare} className="flex items-center gap-1.5 px-3 py-2 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl font-bold transition text-[11px]">
-              🔗 แชร์
+              <ShareIcon className="w-3.5 h-3.5" /> แชร์
             </button>
             <button onClick={() => toggleFavorite(property.id)} className="flex items-center gap-1.5 px-3 py-2 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl font-bold transition text-[11px]">
               <svg className={`w-4 h-4 ${isSaved ? 'text-rose-500 fill-rose-500' : 'text-slate-400 fill-none'}`} stroke="currentColor" viewBox="0 0 24 24">
@@ -194,7 +305,7 @@ export default function PropertyDetailPage() {
       </div>
 
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-8">
-        
+
         {/* ========================================================================
             ส่วนที่ 2: กริดแสดงรูปภาพอสังหาฯ (PHOTO GALLERY GRID - 5 SLOTS)
             ======================================================================== */}
@@ -209,13 +320,13 @@ export default function PropertyDetailPage() {
             >
               <Image src={img} alt={`รูปภาพ ${idx + 1}`} width={600} height={450} unoptimized className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               {idx === 0 && (
-                <div className="absolute bottom-3 left-3 bg-slate-900/70 text-white text-[10px] px-3 py-1 rounded-full font-bold backdrop-blur-md md:hidden">
-                  📷 1 / {realImages.length} รูป
+                <div className="absolute bottom-3 left-3 bg-slate-900/70 text-white text-[10px] px-3 py-1 rounded-full font-bold flex items-center gap-1 md:hidden">
+                  <ImagesIcon className="w-3 h-3" /> 1 / {realImages.length} รูป
                 </div>
               )}
               {idx === 4 && (
-                <div className="absolute inset-0 bg-slate-950/50 hover:bg-slate-950/60 transition flex items-center justify-center text-white font-extrabold text-xs">
-                  🖼️ + ดูทั้งหมด {realImages.length} รูป
+                <div className="absolute inset-0 bg-slate-950/50 hover:bg-slate-950/60 transition flex items-center justify-center gap-1.5 text-white font-extrabold text-xs">
+                  <ImagesIcon className="w-4 h-4" /> ดูทั้งหมด {realImages.length} รูป
                 </div>
               )}
             </div>
@@ -223,13 +334,13 @@ export default function PropertyDetailPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
+
           {/* ========================================================================
               ส่วนที่ 3: รายละเอียดฝั่งซ้าย (MAIN INFORMATION & CALCULATOR)
               ======================================================================== */}
           <div className="lg:col-span-2 space-y-8">
             <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/60 shadow-sm space-y-6">
-              
+
               {/* หัวข้อ ราคา และทำเล */}
               <div>
                 <div className="flex gap-2">
@@ -246,34 +357,30 @@ export default function PropertyDetailPage() {
                 </div>
 
                 <div className="flex items-center gap-1.5 text-slate-500 text-xs mt-3">
-                  <span>📍</span>
+                  <PinIcon className="w-3.5 h-3.5 shrink-0" />
                   <p>{property.location.replace("📍 ", "")}</p>
                 </div>
               </div>
 
-              {/* การ์ดสเปคหลัก 4 ช่อง (ห้องนอน, ห้องน้ำ, ที่จอดรถ, พื้นที่) */}
-              <div className="border border-slate-200/60 py-4 grid grid-cols-4 text-center text-slate-600 bg-slate-50/50 rounded-2xl text-[11px] font-bold">
+              {/* การ์ดสเปคหลัก 3 ช่อง (ห้องนอน, ห้องน้ำ, พื้นที่) */}
+              <div className="border border-slate-200/60 py-4 grid grid-cols-3 text-center text-slate-600 bg-slate-50/50 rounded-2xl text-[11px] font-bold">
                 <div>
                   <p className="text-slate-400 font-medium mb-0.5">ห้องนอน</p>
-                  <p className="font-extrabold text-xs text-slate-800">🛏️ {property.bedrooms} ห้อง</p>
+                  <p className="font-extrabold text-xs text-slate-800 inline-flex items-center gap-1"><BedIcon className="w-3.5 h-3.5" /> {property.bedrooms} ห้อง</p>
                 </div>
                 <div className="border-l border-slate-200/60">
                   <p className="text-slate-400 font-medium mb-0.5">ห้องน้ำ</p>
-                  <p className="font-extrabold text-xs text-slate-800">🚿 {property.bathrooms} ห้อง</p>
-                </div>
-                <div className="border-l border-slate-200/60">
-                  <p className="text-slate-400 font-medium mb-0.5">ที่จอดรถ</p>
-                  <p className="font-extrabold text-xs text-slate-800">🚗 2 คัน</p>
+                  <p className="font-extrabold text-xs text-slate-800 inline-flex items-center gap-1"><BathIcon className="w-3.5 h-3.5" /> {property.bathrooms} ห้อง</p>
                 </div>
                 <div className="border-l border-slate-200/60">
                   <p className="text-slate-400 font-medium mb-0.5">พื้นที่ใช้สอย</p>
-                  <p className="font-extrabold text-xs text-slate-800">📏 {property.area} ตร.ม.</p>
+                  <p className="font-extrabold text-xs text-slate-800 inline-flex items-center gap-1"><AreaIcon className="w-3.5 h-3.5" /> {property.area} ตร.ม.</p>
                 </div>
               </div>
 
               {/* ตารางข้อมูลจำเพาะ */}
               <div className="pt-2">
-                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider mb-3">📋 ข้อมูลจำเพาะ</h3>
+                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-1.5"><ListIcon className="w-3.5 h-3.5" /> ข้อมูลจำเพาะ</h3>
                 <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50/40 p-4 rounded-2xl border border-slate-200/50">
                   <div className="flex justify-between border-b border-slate-100 pb-2">
                     <span className="text-slate-400 font-medium">ประเภทอสังหาฯ</span>
@@ -425,7 +532,7 @@ export default function PropertyDetailPage() {
               ======================================================================== */}
           <div className="lg:col-span-1">
             <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-5 sticky top-32">
-              
+
               {/* ข้อมูลโปรไฟล์นายหน้า */}
               <div className="text-center pb-4 border-b border-slate-100 space-y-3">
                 <div className="relative inline-block">
@@ -441,28 +548,31 @@ export default function PropertyDetailPage() {
                 </div>
                 <div>
                   <h4 className="font-extrabold text-slate-800 text-sm leading-none mb-1.5">{property.agentName}</h4>
-                  <p className="text-[10px] text-blue-600 font-extrabold uppercase tracking-widest">🏠 Senior Verified Agent</p>
-                  <p className="text-[9px] text-slate-400 mt-2 font-medium">ดูแลอสังหาริมทรัพย์ในทำเลหาดใหญ่มามากกว่า 10 ปี</p>
+                  <p className="text-[10px] text-blue-600 font-extrabold uppercase tracking-widest">Verified Agent</p>
                 </div>
               </div>
 
               {/* ปุ่มติดต่อด่วน (โทรศัพท์ & คุย LINE) */}
               <div className="space-y-2">
                 <a href={phoneUrl} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold py-3.5 rounded-xl transition flex items-center justify-center gap-2 text-xs">
-                  📞 {agentPhone}
+                  <PhoneIcon className="w-3.5 h-3.5" /> {agentPhone}
                 </a>
                 <a href={lineUrl} target="_blank" rel="noreferrer" className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold py-3.5 rounded-xl transition flex items-center justify-center gap-2 text-xs">
-                  💬 คุย LINE นายหน้า
+                  <ChatIcon className="w-3.5 h-3.5" /> คุย LINE นายหน้า
                 </a>
               </div>
 
               {/* ปุ่มนัดหมายชมบ้าน และ ปุ่มแชทสดในระบบ */}
               <div className="space-y-2 pt-3 border-t border-slate-100">
                 <Link href={`/book-appointment?propertyId=${property.id}`} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3.5 rounded-xl transition shadow flex items-center justify-center gap-2 text-xs text-center">
-                  📅 นัดหมายเข้าชมสถานที่จริง
+                  <CalendarIcon className="w-3.5 h-3.5" /> นัดหมายเข้าชมสถานที่จริง
                 </Link>
                 <button onClick={handleStartChat} disabled={startingChat} className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold py-3.5 rounded-xl transition flex items-center justify-center gap-2 text-xs disabled:opacity-50">
-                  {startingChat ? '⏳ กำลังเปิดห้องแชท...' : '💬 แชทสอบถามรายละเอียด'}
+                  {startingChat ? (
+                    <><div className="w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" /> กำลังเปิดห้องแชท...</>
+                  ) : (
+                    <><ChatIcon className="w-3.5 h-3.5" /> แชทสอบถามรายละเอียด</>
+                  )}
                 </button>
               </div>
 
@@ -476,8 +586,8 @@ export default function PropertyDetailPage() {
           ส่วนที่ 5: MODAL ซูมดูรูปภาพใหญ่เต็มจอ (FULL-SCREEN LIGHTBOX MODAL)
           ======================================================================== */}
       {isGalleryOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-xl flex flex-col justify-between p-4 sm:p-6" onClick={() => setIsGalleryOpen(false)}>
-          
+        <div className="fixed inset-0 z-50 bg-slate-950/95 flex flex-col justify-between p-4 sm:p-6" onClick={() => setIsGalleryOpen(false)}>
+
           {/* แถบหัวข้อและปุ่มปิด Modal */}
           <div className="flex items-center justify-between text-white z-10 max-w-6xl mx-auto w-full pt-2" onClick={(e) => e.stopPropagation()}>
             <div>
@@ -485,20 +595,20 @@ export default function PropertyDetailPage() {
               <p className="text-[11px] text-slate-400 font-medium">รูปภาพที่ {selectedImageIndex + 1} จากทั้งหมด {galleryImages.length} รูป</p>
             </div>
             <button onClick={() => setIsGalleryOpen(false)} className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center font-bold text-lg">
-              ✕
+              <CloseIcon className="w-4 h-4" />
             </button>
           </div>
 
           {/* พื้นที่แสดงรูปภาพขนาดใหญ่ + ปุ่มกดถอยหลัง/เลื่อนหน้า */}
           <div className="relative flex-1 flex items-center justify-center my-4 max-w-5xl mx-auto w-full" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setSelectedImageIndex((prev) => (prev > 0 ? prev - 1 : galleryImages.length - 1))} className="absolute left-2 sm:-left-12 z-20 w-12 h-12 rounded-full bg-slate-900/80 hover:bg-blue-600 text-white flex items-center justify-center font-bold text-xl border border-slate-700 shadow-xl">
-              ‹
+              <ChevronIcon direction="left" className="w-5 h-5" />
             </button>
             <div className="relative w-full h-full max-h-[70vh] flex items-center justify-center rounded-2xl overflow-hidden shadow-2xl">
               <Image src={galleryImages[selectedImageIndex]} alt={`รูปภาพที่ ${selectedImageIndex + 1}`} width={1200} height={800} unoptimized className="max-w-full max-h-full object-contain rounded-xl shadow-2xl" />
             </div>
             <button onClick={() => setSelectedImageIndex((prev) => (prev < galleryImages.length - 1 ? prev + 1 : 0))} className="absolute right-2 sm:-right-12 z-20 w-12 h-12 rounded-full bg-slate-900/80 hover:bg-blue-600 text-white flex items-center justify-center font-bold text-xl border border-slate-700 shadow-xl">
-              ›
+              <ChevronIcon direction="right" className="w-5 h-5" />
             </button>
           </div>
 
