@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { db } from "@/lib/db";
+import { hasAgentSlotConflict } from "@/lib/services/viewingSlotService";
 
 /**
  * ==============================================================================
@@ -197,15 +198,26 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
       // เพิ่มรอบใหม่ที่เพิ่งถูกเลือกเข้ามา
       const toCreate = viewingSlots.filter((s: { date: string; timeSlot: string }) => !existingKeys.has(`${s.date}|${s.timeSlot}`));
       if (toCreate.length > 0) {
-        await db.property_viewing_slots.createMany({
-          data: toCreate.map((s: { date: string; timeSlot: string }) => ({
-            property_id: id,
-            available_date: new Date(s.date),
-            time_slot: s.timeSlot,
-            is_booked: false
-          })),
-          skipDuplicates: true
-        });
+        // กันไม่ให้เปิดวันว่างซ้อนกับ "บ้านหลังอื่น" ของนายหน้าคนเดียวกัน — รอบที่ชนจะถูกกรองทิ้งเงียบๆ
+        const checkedToCreate = await Promise.all(
+          toCreate.map(async (s: { date: string; timeSlot: string }) => ({
+            slot: s,
+            conflict: await hasAgentSlotConflict(property.agent_id!, id, new Date(s.date), s.timeSlot)
+          }))
+        );
+        const nonConflicting = checkedToCreate.filter((c) => !c.conflict).map((c) => c.slot);
+
+        if (nonConflicting.length > 0) {
+          await db.property_viewing_slots.createMany({
+            data: nonConflicting.map((s) => ({
+              property_id: id,
+              available_date: new Date(s.date),
+              time_slot: s.timeSlot,
+              is_booked: false
+            })),
+            skipDuplicates: true
+          });
+        }
       }
     }
 
