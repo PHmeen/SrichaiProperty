@@ -18,6 +18,7 @@ import { useApp } from '@/context/AppContext';
 import SearchSidebar, { FilterState } from '@/components/customer/SearchSidebar';
 import PropertyCard from '@/components/customer/PropertyCard';
 
+
 // ค่าเริ่มต้นสำหรับรีเซ็ตตัวกรองทั้งหมด
 const DEFAULT_FILTERS: FilterState = {
   province: '',
@@ -40,30 +41,47 @@ function SearchPageContent() {
   const resultsRef = useRef<HTMLDivElement>(null); // อ้างอิงตำแหน่งส่วนแสดงผลลัพธ์เพื่อ scroll ลงมาดู
   const { properties, favorites, toggleFavorite } = useApp(); // ดึงข้อมูลบ้านและรายการโปรดจาก Context
 
-  // ---- 1. State ของเงื่อนไขการค้นหา (อ่านค่าเริ่มต้นจาก URL โดยตรง) ----
-  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('q') || '');
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
-  const [activeTab, setActiveTab] = useState<'buy' | 'rent'>(() => searchParams.get('tab') === 'rent' ? 'rent' : 'buy');
-  const [propertyType, setPropertyType] = useState(() => searchParams.get('type') || 'all');
+// ---- 1. State ของเงื่อนไขการค้นหา (อ่านค่าเริ่มต้นจาก URL โดยตรง) ----
+// คำค้นหาที่ user พิมพ์ — อ่านค่าเริ่มต้นจาก ?q=... ใน URL ถ้าไม่มีให้เป็นค่าว่าง
+const [searchTerm, setSearchTerm] = useState(() => searchParams.get('q') || '');
 
-  // รวมตัวกรองละเอียดใน Sidebar ไว้ใน Object เดียว
-  const [filters, setFilters] = useState<FilterState>(() => ({
-    province: searchParams.get('province') || '',
-    amphure: searchParams.get('amphure') || '',
-    district: searchParams.get('district') || '',
-    priceMin: searchParams.get('priceMin') || '',
-    priceMax: searchParams.get('priceMax') || '',
-    bedrooms: searchParams.get('bedrooms') || 'any',
-    bathrooms: searchParams.get('bathrooms') || 'any',
-    areaMin: searchParams.get('areaMin') || '',
-    areaMax: searchParams.get('areaMax') || '',
-    facilities: {
-      pool: searchParams.get('facilities')?.includes('pool') || false,
-      gym: searchParams.get('facilities')?.includes('gym') || false,
-      parking: searchParams.get('facilities')?.includes('parking') || false,
-      security: searchParams.get('facilities')?.includes('security') || false,
-    },
-  }));
+// ค่า searchTerm แบบหน่วงเวลา (debounce) ไว้ใช้ยิง API จริง กันยิงถี่ทุกตัวอักษรที่พิมพ์
+const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
+
+// แท็บซื้อ/เช่า — อ่านจาก ?tab=rent ใน URL ถ้าไม่ใช่ 'rent' ให้ default เป็น 'buy'
+const [activeTab, setActiveTab] = useState<'buy' | 'rent'>(() => searchParams.get('tab') === 'rent' ? 'rent' : 'buy');
+
+// ประเภทอสังหาฯ — อ่านจาก ?type=... ใน URL ถ้าไม่มีให้เป็น 'all'
+const [propertyType, setPropertyType] = useState(() => searchParams.get('type') || 'all');
+
+// รวมตัวกรองละเอียดใน Sidebar ไว้ใน Object เดียว
+const [filters, setFilters] = useState<FilterState>(() => ({
+  // ที่อยู่: จังหวัด/อำเภอ/ตำบล — อ่านจาก URL เหมือนกันหมด
+  province: searchParams.get('province') || '',
+  amphure: searchParams.get('amphure') || '',
+  district: searchParams.get('district') || '',
+
+  // ช่วงราคา ต่ำสุด-สูงสุด
+  priceMin: searchParams.get('priceMin') || '',
+  priceMax: searchParams.get('priceMax') || '',
+
+  // จำนวนห้องนอน/ห้องน้ำ ถ้าไม่ระบุให้เป็น 'any' (ไม่จำกัด)
+  bedrooms: searchParams.get('bedrooms') || 'any',
+  bathrooms: searchParams.get('bathrooms') || 'any',
+
+  // ช่วงพื้นที่ใช้สอย ต่ำสุด-สูงสุด
+  areaMin: searchParams.get('areaMin') || '',
+  areaMax: searchParams.get('areaMax') || '',
+
+  // สิ่งอำนวยความสะดวก — ใน URL เก็บเป็น string เดียวคั่น comma เช่น ?facilities=pool,gym
+  // .includes('pool') เช็คว่ามีคำนี้อยู่ใน string มั้ย ไม่มี query เลยก็ได้ false อัตโนมัติ
+  facilities: {
+    pool: searchParams.get('facilities')?.includes('pool') || false,
+    gym: searchParams.get('facilities')?.includes('gym') || false,
+    parking: searchParams.get('facilities')?.includes('parking') || false,
+    security: searchParams.get('facilities')?.includes('security') || false,
+  },
+}));
 
   const [sortBy, setSortBy] = useState<'latest' | 'price_asc' | 'price_desc'>('latest');
   const [currentPage, setCurrentPage] = useState(1);
