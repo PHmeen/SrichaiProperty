@@ -35,8 +35,10 @@ export default function FloatingChatWidget() {
       aria-label="เปิดกล่องข้อความแชท"
     >
       {/* ไอคอนบอลลูนข้อความแชท */}
-      <span className="transition-transform group-hover:scale-110">💬</span>
-      
+      <svg className="w-6 h-6 transition-transform group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 12a8 8 0 1 1-3.4-6.5L21 4l-1 4.5A8 8 0 0 1 21 12Z" />
+      </svg>
+
       {/* จุดป้ายสีเขียวแสดงสถานะออนไลน์และพร้อมใช้งาน (Online Indicator Badge) */}
       <span className="absolute top-0 right-0 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full"></span>
     </Link>
