@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { db } from "@/lib/db";
+import { hasAgentSlotConflict } from "@/lib/services/viewingSlotService";
 
 interface AgentSession {
   user?: {
@@ -88,6 +89,15 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "ไม่พบบ้านหลังนี้ หรือคุณไม่มีสิทธิ์แก้ไข" },
         { status: 403 }
+      );
+    }
+
+    // กันไม่ให้เปิดวันว่างซ้อนกับ "บ้านหลังอื่น" ของนายหน้าคนเดียวกัน
+    // (ถ้าปล่อยให้เปิดซ้อน ลูกค้า 2 คนจะจองคนละบ้านแต่เวลาเดียวกันได้ ทั้งที่นายหน้าไปได้แค่ที่เดียว)
+    if (await hasAgentSlotConflict(session.user.id, propertyId, new Date(date), timeSlot)) {
+      return NextResponse.json(
+        { error: "คุณเปิดวันว่างช่วงเวลานี้ไว้ที่บ้านหลังอื่นแล้ว ไม่สามารถเปิดซ้อนกันได้" },
+        { status: 400 }
       );
     }
 
