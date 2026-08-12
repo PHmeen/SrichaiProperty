@@ -12,7 +12,10 @@
  * ==============================================================================
  */
 
+import { useEffect } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
@@ -23,6 +26,21 @@ import PropertyCard from '@/components/customer/PropertyCard';
 export default function Home() {
   // ดึงรายการอสังหาฯ และรายการโปรดจาก AppContext ที่เชื่อมต่อฐานข้อมูลเรียบร้อยแล้ว
   const { properties, favorites, toggleFavorite } = useApp();
+
+  // ลูกค้าที่ล็อกอินแล้วให้ไปหน้า /home (พอร์ตัลส่วนตัว) แทนหน้าแรกสาธารณะนี้
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const role = (session?.user as { role?: string } | undefined)?.role;
+
+  useEffect(() => {
+    if (status === 'authenticated' && role !== 'admin' && role !== 'agent') {
+      router.replace('/home');
+    }
+  }, [status, role, router]);
+
+  if (status === 'authenticated' && role !== 'admin' && role !== 'agent') {
+    return null;
+  }
 
   return (
     <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased overflow-x-hidden text-sm">

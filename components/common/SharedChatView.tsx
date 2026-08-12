@@ -63,10 +63,10 @@ interface SharedChatViewProps {
   connectionError?: boolean;                   // สถานะขัดข้องการเชื่อมต่อ Real-time
 }
 
-// เวลาหน่วงสถานะหยุดพิมพ์ (Idle 2 วินาที)
+// เวลาหน่วงสถานะหยุดพิมพ์: ถ้าผู้ใช้ไม่พิมพ์ต่อภายใน 2 วินาที ระบบจะส่งสัญญาณ "หยุดพิมพ์" ให้อีกฝ่ายอัตโนมัติ
 const TYPING_IDLE_MS = 2000;
 
-// Regular Expression สำหรับตรวจสอบไฟล์รูปภาพ
+// Regular Expression ตรวจสอบนามสกุลไฟล์ท้าย URL ว่าเป็นไฟล์รูปภาพหรือไม่ (ใช้เลือกว่าจะ render เป็น <Image> หรือลิงก์ดาวน์โหลดไฟล์)
 const IMAGE_EXT_RE = /\.(jpe?g|png|webp|gif)$/i;
 
 // ==============================================================================
@@ -138,7 +138,9 @@ export default function SharedChatView({
   const [sending, setSending] = useState(false);                 // สถานะกำลังส่งข้อความ
   const [uploading, setUploading] = useState(false);             // สถานะกำลังอัปโหลดไฟล์
   const [loadingOlder, setLoadingOlder] = useState(false);       // สถานะกำลังโหลดข้อความเก่า
-  const [mobileShowMessages, setMobileShowMessages] = useState(false); // ควบคุมแสดงผลในจอมือถือ
+  // ควบคุมว่าจอมือถือ (จอแคบ) กำลังแสดง "รายการห้องแชท" หรือ "ห้องแชทที่เลือก" อยู่
+  // (บนจอ desktop แสดงทั้งสองฝั่งพร้อมกันเสมอ ไม่ใช้ state ตัวนี้)
+  const [mobileShowMessages, setMobileShowMessages] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);           // อ้างอิง Element เลือกไฟล์
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); // ตัวจับเวลาสถานะหยุดพิมพ์
@@ -188,10 +190,12 @@ export default function SharedChatView({
     setMessageInput(value);
     if (!onTyping) return;
 
+    // เพิ่งเริ่มพิมพ์ (จากสถานะไม่ได้พิมพ์) -> แจ้งอีกฝ่ายว่า "กำลังพิมพ์" ทันที (ส่งครั้งเดียว ไม่ส่งซ้ำทุกตัวอักษร)
     if (!isTypingRef.current) {
       isTypingRef.current = true;
       onTyping(true);
     }
+    // รีเซ็ตตัวจับเวลาทุกครั้งที่พิมพ์ต่อ (debounce) แล้วตั้งใหม่ให้ยิงสถานะ "หยุดพิมพ์" เมื่อไม่มีการพิมพ์ต่อภายใน TYPING_IDLE_MS
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       isTypingRef.current = false;
@@ -455,6 +459,8 @@ export default function SharedChatView({
                 
                 {/* ลูปแสดงผลข้อความแชท */}
                 {activeSession.messages.map((msg) => {
+                  // ข้อความ "ขาออก" (ฝั่งเราเป็นคนส่ง) จะชิดขวา ส่วนข้อความ "ขาเข้า" (คู่สนทนาส่งมา) จะชิดซ้าย
+                  // 'user'/'agent' = เราเป็นคนส่ง (ไม่ว่าจะเปิดหน้านี้จากฝั่งลูกค้าหรือนายหน้า), 'other'/'client' = อีกฝ่ายส่งมา
                   const isOutgoing = msg.sender === 'user' || msg.sender === 'agent';
                   return (
                     <div key={msg.id} className="relative group" onMouseEnter={() => setHoveredMessageId(msg.id)} onMouseLeave={() => setHoveredMessageId(null)}>
@@ -462,7 +468,9 @@ export default function SharedChatView({
                         {!isOutgoing && <MessageAvatar src={activeSession.avatar} fallback={activeSession.avatarLetter || activeSession.name.charAt(0)} />}
                         <MessageContent>
                           <div className="relative group/bubble flex items-center gap-2">
-                            {/* ปุ่มลบข้อความเมื่อโฮเวอร์ */}
+                            {/* ปุ่มลบข้อความเมื่อโฮเวอร์ (แสดงเฉพาะข้อความที่กำลังชี้เมาส์ค้างอยู่) */}
+                            {/* order-first/order-last สลับตำแหน่งปุ่มให้อยู่ "นอกบับเบิล" เสมอ:
+                                ข้อความขาออก (ชิดขวา) ปุ่มจะอยู่ซ้ายของบับเบิล, ข้อความขาเข้า (ชิดซ้าย) ปุ่มจะอยู่ขวาของบับเบิล */}
                             {hoveredMessageId === msg.id && (
                               <button onClick={() => handleDeleteSingleMessage(msg.id)} className={`p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition ${isOutgoing ? 'order-first' : 'order-last'}`} title="ลบข้อความนี้">
                                 <Icon path={ICONS.trash} className="w-3 h-3" />
@@ -470,7 +478,11 @@ export default function SharedChatView({
                             )}
                             <Bubble variant={isOutgoing ? 'primary' : 'outline'}>
                               <BubbleContent>
-                                {/* แสดงผล: รูปภาพ / ลิงก์ไฟล์แนบ / พิกัด Google Maps / ข้อความตัวหนังสือ */}
+                                {/* เลือกรูปแบบการแสดงผลตามชนิดของข้อความ เรียงลำดับความสำคัญ:
+                                    1) ไฟล์แนบที่เป็นรูปภาพ (.jpg/.png/.webp/.gif) -> แสดงเป็นรูปภาพย่อคลิกเปิดดูขนาดเต็มได้
+                                    2) ไฟล์แนบชนิดอื่น (เช่น PDF) -> แสดงเป็นลิงก์ "เปิดไฟล์แนบ"
+                                    3) พิกัดตำแหน่ง (มีทั้ง latitude และ longitude) -> แสดงลิงก์เปิด Google Maps
+                                    4) ข้อความตัวหนังสือธรรมดา -> แสดงข้อความตรงๆ */}
                                 {msg.fileUrl && IMAGE_EXT_RE.test(msg.fileUrl) ? (
                                   <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer">
                                     <Image src={msg.fileUrl} alt="ไฟล์แนบ" width={200} height={150} unoptimized className="rounded-lg object-cover max-w-[200px] max-h-[150px]" />

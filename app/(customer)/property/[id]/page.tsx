@@ -63,9 +63,10 @@ export default function PropertyDetailPage() {
   
   // ใช้ Derived State Pattern: customLoanAmount เก็บค่าที่ผู้ใช้พิมพ์ปรับเอง (ถ้าไม่มีใช้ numericPrice เป็นค่าตั้งต้น)
   const [customLoanAmount, setCustomLoanAmount] = useState<number | null>(null);
-  const loanAmount = customLoanAmount ?? numericPrice;
+  const price = customLoanAmount ?? numericPrice; // ราคาซื้อขายเต็ม (ก่อนหักดาวน์)
   const [interestRate, setInterestRate] = useState(3.5); // อัตราดอกเบี้ยเริ่มต้น % ต่อปี
   const [loanYears, setLoanYears] = useState(30);       // ระยะเวลากู้ (ปี)
+  const [downPaymentPercent, setDownPaymentPercent] = useState(10); // เงินดาวน์เริ่มต้น % ของราคาซื้อขาย
 
   // ----------------------------------------------------------------------------
   // 5. EFFECTS & COMPUTATIONS
@@ -75,10 +76,15 @@ export default function PropertyDetailPage() {
     if (id) fetch(`/api/properties/${id}/view`, { method: 'POST' }).catch(() => {});
   }, [id]);
 
-  // 5.2 คำนวณยอดผ่อนชำระค่างวดสินเชื่อต่อเดือน (สูตรดอกเบี้ยทบต้นคงที่)
+  // 5.2 หักเงินดาวน์ออกจากราคาซื้อขาย เพื่อให้ได้วงเงินกู้จริงที่ใช้คำนวณค่างวด
+  const downPaymentAmount = useMemo(() => Math.round(price * downPaymentPercent / 100), [price, downPaymentPercent]);
+  const loanAmount = Math.max(price - downPaymentAmount, 0);
+
+  // 5.3 คำนวณยอดผ่อนชำระค่างวดสินเชื่อต่อเดือน (สูตรดอกเบี้ยทบต้นคงที่)
   const monthlyInstallment = useMemo(() => {
     const monthlyRate = interestRate / 12 / 100;
     const totalPayments = loanYears * 12;
+    if (loanAmount <= 0) return '0';
     if (monthlyRate === 0) return (loanAmount / totalPayments).toFixed(0);
     const payment = (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, totalPayments)) / (Math.pow(1 + monthlyRate, totalPayments) - 1);
     return isNaN(payment) || !isFinite(payment) ? '0' : payment.toFixed(0);
@@ -313,17 +319,17 @@ export default function PropertyDetailPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-slate-400 block">ราคาซื้อขาย (บาท)</label>
-                      <input 
-                        type="number" 
-                        value={loanAmount}
+                      <input
+                        type="number"
+                        value={price}
                         onChange={(e) => setCustomLoanAmount(parseInt(e.target.value) || 0)}
                         className="w-full bg-slate-900/80 border border-slate-800 rounded-xl px-3.5 py-2 text-xs font-bold text-white outline-none focus:border-blue-500"
                       />
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-slate-400 block">อัตราดอกเบี้ย (%)</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         step="0.1"
                         value={interestRate}
                         onChange={(e) => setInterestRate(parseFloat(e.target.value) || 0)}
@@ -332,20 +338,62 @@ export default function PropertyDetailPage() {
                     </div>
                   </div>
 
-                  {/* สไลเดอร์เลือกระยะเวลากู้ (ปี) */}
+                  {/* สไลเดอร์ + ช่องกรอกเงินดาวน์ (% ของราคาซื้อขาย) */}
                   <div className="space-y-2">
-                    <div className="flex justify-between text-[10px] text-slate-400 font-bold">
-                      <span>ระยะเวลากู้</span>
-                      <span className="text-blue-400">{loanYears} ปี</span>
+                    <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold">
+                      <span>เงินดาวน์</span>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={downPaymentPercent}
+                          onChange={(e) => setDownPaymentPercent(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                          className="w-14 bg-slate-900/80 border border-slate-800 rounded-lg px-2 py-1 text-[10px] font-bold text-blue-400 outline-none focus:border-blue-500 text-right"
+                        />
+                        <span className="text-blue-400">% (฿{downPaymentAmount.toLocaleString()})</span>
+                      </div>
                     </div>
-                    <input 
-                      type="range" 
-                      min="5" 
+                    <input
+                      type="range"
+                      min="0"
+                      max="50"
+                      value={Math.min(downPaymentPercent, 50)}
+                      onChange={(e) => setDownPaymentPercent(parseInt(e.target.value))}
+                      className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                    />
+                  </div>
+
+                  {/* สไลเดอร์ + ช่องกรอกระยะเวลากู้ (ปี) */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold">
+                      <span>ระยะเวลากู้</span>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          min="1"
+                          max="35"
+                          value={loanYears}
+                          onChange={(e) => setLoanYears(Math.min(35, Math.max(1, parseInt(e.target.value) || 1)))}
+                          className="w-14 bg-slate-900/80 border border-slate-800 rounded-lg px-2 py-1 text-[10px] font-bold text-blue-400 outline-none focus:border-blue-500 text-right"
+                        />
+                        <span className="text-blue-400">ปี</span>
+                      </div>
+                    </div>
+                    <input
+                      type="range"
+                      min="5"
                       max="35"
-                      value={loanYears}
+                      value={Math.min(loanYears, 35)}
                       onChange={(e) => setLoanYears(parseInt(e.target.value))}
                       className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
                     />
+                  </div>
+
+                  {/* แสดงวงเงินกู้จริงหลังหักดาวน์ */}
+                  <div className="flex justify-between text-[10px] text-slate-400 font-bold border-t border-slate-800 pt-3">
+                    <span>วงเงินกู้ (หลังหักดาวน์)</span>
+                    <span className="text-white">฿{loanAmount.toLocaleString()}</span>
                   </div>
 
                   {/* สรุปยอดผ่อนชำระต่อเดือน + ปุ่มจองคิวนัดหมาย */}
