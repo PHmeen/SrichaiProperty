@@ -1,21 +1,11 @@
 'use client';
 
-/**
- * ==============================================================================
- * หน้าหลักพอร์ตัลสำหรับลูกค้า (Customer Home Portal Page)
- * /app/(customer)/home/page.tsx
- * ==============================================================================
- * วัตถุประสงค์หลัก:
- * 1. แสดงคำทักทายชื่อผู้ใช้งานที่ล็อกอิน และแสดงแถบแจ้งเตือนนัดหมายด่วนที่กำลังจะมาถึง
- * 2. เป็นศูนย์กลางค้นหาอสังหาริมทรัพย์ (เลือกซื้อ/เช่า, พิมพ์ทำเล, เลือกประเภทบ้าน/คอนโด)
- * 3. คำนวณและแสดงผล "ทำเลยอดนิยม 4 อันดับแรก" แบบไดนามิกจากจำนวนประกาศในฐานข้อมูล
- * 4. แสดงผล "ประกาศแนะนำล่าสุด 6 รายการแรก" พร้อมรองรับ 3 สถานะ (Loading, Empty, Data)
- * ==============================================================================
- */
+// หน้าหลักพอร์ตัลสำหรับลูกค้า: ค้นหาอสังหาฯ, ทำเลยอดนิยม, ประกาศแนะนำ
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useSession } from 'next-auth/react';
 import { useApp } from '@/context/AppContext';
 import PropertyCard from '@/components/customer/PropertyCard';
 
@@ -39,7 +29,10 @@ export default function CustomerHomePage() {
   // ----------------------------------------------------------------------------
   // 2. GLOBAL CONTEXT (ดึงข้อมูลกลางและฟังก์ชันจาก AppContext)
   // ----------------------------------------------------------------------------
-  const { 
+  const { status } = useSession();
+  const isLoggedIn = status === 'authenticated';
+
+  const {
     properties,        // รายการบ้านทั้งหมดในระบบ (ดึงจาก DB ผ่าน /api/properties)
     propertiesLoading, // สถานะการโหลดข้อมูล (true = กำลังโหลด)
     favorites,         // อาร์เรย์ ID อสังหาฯ ที่ผู้ใช้กดบันทึกโปรดไว้
@@ -98,15 +91,20 @@ export default function CustomerHomePage() {
 
         <div className="relative z-10 w-full max-w-5xl mx-auto px-4 flex flex-col items-center text-center">
           
-          {/* Badge แสดงคำทักทายชื่อผู้ใช้งาน */}
-          <div className="mb-3 inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-md border border-white/30 px-4 py-1.5 rounded-full text-white text-xs font-medium shadow">
-            <span>👋</span> <span>สวัสดีคุณ {profile.fullName}, ยินดีต้อนรับกลับมา</span>
-          </div>
+          {/* Badge แสดงคำทักทายชื่อผู้ใช้งาน (แสดงเฉพาะผู้ที่ล็อกอินแล้ว) */}
+          {isLoggedIn && (
+            <div className="mb-3 inline-flex items-center gap-1.5 bg-slate-900/50 border border-white/20 px-4 py-1.5 rounded-full text-white text-xs font-medium">
+              สวัสดีคุณ {profile.fullName}
+            </div>
+          )}
 
           {/* แถบแจ้งเตือนนัดหมายด่วนที่กำลังจะมาถึง */}
-          {upcomingCount > 0 && (
-            <div className="mb-5 bg-white/10 backdrop-blur-md border border-white/20 text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-3 shadow max-w-xl w-full">
-              <span className="text-xl">📅</span>
+          {isLoggedIn && upcomingCount > 0 && (
+            <div className="mb-5 bg-slate-900/50 border border-white/20 text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-3 max-w-xl w-full">
+              <svg className="w-4 h-4 text-blue-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="17" rx="2" />
+                <path d="M16 2v4M8 2v4M3 10h18" />
+              </svg>
               <p className="font-bold text-xs sm:text-sm text-blue-200">คุณมี {upcomingCount} นัดหมายที่กำลังจะมาถึง</p>
               <Link href="/appointments" className="ml-auto text-white font-bold text-xs bg-blue-600 px-2.5 py-1 rounded shadow hover:bg-blue-700 transition hidden sm:block">
                 ดูรายละเอียด
@@ -116,7 +114,7 @@ export default function CustomerHomePage() {
 
           {/* ข้อความสโลแกน */}
           <h1 className="text-3xl md:text-5xl font-extrabold text-white mb-4 leading-tight drop-shadow-md">
-            ค้นพบพื้นที่ความสุข<br />ที่คุณเรียกว่า <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-300">&quot;บ้าน&quot;</span>
+            ค้นหาบ้าน คอนโด ที่ดิน<br />ในหาดใหญ่และสงขลา
           </h1>
           <p className="text-sm md:text-base text-slate-200 mb-8 max-w-xl font-light drop-shadow">
             Srichai Property Agents ศูนย์รวมอสังหาริมทรัพย์คุณภาพ พร้อมระบบจองนัดหมายและแชทกับนายหน้าโดยตรง
@@ -142,7 +140,10 @@ export default function CustomerHomePage() {
             {/* ฟอร์มกรอกคำค้นหา และ Dropdown ประเภทอสังหาฯ */}
             <div className="flex flex-col md:flex-row items-stretch bg-slate-50 rounded-xl border border-slate-200 p-1 gap-1.5">
               <div className="flex-1 flex items-center px-4 py-2">
-                <span className="text-xl mr-3 text-slate-400"></span>
+                <svg className="w-5 h-5 mr-3 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 21s7-6.5 7-11.5a7 7 0 1 0-14 0C5 14.5 12 21 12 21Z" />
+                  <circle cx="12" cy="9.5" r="2.5" />
+                </svg>
                 <div className="flex flex-col text-left w-full">
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">ทำเลที่ตั้ง</span>
                   <input
@@ -163,7 +164,11 @@ export default function CustomerHomePage() {
                 className="relative md:w-48 flex items-center px-4 py-2 cursor-pointer select-none"
                 onClick={() => setIsTypeOpen(!isTypeOpen)}
               >
-                <span className="text-lg mr-3 text-slate-400"></span>
+                <svg className="w-5 h-5 mr-3 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 11.5 12 4l9 7.5" />
+                  <path d="M5 10v10h14V10" />
+                  <path d="M9 20v-6h6v6" />
+                </svg>
                 <div className="flex flex-col text-left w-full">
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">ประเภทอสังหาฯ</span>
                   <div className="text-slate-800 font-semibold text-sm flex items-center justify-between">
