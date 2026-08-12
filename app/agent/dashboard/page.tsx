@@ -27,6 +27,108 @@ import PendingApprovalBanner from '@/components/agent/PendingApprovalBanner';
 import UpgradeProModal from '@/components/agent/UpgradeProModal';
 import PropertyStatsModal, { PropertyData } from '@/components/agent/dashboard/PropertyStatsModal';
 
+function ClockIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 3" />
+    </svg>
+  );
+}
+
+function CrownIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 8l4 3 5-6 5 6 4-3-2 10H5L3 8Z" />
+    </svg>
+  );
+}
+
+function AlertIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 9v4M12 17h.01" />
+      <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+    </svg>
+  );
+}
+
+function EyeIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function CalendarIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="17" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+    </svg>
+  );
+}
+
+function SearchIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="7" />
+      <path d="m21 21-4.3-4.3" />
+    </svg>
+  );
+}
+
+function ChartBarIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 20V10M12 20V4M20 20v-7" />
+    </svg>
+  );
+}
+
+function LinkIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 17H7a5 5 0 0 1 0-10h2M15 7h2a5 5 0 0 1 0 10h-2M8 12h8" />
+    </svg>
+  );
+}
+
+function TrashIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 7h16M9 7V4h6v3M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
+    </svg>
+  );
+}
+
+function PhoneIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L14 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 2 6a2 2 0 0 1 2-2Z" />
+    </svg>
+  );
+}
+
+function HomeIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 11.5 12 4l9 7.5" />
+      <path d="M5 10v10h14V10" />
+    </svg>
+  );
+}
+
+function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+
 // อินเทอร์เฟซ (Interface) นิยามโครงสร้างข้อมูลนัดหมายของลูกค้า
 interface AppointmentData {
   id: string;
@@ -155,7 +257,9 @@ export default function AgentDashboardPage() {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 text-center">
         <div className="bg-white rounded-3xl p-8 shadow-xl max-w-md space-y-4">
-          <div className="text-4xl">🕒</div>
+          <div className="flex items-center justify-center">
+            <ClockIcon className="w-9 h-9" />
+          </div>
           <h1 className="text-lg font-black">บัญชีอยู่ระหว่างการตรวจสอบ KYC</h1>
           <p className="text-xs text-slate-500">เจ้าหน้าที่จะดำเนินการตรวจสอบข้อมูลยืนยันตัวตนของท่านภายใน 1-2 วันทำการ</p>
           <button onClick={() => signOut({ callbackUrl: '/login/agent' })} className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl">ออกจากระบบ</button>
@@ -199,7 +303,7 @@ export default function AgentDashboardPage() {
         {!isPro && (
           <section className="bg-slate-900 rounded-3xl p-5 text-white flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg shadow-slate-900/10">
             <div className="flex items-center gap-3">
-              <span className="text-2xl">👑</span>
+              <span className="text-amber-400"><CrownIcon className="w-7 h-7" /></span>
               <div>
                 <h4 className="font-bold text-sm text-amber-400">อัปเกรดเป็น Verified PRO Partner</h4>
                 <p className="text-slate-400 text-[11px]">ลงประกาศได้ไม่จำกัดจำนวน รับเครื่องหมายยศความน่าเชื่อถือ และรับสิทธิ์ดันประกาศพิเศษ</p>
@@ -214,7 +318,7 @@ export default function AgentDashboardPage() {
         {/* แถบหัวข้อหลัก และปุ่มสร้างประกาศใหม่ */}
         <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl md:text-2xl font-black text-slate-900">ภาพรวมการทำงาน ({user?.name || 'นายหน้า'}) 👋</h2>
+            <h2 className="text-xl md:text-2xl font-black text-slate-900">ภาพรวมการทำงาน ({user?.name || 'นายหน้า'})</h2>
             <p className="text-slate-500 text-xs mt-0.5">แผงบริหารจัดการรายการประกาศและตารางนัดหมายลูกค้า</p>
           </div>
           <Link href="/agent/add-property" className="bg-blue-600 hover:bg-blue-700 text-white font-black px-5 py-3 rounded-2xl flex items-center justify-center gap-2 shadow-sm transition border-0">
@@ -231,7 +335,7 @@ export default function AgentDashboardPage() {
         )}
         {dashboardError && (
           <section className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center justify-between gap-3 text-red-700">
-            <span>⚠️ {dashboardError}</span>
+            <span className="inline-flex items-center gap-1.5"><AlertIcon className="w-4 h-4 shrink-0" /> {dashboardError}</span>
             <button onClick={loadDashboard} className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-[11px] shrink-0 border-0 cursor-pointer">
               ลองใหม่
             </button>
@@ -267,14 +371,14 @@ export default function AgentDashboardPage() {
           <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs space-y-2 transition-all hover:border-slate-300">
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">ลูกค้านัดชมสถานที่</span>
             <strong className="text-xl font-black text-blue-600 block">{dbData?.pendingAptsCount || 0} รายการ</strong>
-            <span className="text-[10px] text-slate-400 font-bold block">🎯 รอยืนยันการพบลูกค้า</span>
+            <span className="text-[10px] text-slate-400 font-bold block">รอยืนยันการพบลูกค้า</span>
           </div>
 
           {/* การ์ดที่ 4: มูลค่าพอร์ตโฟลิโอรวม */}
           <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs space-y-2 transition-all hover:border-slate-300">
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">มูลค่าพอร์ตโฟลิโอ</span>
             <strong className="text-xl font-black text-emerald-600 block">{dbData?.totalPortfolioValue || '0.0 ลบ.'}</strong>
-            <span className="text-[10px] text-slate-400 font-bold block">💎 มูลค่ารวมทรัพย์สินที่อนุมัติ</span>
+            <span className="text-[10px] text-slate-400 font-bold block">มูลค่ารวมทรัพย์สินที่อนุมัติ</span>
           </div>
         </section>
 
@@ -286,18 +390,21 @@ export default function AgentDashboardPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
               <div>
                 <h3 className="font-extrabold text-slate-900 text-sm md:text-base">รายการประกาศอสังหาริมทรัพย์</h3>
-                <p className="text-[11px] text-slate-400 mt-0.5 font-medium">กดปุ่ม &quot;📊 ดูสถิติกราฟ&quot; เพื่อดูรายละเอียดเชิงลึกของบ้านแต่ละหลัง</p>
+                <p className="text-[11px] text-slate-400 mt-0.5 font-medium">กดปุ่ม &quot;ดูสถิติกราฟ&quot; เพื่อดูรายละเอียดเชิงลึกของบ้านแต่ละหลัง</p>
               </div>
-              
+
               {/* แถบกล่องค้นหาและตัวกรองสถานะ */}
               <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="🔍 ค้นหาตามชื่อ..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-1.5 text-xs text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 w-36 sm:w-44 transition placeholder-slate-400 font-medium"
-                />
+                <div className="relative">
+                  <SearchIcon className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="ค้นหาตามชื่อ..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3.5 py-1.5 text-xs text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 w-36 sm:w-44 transition placeholder-slate-400 font-medium"
+                  />
+                </div>
                 <select 
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value)}
@@ -346,9 +453,9 @@ export default function AgentDashboardPage() {
                         {/* คอลัมน์ที่ 2: สถิติจำนวนคนเข้าชม และจำนวนนัดหมาย */}
                         <td className="py-3 px-2 text-center font-bold text-slate-600 text-[11px]">
                           <div className="inline-flex items-center gap-2 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-xl">
-                            <span>👁️ {p.views.toLocaleString()}</span>
+                            <span className="inline-flex items-center gap-1"><EyeIcon className="w-3.5 h-3.5" /> {p.views.toLocaleString()}</span>
                             <span className="text-slate-300">|</span>
-                            <span className="text-blue-600">📅 {p.appointments} นัด</span>
+                            <span className="text-blue-600 inline-flex items-center gap-1"><CalendarIcon className="w-3.5 h-3.5" /> {p.appointments} นัด</span>
                           </div>
                         </td>
 
@@ -359,7 +466,7 @@ export default function AgentDashboardPage() {
                             p.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200/80' :
                             'bg-amber-50 text-amber-700 border-amber-200/80'
                           }`}>
-                            {p.status === 'approved' ? 'อนุมัติแล้ว' : p.status === 'rejected' ? '🔴 ถูกตีกลับ' : 'รอตรวจสอบ'}
+                            {p.status === 'approved' ? 'อนุมัติแล้ว' : p.status === 'rejected' ? 'ถูกตีกลับ' : 'รอตรวจสอบ'}
                           </span>
                           {p.status === 'rejected' && p.rejectReason && (
                             <p className="text-[9px] text-red-500 font-bold mt-1 line-clamp-2 max-w-[140px] mx-auto" title={p.rejectReason}>
@@ -377,16 +484,20 @@ export default function AgentDashboardPage() {
                               className="px-2.5 py-1.5 text-[10px] bg-blue-50 text-blue-700 border border-blue-200/80 hover:bg-blue-600 hover:text-white font-extrabold rounded-xl transition cursor-pointer shadow-2xs flex items-center gap-1"
                               title="เปิดหน้าต่างลอยสถิติเชิงลึก"
                             >
-                              📊 สถิติ
+                              <ChartBarIcon className="w-3 h-3" /> สถิติ
                             </button>
 
                             {/* ปุ่มคัดลอกลิงก์ไปแชร์ */}
                             <button
                               onClick={() => handleCopyLink(p.id)}
-                              className="px-2.5 py-1.5 text-[10px] bg-slate-50 text-slate-600 border border-slate-200/80 hover:bg-slate-100 font-bold rounded-xl transition cursor-pointer"
+                              className="px-2.5 py-1.5 text-[10px] bg-slate-50 text-slate-600 border border-slate-200/80 hover:bg-slate-100 font-bold rounded-xl transition cursor-pointer inline-flex items-center gap-1"
                               title="คัดลอกลิงก์ประกาศไปแชร์"
                             >
-                              {copiedId === p.id ? '✓ คัดลอกแล้ว' : '🔗 แชร์'}
+                              {copiedId === p.id ? (
+                                <><CheckIcon className="w-3 h-3" /> คัดลอกแล้ว</>
+                              ) : (
+                                <><LinkIcon className="w-3 h-3" /> แชร์</>
+                              )}
                             </button>
 
                             {/* ปุ่มลิงก์ไปหน้าแก้ไขประกาศ */}
@@ -400,7 +511,7 @@ export default function AgentDashboardPage() {
                               disabled={deletingId === p.id}
                               className="px-2 py-1.5 text-[10px] text-rose-500 hover:bg-rose-50 rounded-xl transition disabled:opacity-50 cursor-pointer"
                             >
-                              {deletingId === p.id ? '...' : '🗑️'}
+                              {deletingId === p.id ? '...' : <TrashIcon className="w-3.5 h-3.5" />}
                             </button>
                           </div>
                         </td>
@@ -415,7 +526,9 @@ export default function AgentDashboardPage() {
           {/* ฝั่งขวา (1/3): ตารางแสดงรายการลูกค้านัดหมายชมสถานที่ล่าสุด */}
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-5 space-y-4 text-left">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h4 className="font-extrabold text-slate-900 text-xs md:text-sm">📅 นัดหมายชมสถานที่ล่าสุด</h4>
+              <h4 className="font-extrabold text-slate-900 text-xs md:text-sm inline-flex items-center gap-1.5">
+                <CalendarIcon className="w-3.5 h-3.5 text-slate-400" /> นัดหมายชมสถานที่ล่าสุด
+              </h4>
               <Link href="/agent/appointments" className="text-blue-600 font-bold text-[11px] hover:underline">ดูทั้งหมด</Link>
             </div>
 
@@ -431,12 +544,16 @@ export default function AgentDashboardPage() {
                         {apt.customerName}
                       </span>
                       {/* ลิงก์โทรศัพท์ tel: ปรับแต่งเบอร์ให้ปลอดภัยก่อนสร้าง href */}
-                      <a href={toTelHref(apt.customerPhone)} className="text-[10px] bg-blue-100/80 text-blue-800 font-black px-2 py-0.5 rounded-full hover:bg-blue-200 transition shrink-0">
-                        📞 {apt.customerPhone}
+                      <a href={toTelHref(apt.customerPhone)} className="text-[10px] bg-blue-100/80 text-blue-800 font-black px-2 py-0.5 rounded-full hover:bg-blue-200 transition shrink-0 inline-flex items-center gap-1">
+                        <PhoneIcon className="w-3 h-3" /> {apt.customerPhone}
                       </a>
                     </div>
-                    <p className="text-[11px] text-slate-700 font-semibold truncate">🏠 {apt.propertyTitle}</p>
-                    <span className="text-[10px] text-slate-400 font-medium block">🕒 {apt.timeSlot}</span>
+                    <p className="text-[11px] text-slate-700 font-semibold truncate inline-flex items-center gap-1.5">
+                      <HomeIcon className="w-3 h-3 text-slate-400 shrink-0" /> {apt.propertyTitle}
+                    </p>
+                    <span className="text-[10px] text-slate-400 font-medium inline-flex items-center gap-1.5">
+                      <ClockIcon className="w-3 h-3 shrink-0" /> {apt.timeSlot}
+                    </span>
                   </div>
                 ))}
               </div>
