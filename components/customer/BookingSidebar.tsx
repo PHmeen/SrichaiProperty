@@ -13,8 +13,8 @@
  */
 
 import React from 'react';
-import Image from 'next/image';
-import { Property } from '@/context/AppContext';
+import Image from 'next/image'; // ใช้แสดงรูปหลักของทรัพย์และรูปโปรไฟล์นายหน้า
+import { Property } from '@/context/AppContext'; // กำหนดโครงสร้างข้อมูลอสังหาริมทรัพย์ที่ใช้แสดงในการ์ดสรุป
 
 // อินเทอร์เฟซกำหนด Props รับออบเจกต์อสังหาริมทรัพย์ (property) มาจากหน้าแม่
 interface BookingSidebarProps {

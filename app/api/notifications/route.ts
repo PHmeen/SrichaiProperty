@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/authOptions";
-import { db } from "@/lib/db";
-import { getPusher } from "@/lib/pusher";
-import { notificationChannelName } from "@/lib/notificationChannel";
+import { getServerSession } from "next-auth/next"; // ดึงเซสชันเพื่อระบุตัวผู้ใช้ที่จะดึง/อัปเดตการแจ้งเตือน
+import { authOptions } from "@/lib/authOptions"; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
+import { db } from "@/lib/db"; // ไคลเอนต์ Prisma สำหรับจัดการข้อมูลการแจ้งเตือน
+import { getPusher } from "@/lib/pusher"; // ยิงอีเวนต์แจ้งอุปกรณ์อื่นให้รีโหลดการแจ้งเตือนแบบเรียลไทม์
+import { notificationChannelName } from "@/lib/notificationChannel"; // สร้างชื่อ channel ของ Pusher ต่อผู้ใช้
 
 interface SessionUser {
   user?: {

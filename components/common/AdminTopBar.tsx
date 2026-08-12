@@ -2,8 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
-import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react'; // ใช้ตรวจสอบว่าผู้ใช้ปัจจุบันมีสิทธิ์ admin หรือไม่
+import { usePathname } from 'next/navigation'; // ใช้เช็คว่ากำลังอยู่ในหน้า /admin เพื่อซ่อนแถบนี้
 
 export default function AdminTopBar() {
   const pathname = usePathname();

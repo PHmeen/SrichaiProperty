@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db } from "@/lib/db"; // ไคลเอนต์ Prisma สำหรับดึง/บันทึกเนื้อหานโยบายทางกฎหมาย
 
 // นโยบายความเป็นส่วนตัวมาตรฐานตาม พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)
 const DEFAULT_PRIVACY_POLICY = `

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
+import { useSession } from 'next-auth/react'; // ใช้ตรวจสอบบทบาทผู้ใช้เพื่อเปิด/ปิดตัวเลือก "ขาย" ในแท็บค้นหา
 
 export default function HeroSection() {
   const { data: session } = useSession();

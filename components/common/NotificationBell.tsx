@@ -2,10 +2,10 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { getPusherClient } from '@/lib/pusher-client';
-import { notificationChannelName } from '@/lib/notificationChannel';
+import { useSession } from 'next-auth/react'; // ใช้ดึงข้อมูลผู้ใช้ปัจจุบันเพื่อรับการแจ้งเตือนของบัญชีนั้น
+import { useRouter } from 'next/navigation'; // ใช้พาไปหน้าที่เกี่ยวข้องเมื่อกดเข้าไปดูการแจ้งเตือน
+import { getPusherClient } from '@/lib/pusher-client'; // ใช้เชื่อมต่อ Pusher เพื่อรับการแจ้งเตือนแบบเรียลไทม์
+import { notificationChannelName } from '@/lib/notificationChannel'; // ใช้สร้างชื่อ channel การแจ้งเตือนของผู้ใช้แต่ละคน
 
 // ==============================================================================
 // 1. TYPE DEFINITIONS & HELPERS (โครงสร้างการแจ้งเตือนและฟังก์ชันช่วยเหลือ)

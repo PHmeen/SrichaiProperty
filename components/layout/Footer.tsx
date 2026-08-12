@@ -14,7 +14,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSession } from "next-auth/react";
+import { useSession } from "next-auth/react"; // ใช้ตรวจสอบบทบาทผู้ใช้เพื่อปรับลิงก์ที่แสดงในฟุตเตอร์
 
 export default function Footer() {
   const { data: session } = useSession();

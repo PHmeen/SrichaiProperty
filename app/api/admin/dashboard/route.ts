@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/authOptions";
-import { db } from "@/lib/db";
+import { getServerSession } from "next-auth/next"; // ดึงเซสชันเพื่อตรวจสอบสิทธิ์ admin
+import { authOptions } from "@/lib/authOptions"; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
+import { db } from "@/lib/db"; // ไคลเอนต์ Prisma นับจำนวนประกาศ/ตัวแทน/รายงาน/kyc ที่รอดำเนินการ
 
 const MODERATION_SLA_HOURS = 24;
 const MODERATION_SLA_URGENT_HOURS = 4;

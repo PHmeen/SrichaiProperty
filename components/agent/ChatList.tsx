@@ -1,5 +1,5 @@
 import React from 'react';
-import { AgentContact } from '@/types';
+import { AgentContact } from '@/types'; // กำหนดโครงสร้างข้อมูลผู้ติดต่อที่แสดงในรายการ (ชื่อ, รูป, ข้อความล่าสุด, รหัสบ้าน)
 
 interface Props {
   searchQuery: string;

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/authOptions";
-import { db } from "@/lib/db";
-import { Prisma } from "@prisma/client";
+import { getServerSession } from "next-auth/next"; // ดึงเซสชันเพื่อระบุตัวผู้ใช้ที่จะลบบัญชี
+import { authOptions } from "@/lib/authOptions"; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
+import { db } from "@/lib/db"; // ไคลเอนต์ Prisma สำหรับลบข้อมูลผู้ใช้ในฐานข้อมูล
+import { Prisma } from "@prisma/client"; // ใช้ตรวจจับรหัสข้อผิดพลาด (เช่น P2003 กรณีมี foreign key ผูกอยู่)
 
 /**
  * ==============================================================================

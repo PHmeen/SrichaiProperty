@@ -16,9 +16,9 @@
  */
 
 import { useMemo, useState } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
+import Link from 'next/link'; // ใช้ลิงก์ไปหน้าประกาศสาธารณะและหน้าแก้ไขทรัพย์ในส่วนปุ่มด้านล่าง
+import Image from 'next/image'; // ใช้แสดงรูปหน้าปกทรัพย์ในหัวข้อของโมดัล
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'; // ใช้สร้างกราฟแท่งเปรียบเทียบสถิติหลายชุด
 import {
   ChartConfig,
   ChartContainer,
@@ -26,7 +26,7 @@ import {
   ChartTooltipContent,
   ChartLegend,
   ChartLegendContent
-} from '@/components/ui/chart';
+} from '@/components/ui/chart'; // ชุด wrapper/tooltip/legend ของ shadcn สำหรับตกแต่งกราฟ Recharts
 
 // --------------------------------------------------------------------------
 // [ส่วนที่ 1: การกำหนดโครงสร้างข้อมูล (TypeScript Interfaces & Types)]

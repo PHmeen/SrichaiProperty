@@ -15,7 +15,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Property } from '@/context/AppContext';
+import { Property } from '@/context/AppContext'; // กำหนดโครงสร้างข้อมูลอสังหาริมทรัพย์ที่แสดงในการ์ด
 
 // Props ที่รับเข้ามาจากคอมโพเนนต์แม่ (search/page.tsx)
 interface PropertyCardProps {

@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/authOptions';
-import { db } from '@/lib/db';
-import { getPusher } from '@/lib/pusher';
-import { chatChannelName } from '@/lib/chatChannel';
-import { checkRateLimit } from '@/lib/rateLimit';
-import { notifyUser } from '@/lib/notify';
+import { getServerSession } from 'next-auth/next'; // ดึงเซสชันเพื่อระบุตัวผู้ใช้ที่ส่ง/ดึงข้อความ
+import { authOptions } from '@/lib/authOptions'; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
+import { db } from '@/lib/db'; // ไคลเอนต์ Prisma สำหรับบันทึก/ดึงข้อความแชท
+import { getPusher } from '@/lib/pusher'; // ยิงอีเวนต์แชทแบบเรียลไทม์ผ่าน Pusher
+import { chatChannelName } from '@/lib/chatChannel'; // สร้างชื่อ channel ของ Pusher ให้ตรงกับห้องแชท
+import { checkRateLimit } from '@/lib/rateLimit'; // จำกัดความถี่การส่งข้อความเพื่อกันสแปม
+import { notifyUser } from '@/lib/notify'; // สร้างการแจ้งเตือนในระบบให้ผู้รับข้อความ
 
 /**
  * ==============================================================================

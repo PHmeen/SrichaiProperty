@@ -3,9 +3,9 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
-import { useSession, signOut } from 'next-auth/react';
-import NotificationBell from '@/components/common/NotificationBell';
+import { usePathname } from 'next/navigation'; // ใช้เช็คหน้าปัจจุบันเพื่อไฮไลต์เมนูที่กำลังเปิดอยู่
+import { useSession, signOut } from 'next-auth/react'; // ใช้ดึงข้อมูลเอเย่นต์ที่ล็อกอินและออกจากระบบ
+import NotificationBell from '@/components/common/NotificationBell'; // ใช้แสดงกระดิ่งแจ้งเตือนบนแถบเมนู
 
 export default function AgentNavbar() {
   const { data: session } = useSession();

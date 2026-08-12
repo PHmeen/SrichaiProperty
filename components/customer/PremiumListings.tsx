@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { Property } from '@/types';
+import { Property } from '@/types'; // กำหนดโครงสร้างข้อมูลอสังหาริมทรัพย์ที่รับมาแสดงในรายการพรีเมียม
 
 interface PremiumListingsProps {
   properties: Property[];

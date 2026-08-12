@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/authOptions';
-import { db } from '@/lib/db';
+import { getServerSession } from 'next-auth/next'; // ดึงเซสชันเพื่อระบุตัวนายหน้าที่ล็อกอินอยู่
+import { authOptions } from '@/lib/authOptions'; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
+import { db } from '@/lib/db'; // ไคลเอนต์ Prisma สำหรับดึง/บันทึกเทมเพลตข้อความตอบกลับด่วน
 
 async function getAgent() {
   const session = await getServerSession(authOptions);

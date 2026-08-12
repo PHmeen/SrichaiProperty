@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/authOptions";
-import { db } from "@/lib/db";
-import { notifyUser } from "@/lib/notify";
+import { getServerSession } from "next-auth/next"; // ดึงเซสชันเพื่อระบุตัวลูกค้าที่รีวิว
+import { authOptions } from "@/lib/authOptions"; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
+import { db } from "@/lib/db"; // ไคลเอนต์ Prisma สำหรับบันทึก/ดึงรีวิวและคำนวณคะแนนเฉลี่ย
+import { notifyUser } from "@/lib/notify"; // ส่งแจ้งเตือนไปยังนายหน้าเมื่อมีรีวิวใหม่
 
 /**
  * ==============================================================================

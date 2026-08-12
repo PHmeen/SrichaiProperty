@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
+import Link from 'next/link'; // ใช้ลิงก์ไปหน้าแดชบอร์ดกรณีไม่มีการส่งฟังก์ชัน onViewPending มา
 
 interface PendingApprovalBannerProps {
   pendingCount: number;

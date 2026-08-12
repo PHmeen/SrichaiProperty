@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/authOptions";
-import { db } from "@/lib/db";
-import { notifyUser, notifyUsers } from "@/lib/notify";
-import { hasAgentSlotConflict } from "@/lib/services/viewingSlotService";
+import { getServerSession } from "next-auth/next"; // ดึงเซสชันเพื่อระบุตัวนายหน้า/แอดมินที่ทำรายการ
+import { authOptions } from "@/lib/authOptions"; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
+import { db } from "@/lib/db"; // ไคลเอนต์ Prisma สำหรับดึง/สร้าง/แก้ไขประกาศอสังหาริมทรัพย์
+import { notifyUser, notifyUsers } from "@/lib/notify"; // ส่งแจ้งเตือนเมื่อมีประกาศใหม่หรืออนุมัติ/ตีกลับประกาศ
+import { hasAgentSlotConflict } from "@/lib/services/viewingSlotService"; // ตรวจสอบว่ารอบเวลานัดชมชนกับบ้านหลังอื่นของนายหน้าคนเดียวกันหรือไม่
 
 /**
  * ==============================================================================

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import bcrypt from "bcryptjs";
-import { notifyUsers } from "@/lib/notify";
+import { db } from "@/lib/db"; // ไคลเอนต์ Prisma สำหรับบันทึกผู้ใช้ใหม่ลงฐานข้อมูล
+import bcrypt from "bcryptjs"; // ใช้เข้ารหัสรหัสผ่านก่อนบันทึก
+import { notifyUsers } from "@/lib/notify"; // ส่งแจ้งเตือนไปยังผู้ใช้ที่เกี่ยวข้องหลังสมัครสมาชิก
 
 //  API สำหรับ "สมัครสมาชิกใหม่" ทั้งลูกค้า (customer) และนายหน้า (agent)
 // รับ POST request จากฟอร์ม register แล้วสร้าง user ใหม่ลงฐานข้อมูล

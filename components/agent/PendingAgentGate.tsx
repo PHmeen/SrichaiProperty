@@ -1,6 +1,6 @@
 'use client';
 
-import { signOut } from 'next-auth/react';
+import { signOut } from 'next-auth/react'; // ใช้ออกจากระบบเมื่อกดปุ่มด้านล่าง
 
 export default function PendingAgentGate() {
   return (

@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import Image from 'next/image';
-import { Message, MessageAvatar, MessageContent, MessageFooter } from '@/components/ui/message';
-import { Bubble, BubbleContent } from '@/components/ui/bubble';
+import Image from 'next/image'; // ใช้แสดงรูปแนบและรูปโปรไฟล์ในหน้าจอแชท
+import { Message, MessageAvatar, MessageContent, MessageFooter } from '@/components/ui/message'; // ใช้แสดงแต่ละแถวข้อความ พร้อมรูปโปรไฟล์ กรอบข้อความ และเวลา
+import { Bubble, BubbleContent } from '@/components/ui/bubble'; // ใช้จัดสไตล์กรอบข้อความแชท (แยกฝั่งผู้ใช้กับคู่สนทนา)
 
 // ==============================================================================
 // 1. INTERFACES & TYPES (กำหนดโครงสร้างข้อมูลหน้าจอแชทกลาง)

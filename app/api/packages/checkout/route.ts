@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/authOptions";
-import { db } from "@/lib/db";
-import { notifyUser, notifyUsers } from "@/lib/notify";
-import fs from "fs";
-import path from "path";
+import { getServerSession } from "next-auth/next"; // ดึงเซสชันเพื่อระบุตัวผู้ใช้ที่ทำการซื้อแพ็กเกจ
+import { authOptions } from "@/lib/authOptions"; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
+import { db } from "@/lib/db"; // ไคลเอนต์ Prisma สำหรับบันทึกสถานะแพ็กเกจและธุรกรรม
+import { notifyUser, notifyUsers } from "@/lib/notify"; // ส่งแจ้งเตือนเกี่ยวกับการชำระเงิน/อนุมัติแพ็กเกจ
+import fs from "fs"; // จัดการไฟล์สลิปการโอนเงินที่อัปโหลด
+import path from "path"; // จัดการเส้นทางไฟล์สลิปที่บันทึกไว้บนเซิร์ฟเวอร์
 
 async function getUser(email: string) {
   return db.users.findUnique({ where: { email } });

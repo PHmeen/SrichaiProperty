@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import fs from 'fs';
-import path from 'path';
-import { authOptions } from '@/lib/authOptions';
-import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { getServerSession } from 'next-auth/next'; // ดึงเซสชันเพื่อดูว่าผู้อัปโหลดล็อกอินอยู่หรือไม่ (ใช้กำหนดโควตา)
+import fs from 'fs'; // บันทึกไฟล์ที่อัปโหลดลงดิสก์
+import path from 'path'; // จัดการเส้นทางไฟล์ที่บันทึก
+import { authOptions } from '@/lib/authOptions'; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit'; // จำกัดอัตราการอัปโหลดกันการยิงถล่ม (DoS)
 
 // ประเภทไฟล์ที่อนุญาต (รวมรูปภาพและเอกสาร PDF)
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];

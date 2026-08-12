@@ -13,7 +13,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db } from "@/lib/db"; // ไคลเอนต์ Prisma สำหรับเพิ่มจำนวนยอดเข้าชมแบบ atomic
 
 export async function POST(
   _req: Request,

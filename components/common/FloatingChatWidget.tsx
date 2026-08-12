@@ -2,8 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { usePathname } from 'next/navigation'; // ใช้เช็คหน้าปัจจุบันเพื่อซ่อนปุ่มลอยตอนอยู่ในหน้าแชทอยู่แล้ว
+import { useSession } from 'next-auth/react'; // ใช้ดึงข้อมูลผู้ใช้ที่ล็อกอินเพื่อกำหนดลิงก์ปลายทางของปุ่มแชท
 
 // ==============================================================================
 // FLOATING CHAT WIDGET COMPONENT (ปุ่มทางด่วนเข้าสู่ระบบแชทแบบลอยมุมขวาล่าง)

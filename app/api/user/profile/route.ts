@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/authOptions";
-import { db } from "@/lib/db";
-import bcrypt from "bcryptjs";
+import { getServerSession } from "next-auth/next"; // ดึงเซสชันเพื่อระบุตัวผู้ใช้ที่เจ้าของโปรไฟล์
+import { authOptions } from "@/lib/authOptions"; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
+import { db } from "@/lib/db"; // ไคลเอนต์ Prisma สำหรับดึง/แก้ไขข้อมูลโปรไฟล์ผู้ใช้
+import bcrypt from "bcryptjs"; // ตรวจสอบรหัสผ่านเดิมและเข้ารหัสรหัสผ่านใหม่ตอนเปลี่ยนรหัสผ่าน
 
 /**
  * ==============================================================================

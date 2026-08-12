@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/authOptions';
-import { db } from '@/lib/db';
+import { getServerSession } from 'next-auth/next'; // ดึงเซสชันปัจจุบันเพื่อตรวจสิทธิ์ admin
+import { authOptions } from '@/lib/authOptions'; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
+import { db } from '@/lib/db'; // ไคลเอนต์ Prisma สำหรับดึงข้อมูลวิเคราะห์ (analytics)
 
 interface AdminSession {
   user?: {

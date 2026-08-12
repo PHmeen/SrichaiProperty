@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useApp } from '@/context/AppContext';
+import { useApp } from '@/context/AppContext'; // ใช้ดึงรายการอสังหาริมทรัพย์ทั้งหมดมาจัดกลุ่มตามทำเลยอดนิยม
 
 export default function PopularLocations() {
   const { properties, propertiesLoading } = useApp();

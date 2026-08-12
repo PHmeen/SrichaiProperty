@@ -1,8 +1,8 @@
 import React from 'react';
-import { AgentContact } from '@/types';
+import { AgentContact } from '@/types'; // กำหนดโครงสร้างข้อมูลบทสนทนาที่กำลังเปิดอยู่ (ข้อมูลผู้ติดต่อ, ประวัติแชท, สถานะกำลังพิมพ์)
 // นำ shadcn UI Chat primitives มาใช้งานในหน้าแชทของ Agent
-import { Message, MessageAvatar, MessageContent, MessageFooter } from '@/components/ui/message';
-import { Bubble, BubbleContent } from '@/components/ui/bubble';
+import { Message, MessageAvatar, MessageContent, MessageFooter } from '@/components/ui/message'; // ใช้แสดงแต่ละแถวข้อความแชท พร้อมรูปโปรไฟล์ กรอบข้อความ และเวลาที่ส่ง
+import { Bubble, BubbleContent } from '@/components/ui/bubble'; // ใช้จัดสไตล์กรอบข้อความแชท (แยกแบบลูกค้ากับแบบเอเย่นต์)
 
 interface Props {
   activeContact: AgentContact | null;

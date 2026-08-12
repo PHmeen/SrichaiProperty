@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/authOptions';
+import { db } from '@/lib/db'; // ไคลเอนต์ Prisma สำหรับดึงข้อมูลผู้ใช้ที่ยื่น KYC เป็นตัวแทน
+import { getServerSession } from 'next-auth/next'; // ดึงเซสชันเพื่อยืนยันสิทธิ์ admin
+import { authOptions } from '@/lib/authOptions'; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
 
 interface AdminSession {
   user?: {

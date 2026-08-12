@@ -1,6 +1,6 @@
 'use client';
 
-import { signIn } from 'next-auth/react';
+import { signIn } from 'next-auth/react'; // ใช้เข้าสู่ระบบผ่านบัญชี Google/Facebook เมื่อกดปุ่มด้านล่าง
 
 export default function SocialLoginButtons() {
   return (

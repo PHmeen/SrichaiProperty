@@ -1,5 +1,5 @@
 import React from 'react';
-import Image from 'next/image';
+import Image from 'next/image'; // ใช้แสดงรูปโปรไฟล์เอเย่นต์และรูปเอกสาร KYC
 
 export interface AgentData {
   id: string;

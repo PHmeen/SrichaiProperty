@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/authOptions';
-import { db } from '@/lib/db';
-import { notifyUsers } from '@/lib/notify';
+import { getServerSession } from 'next-auth/next'; // ดึงเซสชันเพื่อระบุตัวผู้ใช้ที่แจ้งรายงาน
+import { authOptions } from '@/lib/authOptions'; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
+import { db } from '@/lib/db'; // ไคลเอนต์ Prisma สำหรับบันทึกรายงานพฤติกรรมไม่เหมาะสม
+import { notifyUsers } from '@/lib/notify'; // ส่งแจ้งเตือนให้ผู้ดูแลระบบเมื่อมีรายงานใหม่
 
 // POST: บันทึกรายงานพฤติกรรมไม่เหมาะสม / สแปม / ข้อความที่ไม่เหมาะสม
 export async function POST(request: Request) {

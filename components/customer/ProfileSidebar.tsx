@@ -2,8 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { signOut } from 'next-auth/react';
+import Image from 'next/image'; // ใช้แสดงรูปโปรไฟล์ผู้ใช้
+import { signOut } from 'next-auth/react'; // ใช้ออกจากระบบเมื่อกดปุ่มออกจากระบบในแถบข้าง
 
 interface ProfileSidebarProps {
   userDisplayName: string;

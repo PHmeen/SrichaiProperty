@@ -17,9 +17,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
-import NotificationBell from "@/components/common/NotificationBell";
+import { usePathname } from "next/navigation"; // ใช้เช็คหน้าปัจจุบันเพื่อไฮไลต์เมนูที่กำลังเปิดอยู่
+import { useSession, signOut } from "next-auth/react"; // ใช้ดึงข้อมูลผู้ใช้ที่ล็อกอินและออกจากระบบ
+import NotificationBell from "@/components/common/NotificationBell"; // ใช้แสดงกระดิ่งแจ้งเตือนบนแถบเมนู
 
 // รายการลิงก์เมนูหลักในระบบ (นำมาวนลูปแสดงผลทั้งบน Desktop และ Mobile เพื่อไม่ให้เขียนโค้ดซ้ำ)
 const NAV_LINKS = [

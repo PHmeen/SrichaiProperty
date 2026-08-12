@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/authOptions';
-import { db } from '@/lib/db';
-import { getPusher } from '@/lib/pusher';
-import { chatChannelName } from '@/lib/chatChannel';
-import { checkRateLimit } from '@/lib/rateLimit';
+import { getServerSession } from 'next-auth/next'; // ดึงเซสชันเพื่อระบุตัวผู้ใช้ที่กำลังพิมพ์
+import { authOptions } from '@/lib/authOptions'; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
+import { db } from '@/lib/db'; // ไคลเอนต์ Prisma สำหรับตรวจสอบผู้ใช้ในระบบ
+import { getPusher } from '@/lib/pusher'; // ยิงสถานะ "กำลังพิมพ์" แบบเรียลไทม์ผ่าน Pusher
+import { chatChannelName } from '@/lib/chatChannel'; // สร้างชื่อ channel ของ Pusher ให้ตรงกับห้องแชท
+import { checkRateLimit } from '@/lib/rateLimit'; // จำกัดความถี่การยิงสถานะพิมพ์เพื่อลดโหลด
 
 // POST: แจ้งอีกฝ่ายในห้องแชทว่ากำลังพิมพ์อยู่หรือไม่ (ไม่บันทึกลง DB, ยิงผ่าน Pusher เท่านั้น)
 // แทนที่ event 'typing' ของ socket-server.js เดิม

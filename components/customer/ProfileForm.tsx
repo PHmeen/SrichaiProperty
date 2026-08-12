@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { signOut } from 'next-auth/react';
+import { signOut } from 'next-auth/react'; // ใช้ออกจากระบบหลังลบบัญชีหรือเปลี่ยนรหัสผ่านสำเร็จ
 
 interface ProfileFormProps {
   firstName: string;

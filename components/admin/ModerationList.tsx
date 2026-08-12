@@ -1,5 +1,5 @@
 import React from 'react';
-import Image from 'next/image';
+import Image from 'next/image'; // ใช้แสดงรูปตัวอย่างประกาศแต่ละรายการที่รอตรวจสอบ
 
 interface ModerationItem {
   id: string;

@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from 'next/link'; // ใช้ลิงก์ไปหน้าเข้าสู่ระบบสำหรับนายหน้า
 
 export default function AgentPortalBanner() {
   return (

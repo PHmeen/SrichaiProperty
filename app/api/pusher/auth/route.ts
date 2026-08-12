@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/authOptions';
-import { db } from '@/lib/db';
-import { getPusher } from '@/lib/pusher';
-import { parseChatSessionId } from '@/lib/chatChannel';
-import { parseNotificationUserId } from '@/lib/notificationChannel';
+import { getServerSession } from 'next-auth/next'; // ดึงเซสชันเพื่อยืนยันตัวผู้ใช้ก่อนอนุญาต subscribe channel
+import { authOptions } from '@/lib/authOptions'; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
+import { db } from '@/lib/db'; // ไคลเอนต์ Prisma สำหรับตรวจสอบสิทธิ์เข้าถึงห้องแชท/การแจ้งเตือน
+import { getPusher } from '@/lib/pusher'; // ใช้ authorizeChannel เพื่อออก token ให้ pusher-js ฝั่ง client
+import { parseChatSessionId } from '@/lib/chatChannel'; // แยก sessionId ออกจากชื่อ channel ห้องแชท private
+import { parseNotificationUserId } from '@/lib/notificationChannel'; // แยก userId ออกจากชื่อ channel แจ้งเตือนส่วนตัว
 
 // POST: ยืนยันสิทธิ์ก่อนอนุญาตให้ subscribe private channel (ห้องแชท private-chat-{sessionId}
 // หรือช่องแจ้งเตือนส่วนตัว private-user-{userId})
