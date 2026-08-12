@@ -47,28 +47,46 @@ export default function AgentNavbar() {
 
         {/* Center / Right Links */}
         <div className="flex items-center gap-1.5 sm:gap-2">
-          <Link href="/agent/home" className={navLinkClass('/agent/home')}>
-            🏠 <span className="hidden md:inline">หน้าหลักนายหน้า</span>
+          <Link href="/agent/home" className={`${navLinkClass('/agent/home')} inline-flex items-center gap-1.5`}>
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 11.5 12 4l9 7.5" />
+              <path d="M5 10v10h14V10" />
+              <path d="M9 20v-6h6v6" />
+            </svg>
+            <span className="hidden md:inline">หน้าหลักนายหน้า</span>
           </Link>
 
-          <Link href="/agent/dashboard" className={navLinkClass('/agent/dashboard')}>
-            🏘️ <span className="hidden md:inline">จัดการบ้านของฉัน</span>
+          <Link href="/agent/dashboard" className={`${navLinkClass('/agent/dashboard')} inline-flex items-center gap-1.5`}>
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="7" height="7" rx="1.5" />
+              <rect x="14" y="4" width="7" height="7" rx="1.5" />
+              <rect x="3" y="15" width="7" height="5" rx="1.5" />
+              <rect x="14" y="15" width="7" height="5" rx="1.5" />
+            </svg>
+            <span className="hidden md:inline">จัดการบ้านของฉัน</span>
           </Link>
 
-          <Link href="/agent/appointments" className={navLinkClass('/agent/appointments')}>
-            📋 <span className="hidden md:inline">จัดการคิวนัดหมาย</span>
+          <Link href="/agent/appointments" className={`${navLinkClass('/agent/appointments')} inline-flex items-center gap-1.5`}>
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="17" rx="2" />
+              <path d="M16 2v4M8 2v4M3 10h18" />
+            </svg>
+            <span className="hidden md:inline">จัดการคิวนัดหมาย</span>
           </Link>
 
           {/* ปุ่มลงประกาศใหม่ (CTA หลัก) */}
           <Link
             href="/agent/add-property"
-            className={`text-xs font-black px-3.5 py-1.5 rounded-xl transition-all duration-150 shadow-md active:scale-95 ml-1 ${
+            className={`text-xs font-black px-3.5 py-1.5 rounded-xl transition-all duration-150 shadow-md active:scale-95 ml-1 inline-flex items-center gap-1.5 ${
               pathname === '/agent/add-property'
                 ? 'bg-amber-400 text-slate-950 ring-2 ring-amber-300/50'
                 : 'bg-amber-500 hover:bg-amber-400 text-slate-950'
             }`}
           >
-            + <span className="hidden sm:inline">ลงประกาศใหม่</span>
+            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            <span className="hidden sm:inline">ลงประกาศใหม่</span>
           </Link>
 
           <div className="h-6 w-px bg-slate-800 hidden sm:block mx-1" />

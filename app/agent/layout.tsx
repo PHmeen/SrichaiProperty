@@ -33,20 +33,20 @@ export default async function AgentLayout({
   const isPending = (user?.status || 'pending') === 'pending';
 
   return (
-    // โครงหน้าหลัก: สูงเต็มจอ, จัดเรียงแนวตั้ง (navbar บน, เนื้อหากลาง, footer ล่าง)
-    <div className="h-screen flex flex-col bg-[#f8fafc]">
+    // โครงหน้าหลัก: สูงอย่างน้อยเต็มจอ, จัดเรียงแนวตั้ง (navbar บน, เนื้อหากลาง, footer ล่างสุดของหน้า)
+    <div className="min-h-screen flex flex-col bg-[#f8fafc]">
 
       {/* แถบเมนูด้านบน แสดงตลอดทุกหน้า */}
       <AgentNavbar />
 
-      {/* ส่วนเนื้อหาหลัก ยืดเต็มพื้นที่ที่เหลือ และเลื่อน (scroll) ได้เฉพาะส่วนนี้ */}
-      <main className="flex-1 min-h-0 overflow-y-auto">
+      {/* ส่วนเนื้อหาหลัก ยืดเต็มพื้นที่ที่เหลือ */}
+      <main className="flex-1">
         {/* ถ้า agent ยังรออนุมัติ -> โชว์หน้า PendingAgentGate แทนเนื้อหาจริง
             ถ้าอนุมัติแล้ว -> โชว์เนื้อหาของหน้านั้นๆ ตามปกติ (children) */}
         {isPending ? <PendingAgentGate /> : children}
       </main>
 
-      {/* ส่วนท้ายหน้า แสดงตลอดทุกหน้า */}
+      {/* ส่วนท้ายหน้า อยู่ท้ายสุดของเนื้อหาเสมอ */}
       <AgentFooter />
 
     </div>

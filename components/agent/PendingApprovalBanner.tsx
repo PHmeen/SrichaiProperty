@@ -14,7 +14,12 @@ export default function PendingApprovalBanner({ pendingCount, onViewPending }: P
   return (
     <section className="bg-amber-50 border-2 border-amber-300 rounded-3xl p-5 text-amber-950 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
       <div className="flex items-center gap-4 text-left">
-        <div className="w-12 h-12 bg-amber-500 text-slate-950 rounded-2xl flex items-center justify-center font-black text-xl shrink-0">⏳</div>
+        <div className="w-12 h-12 bg-amber-500 text-slate-950 rounded-2xl flex items-center justify-center font-black text-xl shrink-0">
+          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7v5l3 3" />
+          </svg>
+        </div>
         <div>
           <h4 className="font-extrabold text-sm md:text-base text-amber-900">
             คุณมีประกาศ {pendingCount} รายการที่อยู่ระหว่างรอแอดมินอนุมัติ
