@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * ==============================================================================
- * คอมโพเนนต์การ์ดแสดงผลอสังหาริมทรัพย์ (Property Card Component)
- * ==============================================================================
- * ภาพรวมการทำงาน:
- * 1. รับข้อมูลอสังหาริมทรัพย์ 1 รายการ (`prop`) จากคอมโพเนนต์แม่ (search/page.tsx)
- * 2. แสดงรูปภาพบ้าน, สถานะพรีเมียม, ราคา, ชื่อทรัพย์, ทำเล, จำนวนห้องนอน/น้ำ, ขนาดพื้นที่
- * 3. มีปุ่มกดหัวใจบันทึกโปรด (`toggleFavorite`) และแสดงข้อมูลนายหน้าผู้ดูแล
- * 4. เมื่อคลิกที่การ์ด จะพาไปยังหน้ารายละเอียดของบ้านหลังนั้น (`/property/[id]`)
- * ==============================================================================
- */
+// การ์ดแสดงผลอสังหาริมทรัพย์ 1 รายการ ใช้ในหน้าค้นหาและหน้าแรก
 
 import React from 'react';
 import Link from 'next/link';
@@ -24,18 +14,69 @@ interface PropertyCardProps {
   toggleFavorite: (id: string | number) => void; // ฟังก์ชันกดสลับสถานะรายการโปรด
 }
 
+function PinIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 21s7-6.5 7-11.5a7 7 0 1 0-14 0C5 14.5 12 21 12 21Z" />
+      <circle cx="12" cy="9.5" r="2.5" />
+    </svg>
+  );
+}
+
+function BedIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 18v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6M3 18v2M21 18v2M3 12V8a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v2" />
+    </svg>
+  );
+}
+
+function BathIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 12h16v3a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-3Z" />
+      <path d="M7 12V6a2 2 0 0 1 3.2-1.6M4 19v1M18 19v1" />
+    </svg>
+  );
+}
+
+function AreaIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3v6M3 3h6M21 21v-6M21 21h-6" />
+      <rect x="7" y="7" width="10" height="10" rx="1" />
+    </svg>
+  );
+}
+
+function StarIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <path d="M12 2.5l2.9 6 6.6.7-4.9 4.6 1.3 6.5L12 16.9l-5.9 3.4 1.3-6.5-4.9-4.6 6.6-.7L12 2.5Z" />
+    </svg>
+  );
+}
+
+function CrownIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 8l4 3 5-6 5 6 4-3-2 10H5L3 8Z" />
+    </svg>
+  );
+}
+
 export default function PropertyCard({ prop, isFav, toggleFavorite }: PropertyCardProps) {
   // ฟังก์ชันช่วยสร้างรูป Avatar สำรองจากชื่อนายหน้า (กรณีที่นายหน้าไม่มีรูปโปรไฟล์)
-  const getInitialsAvatar = (name: string) => 
+  const getInitialsAvatar = (name: string) =>
     `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1d4ed8&color=fff`;
 
   return (
     <div className={`bg-white rounded-xl border shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col group relative ${
       prop.isPremium ? 'border-amber-400 ring-2 ring-amber-400/30 shadow-amber-100' : 'border-slate-200'
     }`}>
-      
-      {/* -------------------- 1. ปุ่มกดหัวใจบันทึกรายการโปรด (มุมขวาบน) -------------------- */}
-      <button 
+
+      {/* ปุ่มกดหัวใจบันทึกรายการโปรด */}
+      <button
         onClick={(e) => {
           e.preventDefault(); // ป้องกันไม่ให้คลิกปุ่มหัวใจแล้วเผลอนำทางเปิดลิงก์บ้าน
           toggleFavorite(prop.id);
@@ -52,23 +93,23 @@ export default function PropertyCard({ prop, isFav, toggleFavorite }: PropertyCa
         </svg>
       </button>
 
-      {/* -------------------- 2. ป้าย Badge สถานะ (พรีเมียม / แท็ก / ประเภททรัพย์) -------------------- */}
+      {/* ป้าย Badge สถานะ (พรีเมียม / แท็ก / ประเภททรัพย์) */}
       <div className="absolute top-3 left-3 z-10 flex flex-wrap gap-1.5">
         {prop.isPremium ? (
-          <span className="bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black px-2.5 py-0.5 rounded text-[10px] tracking-wide shadow flex items-center gap-1">
-            ⭐ พรีเมียมพิเศษ
+          <span className="bg-amber-500 text-slate-950 font-black px-2.5 py-0.5 rounded text-[10px] tracking-wide shadow flex items-center gap-1">
+            <StarIcon className="w-2.5 h-2.5" /> พรีเมียมพิเศษ
           </span>
         ) : (
           <span className="bg-blue-600 text-white px-2 py-0.5 rounded text-[9px] font-semibold tracking-wide">
             {prop.tag || 'ทั่วไป'}
           </span>
         )}
-        <span className="bg-slate-900/80 backdrop-blur-sm text-white px-2 py-0.5 rounded text-[9px] font-semibold tracking-wide">
+        <span className="bg-slate-900/80 text-white px-2 py-0.5 rounded text-[9px] font-semibold tracking-wide">
           {prop.type}
         </span>
       </div>
 
-      {/* -------------------- 3. ลิงก์ห่อหุ้มรูปภาพและรายละเอียดบ้าน -------------------- */}
+      {/* ลิงก์ห่อหุ้มรูปภาพและรายละเอียดบ้าน */}
       <Link href={`/property/${prop.id}`} className="block flex-grow">
         {/* รูปภาพหลักของอสังหาริมทรัพย์ */}
         <div className="relative h-40 overflow-hidden bg-slate-100">
@@ -95,23 +136,24 @@ export default function PropertyCard({ prop, isFav, toggleFavorite }: PropertyCa
 
           {/* ทำเลที่ตั้ง (แสดง ตำบล, อำเภอ, จังหวัด) */}
           <p className="text-slate-400 text-[11px] font-medium flex items-center gap-1">
-            📍 {prop.districtName && prop.amphureName && prop.provinceName 
-              ? `${prop.districtName}, ${prop.amphureName}, ${prop.provinceName}` 
+            <PinIcon className="w-3 h-3 shrink-0" />
+            {prop.districtName && prop.amphureName && prop.provinceName
+              ? `${prop.districtName}, ${prop.amphureName}, ${prop.provinceName}`
               : prop.location.replace("📍 ", "")}
           </p>
 
           {/* สเปกบ้าน: จำนวนห้องนอน, ห้องน้ำ, ขนาดพื้นที่ */}
           <div className="flex items-center justify-between text-slate-400 py-1 text-[11px] font-medium">
-            <span>🛏️ {prop.bedrooms} นอน</span>
+            <span className="inline-flex items-center gap-1"><BedIcon className="w-3.5 h-3.5" /> {prop.bedrooms} นอน</span>
             <div className="w-px h-3 bg-slate-200"></div>
-            <span>🚿 {prop.bathrooms} น้ำ</span>
+            <span className="inline-flex items-center gap-1"><BathIcon className="w-3.5 h-3.5" /> {prop.bathrooms} น้ำ</span>
             <div className="w-px h-3 bg-slate-200"></div>
-            <span>📏 {prop.area} ตร.ม.</span>
+            <span className="inline-flex items-center gap-1"><AreaIcon className="w-3.5 h-3.5" /> {prop.area} ตร.ม.</span>
           </div>
         </div>
       </Link>
 
-      {/* -------------------- 4. ส่วนแสดงข้อมูลนายหน้าผู้ดูแล (Footer ของการ์ด) -------------------- */}
+      {/* ส่วนแสดงข้อมูลนายหน้าผู้ดูแล (Footer ของการ์ด) */}
       <div className={`px-4 pb-4 pt-3 border-t flex items-center justify-between ${
         prop.isPremium ? 'bg-amber-50/40 border-amber-200/50' : 'bg-slate-50/50 border-slate-100'
       }`}>
@@ -127,10 +169,11 @@ export default function PropertyCard({ prop, isFav, toggleFavorite }: PropertyCa
           />
           <div>
             <div className="text-[10px] font-bold text-slate-700 leading-none">{prop.agentName}</div>
-            <div className={`text-[8px] font-semibold mt-0.5 uppercase tracking-wider ${
+            <div className={`text-[8px] font-semibold mt-0.5 uppercase tracking-wider flex items-center gap-1 ${
               prop.isPremium ? 'text-amber-600 font-extrabold' : 'text-blue-600 font-medium'
             }`}>
-              {prop.isPremium ? '👑 Premium Agent' : 'Verified Agent'}
+              {prop.isPremium && <CrownIcon className="w-2.5 h-2.5" />}
+              {prop.isPremium ? 'Premium Agent' : 'Verified Agent'}
             </div>
           </div>
         </div>
