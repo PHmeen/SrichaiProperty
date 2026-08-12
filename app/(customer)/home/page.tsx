@@ -5,6 +5,7 @@
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useApp } from '@/context/AppContext';
 import PropertyCard from '@/components/customer/PropertyCard';
@@ -25,6 +26,10 @@ export default function CustomerHomePage() {
   const [locationInput, setLocationInput] = useState('');           // ข้อความค้นหาทำเลที่ตั้ง
   const [propertyType, setPropertyType] = useState('');             // ประเภทอสังหาฯ ที่เลือก ('', 'house', 'townhome', 'condo')
   const [isTypeOpen, setIsTypeOpen] = useState(false);               // สถานะเปิด/ปิด Dropdown เลือกประเภท
+
+  const router = useRouter();
+  const goToSearch = () =>
+    router.push(`/search?tab=${activeTab}&q=${encodeURIComponent(locationInput)}&type=${propertyType || 'all'}`);
 
   // ----------------------------------------------------------------------------
   // 2. GLOBAL CONTEXT (ดึงข้อมูลกลางและฟังก์ชันจาก AppContext)
@@ -150,6 +155,7 @@ export default function CustomerHomePage() {
                     type="text"
                     value={locationInput}
                     onChange={(e) => setLocationInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') goToSearch(); }}
                     placeholder="หาดใหญ่, สงขลา, สะเดา..."
                     className="w-full bg-transparent text-slate-800 font-semibold text-sm outline-none placeholder:text-slate-400"
                   />
@@ -161,8 +167,16 @@ export default function CustomerHomePage() {
               {/* Dropdown ประเภทอสังหาริมทรัพย์ */}
               <div
                 id="property-type-dropdown"
+                role="button"
+                tabIndex={0}
+                aria-haspopup="listbox"
+                aria-expanded={isTypeOpen}
                 className="relative md:w-48 flex items-center px-4 py-2 cursor-pointer select-none"
                 onClick={() => setIsTypeOpen(!isTypeOpen)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsTypeOpen(!isTypeOpen); }
+                  if (e.key === 'Escape') setIsTypeOpen(false);
+                }}
               >
                 <svg className="w-5 h-5 mr-3 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 11.5 12 4l9 7.5" />
@@ -202,7 +216,7 @@ export default function CustomerHomePage() {
 
               {/* ปุ่มกดค้นหา: ส่งค่า Query Params ไปยังหน้า /search */}
               <Link
-                href={`/search?tab=${activeTab}&q=${encodeURIComponent(locationInput)}&type=${propertyType}`}
+                href={`/search?tab=${activeTab}&q=${encodeURIComponent(locationInput)}&type=${propertyType || 'all'}`}
                 className="bg-blue-700 hover:bg-blue-800 text-white rounded-lg px-8 font-semibold transition flex items-center justify-center gap-2 text-sm w-full md:w-auto min-h-[48px]"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
