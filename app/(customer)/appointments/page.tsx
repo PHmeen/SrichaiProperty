@@ -20,6 +20,48 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import ReviewModal from '@/components/customer/ReviewModal';
 
+function CalendarIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="17" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+    </svg>
+  );
+}
+
+function ChatIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12a8 8 0 1 1-3.4-6.5L21 4l-1 4.5A8 8 0 0 1 21 12Z" />
+    </svg>
+  );
+}
+
+function StarIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <path d="M12 2.5l2.9 6 6.6.7-4.9 4.6 1.3 6.5L12 16.9l-5.9 3.4 1.3-6.5-4.9-4.6 6.6-.7L12 2.5Z" />
+    </svg>
+  );
+}
+
+function AlertIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 9v4M12 17h.01" />
+      <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+    </svg>
+  );
+}
+
+function CloseIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  );
+}
+
 interface AppointmentItem {
   id: string;
   propertyId: string;
@@ -169,7 +211,9 @@ export default function AppointmentsPage() {
       {/* 4.1 แบนเนอร์หัวข้อหน้า */}
       <div className="pt-8 pb-6 bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-3">
-          <span className="text-2xl bg-amber-100 text-amber-500 w-12 h-12 flex items-center justify-center rounded-xl shadow-sm">📅</span>
+          <span className="bg-amber-100 text-amber-500 w-12 h-12 flex items-center justify-center rounded-xl shadow-sm">
+            <CalendarIcon className="w-6 h-6" />
+          </span>
           <div>
             <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">ประวัติการนัดหมายของคุณ</h1>
             <p className="text-slate-500 text-xs">จัดการตารางเข้าชมอสังหาริมทรัพย์และติดตามสถานะคิวการยืนยันการนัดหมาย</p>
@@ -263,7 +307,7 @@ export default function AppointmentsPage() {
                     </div>
                     {apt.cancelReason && (
                       <div className="mt-1.5 text-xs bg-red-50 text-red-700 p-2 rounded-lg border border-red-100 font-bold flex items-start gap-1">
-                        <span>💬</span>
+                        <ChatIcon className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                         <span>เหตุผลการยกเลิก: {apt.cancelReason}</span>
                       </div>
                     )}
@@ -289,17 +333,17 @@ export default function AppointmentsPage() {
                           window.location.href = '/chat';
                         }
                       }}
-                      className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg font-bold text-xs transition cursor-pointer"
+                      className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg font-bold text-xs transition cursor-pointer flex items-center gap-1"
                     >
-                      💬 แชทกับนายหน้า
+                      <ChatIcon className="w-3.5 h-3.5" /> แชทกับนายหน้า
                     </button>
 
                     {apt.status === 'completed' && (
-                      <button 
+                      <button
                         onClick={() => setReviewModalApt({ id: String(apt.id), agentName: apt.agentName, propertyName: apt.propertyName })}
                         className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-lg font-black text-xs transition cursor-pointer flex items-center gap-1"
                       >
-                        ⭐ ให้คะแนนการบริการ
+                        <StarIcon className="w-3.5 h-3.5" /> ให้คะแนนการบริการ
                       </button>
                     )}
 
@@ -325,9 +369,11 @@ export default function AppointmentsPage() {
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 border border-slate-100">
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-extrabold text-red-600 text-base flex items-center gap-1.5">
-                <span>🚨</span> ยืนยันการยกเลิกนัดหมาย
+                <AlertIcon className="w-4 h-4" /> ยืนยันการยกเลิกนัดหมาย
               </h3>
-              <button onClick={closeCancelModal} className="text-slate-400 hover:text-slate-600 font-bold text-lg cursor-pointer">✕</button>
+              <button onClick={closeCancelModal} className="text-slate-400 hover:text-slate-600 font-bold text-lg cursor-pointer">
+                <CloseIcon className="w-4 h-4" />
+              </button>
             </div>
 
             <div>
