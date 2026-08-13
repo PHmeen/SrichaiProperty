@@ -246,19 +246,19 @@ export default function AgentAddPropertyPage() {
 
             <div className="grid grid-cols-4 gap-2 bg-slate-50 p-3 rounded-xl border text-center">
               <div>
-                <label className="block text-[9px] font-bold text-slate-500 mb-1">🛏️ ห้องนอน</label>
+                <label className="block text-[9px] font-bold text-slate-500 mb-1"> ห้องนอน</label>
                 <input type="number" min="0" value={f.bedrooms} onChange={e => setF({ ...f, bedrooms: e.target.value })} className="w-full bg-white border rounded-lg p-1.5 text-center font-bold text-xs" />
               </div>
               <div>
-                <label className="block text-[9px] font-bold text-slate-500 mb-1">🚿 ห้องน้ำ</label>
+                <label className="block text-[9px] font-bold text-slate-500 mb-1"> ห้องน้ำ</label>
                 <input type="number" min="0" value={f.bathrooms} onChange={e => setF({ ...f, bathrooms: e.target.value })} className="w-full bg-white border rounded-lg p-1.5 text-center font-bold text-xs" />
               </div>
               <div>
-                <label className="block text-[9px] font-bold text-slate-500 mb-1">🚗 ที่จอดรถ</label>
+                <label className="block text-[9px] font-bold text-slate-500 mb-1"> ที่จอดรถ</label>
                 <input type="number" min="0" value={f.parking} onChange={e => setF({ ...f, parking: e.target.value })} className="w-full bg-white border rounded-lg p-1.5 text-center font-bold text-xs" />
               </div>
               <div>
-                <label className="block text-[9px] font-bold text-slate-500 mb-1">🏢 จำนวนชั้น</label>
+                <label className="block text-[9px] font-bold text-slate-500 mb-1"> จำนวนชั้น</label>
                 <input type="number" min="0" value={f.floors} onChange={e => setF({ ...f, floors: e.target.value })} className="w-full bg-white border rounded-lg p-1.5 text-center font-bold text-xs" />
               </div>
             </div>
