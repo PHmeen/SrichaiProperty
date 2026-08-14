@@ -31,6 +31,11 @@ export default function AdminModerationPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [listingTypeFilter, setListingTypeFilter] = useState<'all' | 'sale' | 'rent'>('all');
+  const [sortBySla, setSortBySla] = useState(false);
+
+  const displayedProperties = sortBySla
+    ? [...properties].sort((a, b) => a.slaMinutesLeft - b.slaMinutesLeft)
+    : properties;
 
   const fetchProperties = (status: string, listingType: string) => {
     const query = listingType === 'all' ? '' : `&listingType=${listingType}`;
@@ -144,7 +149,12 @@ export default function AdminModerationPage() {
                 <option value="sale">เฉพาะขาย</option>
                 <option value="rent">เฉพาะเช่า</option>
               </select>
-              <button className="bg-white border border-slate-200 text-slate-600 font-bold py-2 px-4 rounded-lg text-xs hover:bg-slate-50 transition shadow-sm">เรียงตาม SLA (ด่วนสุด)</button>
+              <button
+                onClick={() => setSortBySla((prev) => !prev)}
+                className={`border font-bold py-2 px-4 rounded-lg text-xs transition shadow-sm ${sortBySla ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+              >
+                เรียงตาม SLA (ด่วนสุด)
+              </button>
             </div>
           </div>
 
@@ -153,7 +163,7 @@ export default function AdminModerationPage() {
                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
                <p className="text-slate-500 font-bold">กำลังโหลดคิวประกาศ...</p>
              </div>
-          ) : properties.length === 0 ? (
+          ) : displayedProperties.length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm">
               <div className="text-4xl mb-4">🏠</div>
               <h3 className="text-lg font-bold text-slate-700 mb-1">ไม่พบรายการประกาศ</h3>
@@ -161,7 +171,7 @@ export default function AdminModerationPage() {
             </div>
           ) : (
             <div className="space-y-5">
-              {properties.map((property) => (
+              {displayedProperties.map((property) => (
                 <div key={property.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow">
                   {/* Left Color Bar */}
                   <div className="flex">
