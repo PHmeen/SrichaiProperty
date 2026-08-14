@@ -43,7 +43,7 @@ function BookAppointmentForm() {
   const [note, setNote] = useState('');                                         // ข้อความเพิ่มเติมถึงนายหน้า
   const [submitting, setSubmitting] = useState(false);                          // สถานะกำลังส่งข้อมูล (ป้องกันการกดซ้ำ)
   const [holidays, setHolidays] = useState<string[]>([]);                       // รายการวันหยุดประจำปี
-  const [viewingSlots, setViewingSlots] = useState<{ date: string; timeSlot: string; isBooked: boolean }[]>([]); // รอบเวลาที่เปิดว่างจริง
+  const [viewingSlots, setViewingSlots] = useState<{ date: string; timeSlot: string; isBooked: boolean; agentBusyElsewhere: boolean }[]>([]); // รอบเวลาที่เปิดว่างจริง
   const [slotsLoading, setSlotsLoading] = useState(true);                       // สถานะกำลังดึงข้อมูลรอบเวลา
 
   // ----------------------------------------------------------------------------
@@ -90,8 +90,8 @@ function BookAppointmentForm() {
   // 5. COMPUTED & MEMOIZED VALUES
   // ----------------------------------------------------------------------------
   // 5.1 รายชื่อวันที่ที่มีอย่างน้อย 1 รอบเวลาว่างและยังไม่มีคนจอง (นำไปไฮไลต์ในปฏิทิน)
-  const availableDates = useMemo(() => 
-    Array.from(new Set(viewingSlots.filter((s) => !s.isBooked).map((s) => s.date)))
+  const availableDates = useMemo(() =>
+    Array.from(new Set(viewingSlots.filter((s) => !s.isBooked && !s.agentBusyElsewhere).map((s) => s.date)))
   , [viewingSlots]);
 
   // 5.2 กรองเฉพาะรอบเวลาของ "วันที่ที่เลือกอยู่ปัจจุบัน"
@@ -248,7 +248,10 @@ function BookAppointmentForm() {
                     { key: 'afternoon', title: 'รอบบ่าย', time: '13:00 - 17:00', fullText: 'รอบบ่าย (13:00 - 17:00 น.)', slot: afternoonSlot },
                   ].map(({ key, title, time, fullText, slot }) => {
                     const isSelected = selectedTimeSlot.includes(title);
-                    const isDisabled = !slot || slot.isBooked;
+                    // 🔑 KEYWORD: ปิดรอบที่นายหน้าติดนัดบ้านหลังอื่น
+                    // นายหน้าเปิดวันว่างซ้อนกันได้หลายบ้าน แต่ไปนำชมได้ทีละที่ — ถ้ามีนัดจริงกับบ้านหลังอื่น
+                    // ชนวัน+เวลานี้อยู่แล้ว ต้องปิดไม่ให้ลูกค้ากดจองซ้ำ (server กันซ้ำอยู่แล้ว แต่บอกไว้ก่อนดีกว่า)
+                    const isDisabled = !slot || slot.isBooked || slot.agentBusyElsewhere;
 
                     return (
                       <button
@@ -272,6 +275,8 @@ function BookAppointmentForm() {
                           <span className="bg-slate-100 text-slate-400 px-2 py-0.5 rounded text-[8px] font-bold">เลือกวันก่อน</span>
                         ) : slot?.isBooked ? (
                           <span className="bg-red-50 text-red-500 px-2 py-0.5 rounded text-[8px] font-bold">มีคนจองแล้ว</span>
+                        ) : slot?.agentBusyElsewhere ? (
+                          <span className="bg-amber-50 text-amber-600 px-2 py-0.5 rounded text-[8px] font-bold">นายหน้าติดนัดบ้านหลังอื่น</span>
                         ) : slot ? (
                           <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[8px] font-bold">✓ ว่างให้จอง</span>
                         ) : (

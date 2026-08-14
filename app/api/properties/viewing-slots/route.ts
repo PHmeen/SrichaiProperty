@@ -81,10 +81,32 @@ export async function GET(req: Request) {
     // (บ้านที่เพิ่งสร้างใหม่ ไม่เคยมีใครจอง กลับขึ้นว่า "ถูกจองแล้ว" เพราะบ้านหลังอื่นของนายหน้าคนเดิมถูกจอง)
     // ตามแผนเดิมที่ตกลงไว้ว่าจะเลิกใช้ระบบ agent_availabilities ทั้งหมด จึงตัดส่วนนี้ออก
     // เหลือใช้แค่ property_viewing_slots ซึ่งผูกกับ property_id ตรงตัวเท่านั้น
-    const propertySlots = await db.property_viewing_slots.findMany({
-      where: { property_id: propertyId },
-      orderBy: [{ available_date: "asc" }, { time_slot: "asc" }]
-    });
+    const [propertySlots, property] = await Promise.all([
+      db.property_viewing_slots.findMany({
+        where: { property_id: propertyId },
+        orderBy: [{ available_date: "asc" }, { time_slot: "asc" }]
+      }),
+      db.properties.findUnique({ where: { id: propertyId }, select: { agent_id: true } })
+    ]);
+
+    // 🔑 KEYWORD: เตือนลูกค้าว่านายหน้าติดนัดบ้านหลังอื่น
+    // นายหน้าเปิดวันว่างซ้อนกันได้หลายบ้าน (ดู viewingSlotService) รอบไหนของบ้านหลังนี้
+    // ที่ตรงกับนัดจริงของนายหน้าคนเดียวกันที่บ้านหลังอื่น ต้องบอกลูกค้าไว้ก่อนกดจอง
+    // (ฝั่งเซิร์ฟเวอร์กันซ้ำอยู่แล้วที่ api/appointments แต่ฝั่งนี้ทำให้ลูกค้าไม่เสียเวลากดแล้วโดนปฏิเสธ)
+    let agentBusyKeys = new Set<string>();
+    if (property?.agent_id) {
+      const busyAppointments = await db.appointments.findMany({
+        where: {
+          agent_id: property.agent_id,
+          property_id: { not: propertyId },
+          status: { in: ACTIVE_APPOINTMENT_STATUSES }
+        },
+        select: { appointment_date: true, time_slot: true }
+      });
+      agentBusyKeys = new Set(
+        busyAppointments.map((a) => `${toDateKey(a.appointment_date)}|${a.time_slot}`)
+      );
+    }
 
     const formatted = propertySlots
       .filter((s) => s.time_slot)
@@ -92,7 +114,8 @@ export async function GET(req: Request) {
         id: s.id,
         date: toDateKey(s.available_date),
         timeSlot: s.time_slot as string,
-        isBooked: Boolean(s.is_booked)
+        isBooked: Boolean(s.is_booked),
+        agentBusyElsewhere: agentBusyKeys.has(`${toDateKey(s.available_date)}|${s.time_slot}`)
       }));
 
     return NextResponse.json({ success: true, slots: formatted });
