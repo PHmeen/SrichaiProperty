@@ -478,25 +478,24 @@ export default function AgentAddPropertyPage() {
 
                   // 🔑 KEYWORD: วันที่ชนกับบ้านหลังอื่นในปฏิทิน
                   // busyCount = จำนวนรอบที่บ้านหลังอื่นของเราเปิดไว้ในวันนี้ (0, 1 หรือ 2)
-                  // 2 = เต็มทั้งเช้าและบ่าย → กดวันนี้ไม่ได้เลย · 1 = ยังเหลืออีกรอบให้เลือกได้
+                  // แค่ไว้เตือนเฉยๆ ไม่ได้บล็อกไม่ให้เปิดซ้อน — นายหน้าเปิดวันเดียวกันได้หลายบ้าน
+                  // ระบบล็อกจริงจะทำงานตอนมีลูกค้ากดจองรอบใดรอบหนึ่งแล้วเท่านั้น
                   const busyCount = countBusyOnDate(dateStr);
-                  const isFullyBusy = busyCount >= 2;
-                  const isPartlyBusy = busyCount === 1;
+                  const isBusy = busyCount > 0;
 
                   let dayClass = "w-8 h-8 flex items-center justify-center mx-auto rounded-full transition-all ";
                   if (isPast) dayClass += "text-slate-200 cursor-not-allowed";
-                  else if (isFullyBusy) dayClass += "bg-slate-200 text-slate-500 cursor-not-allowed line-through decoration-slate-500 ring-1 ring-slate-300";
                   else if (isSelected) dayClass += "bg-blue-600 text-white shadow-md active:scale-95 cursor-pointer";
                   else if (hasSlots) dayClass += "border border-emerald-400 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 cursor-pointer";
-                  else if (isPartlyBusy) dayClass += "border border-dashed border-slate-400 text-slate-500 bg-slate-50 hover:bg-slate-100 cursor-pointer";
+                  else if (isBusy) dayClass += "border border-dashed border-slate-400 text-slate-500 bg-slate-50 hover:bg-slate-100 cursor-pointer";
                   else dayClass += "text-slate-500 hover:bg-slate-50 cursor-pointer";
 
                   return (
                     <button
                       key={dayNum}
                       type="button"
-                      disabled={isPast || isFullyBusy}
-                      title={isFullyBusy ? 'บ้านหลังอื่นของคุณเปิดวันนี้ไว้ครบทั้งเช้าและบ่ายแล้ว' : undefined}
+                      disabled={isPast}
+                      title={isBusy ? 'คุณเปิดให้เข้าชมบ้านหลังอื่นไว้วันนี้ด้วย เลือกได้ตามปกติ' : undefined}
                       onClick={() => setSelectedCalDate(dateStr)}
                       className={dayClass}
                     >
@@ -513,29 +512,28 @@ export default function AgentAddPropertyPage() {
                     {(['morning', 'afternoon'] as const).map(slot => {
                       const active = getSlotsForDate(selectedCalDate).some(s => s.timeSlot === slot);
 
-                      // 🔑 KEYWORD: ปิดรอบที่บ้านหลังอื่นเปิดไว้แล้ว
-                      // ถ้ารอบนี้ชนกับบ้านหลังอื่นของเราเอง ต้องกดไม่ได้ + บอกไปเลยว่าไปชนกับหลังไหน
+                      // 🔑 KEYWORD: เตือนรอบที่บ้านหลังอื่นเปิดไว้แล้ว
+                      // แค่เตือนว่าไปชนกับบ้านหลังไหน ไม่ได้ปิดไม่ให้กด — เปิดซ้อนกันได้ตามปกติ
                       const busy = getBusySlot(selectedCalDate, slot);
 
                       return (
                         <button
                           key={slot}
                           type="button"
-                          disabled={Boolean(busy)}
                           onClick={() => toggleViewingSlot(selectedCalDate, slot)}
-                          className={`p-3 rounded-xl border text-left transition ${
-                            busy
-                              ? 'border-slate-200 bg-slate-50 cursor-not-allowed opacity-70'
-                              : active
-                                ? 'border-emerald-400 bg-emerald-50 cursor-pointer'
-                                : 'border-slate-200 hover:border-blue-400 cursor-pointer'
+                          className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                            active
+                              ? 'border-emerald-400 bg-emerald-50'
+                              : busy
+                                ? 'border-dashed border-slate-300 bg-slate-50 hover:border-blue-400'
+                                : 'border-slate-200 hover:border-blue-400'
                           }`}
                         >
-                          <p className={`text-[11px] font-black ${busy ? 'text-slate-400' : 'text-slate-800'}`}>{slot === 'morning' ? 'รอบเช้า' : 'รอบบ่าย'}</p>
+                          <p className="text-[11px] font-black text-slate-800">{slot === 'morning' ? 'รอบเช้า' : 'รอบบ่าย'}</p>
                           <p className="text-[9px] text-slate-500 font-bold">{slot === 'morning' ? '09:00 - 12:00' : '13:00 - 17:00'}</p>
                           {busy ? (
                             <p className="text-[9px] font-black mt-1 text-amber-600 leading-tight">
-                              🔒 ติดนัดที่ &quot;{busy.propertyTitle}&quot; แล้ว
+                              ℹ️ เปิดไว้ที่ &quot;{busy.propertyTitle}&quot; ด้วย
                             </p>
                           ) : (
                             <p className={`text-[9px] font-black mt-1 ${active ? 'text-emerald-600' : 'text-slate-400'}`}>
@@ -553,8 +551,7 @@ export default function AgentAddPropertyPage() {
               <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 mt-4 pt-3 border-t border-slate-100 text-[9px] font-bold text-slate-400">
                 <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-emerald-400" /> เปิดว่างไว้</span>
                 <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-600" /> เลือกอยู่</span>
-                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-dashed border-slate-400" /> บ้านหลังอื่นเปิดไว้บางรอบ</span>
-                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-300 ring-1 ring-slate-400" /> บ้านหลังอื่นเปิดครบแล้ว (เลือกไม่ได้)</span>
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-dashed border-slate-400" /> เปิดให้บ้านหลังอื่นด้วย (เลือกซ้อนได้ปกติ)</span>
               </div>
             </div>
 
@@ -566,7 +563,8 @@ export default function AgentAddPropertyPage() {
 
             {agentBusySlots.length > 0 && (
               <p className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 leading-relaxed">
-                ℹ️ วันที่เป็นเส้นประหรือถูกขีดฆ่า คือวันที่คุณเปิดให้เข้าชม<strong>บ้านหลังอื่น</strong>ไว้แล้ว เลือกซ้อนไม่ได้เพราะคุณไปนำชมได้ทีละที่
+                ℹ️ วันที่เป็นเส้นประ คือวันที่คุณเปิดให้เข้าชม<strong>บ้านหลังอื่น</strong>ไว้แล้ว เลือกซ้อนกันได้ตามปกติ
+                ระบบจะล็อกให้อัตโนมัติก็ต่อเมื่อมีลูกค้ากดจองรอบใดรอบหนึ่งจริงๆ เท่านั้น
               </p>
             )}
           </div>
