@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next'; // ดึงเซสชันเพื่อระบุตัวนายหน้าที่ล็อกอินอยู่
 import { authOptions } from '@/lib/authOptions'; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
 import { db } from '@/lib/db'; // ไคลเอนต์ Prisma สำหรับดึงข้อมูลของนายหน้าในหน้าพอร์ทัล
-import { findPropertiesWithLowSlots } from '@/lib/services/slotAvailabilityService'; // หาบ้านที่วันว่างใกล้หมด ไว้เตือนนายหน้า
+import { findPropertiesWithLowSlots, findRecentlyAlertedPropertyIds, SLOT_ALERT_TYPE } from '@/lib/services/slotAvailabilityService'; // หาบ้านที่วันว่างใกล้หมด ไว้เตือนนายหน้า
 import { notifyUser } from '@/lib/notify'; // สร้างการแจ้งเตือน + ยิง Pusher ให้เห็นทันที
 
 /**
@@ -160,8 +160,14 @@ export async function GET(request: Request) {
       // 🔑 KEYWORD: เตือนนายหน้าเปิดวันว่างเพิ่ม
       // 2.8 เช็คว่ามีบ้านหลังไหนวันว่างใกล้หมดไหม แล้วส่งการแจ้งเตือนให้เปิดรอบเพิ่ม
       // เช็คตอนนายหน้าเปิดหน้าแรก (ไม่ต้องตั้ง cron job แยก) — ระบบเห็นตอนเขาเข้ามาใช้งานพอดี
-      const lowSlotProperties = await findPropertiesWithLowSlots(agent.id);
+      const [lowSlotProperties, alreadyAlertedIds] = await Promise.all([
+        findPropertiesWithLowSlots(agent.id),
+        findRecentlyAlertedPropertyIds(agent.id) // กันเตือนซ้ำหลังเดิมภายใน 24 ชม.
+      ]);
+
       for (const p of lowSlotProperties) {
+        if (alreadyAlertedIds.has(p.propertyId)) continue;
+
         const detail = p.remainingSlots === 0
           ? 'ไม่เหลือรอบว่างให้ลูกค้าจองแล้ว'
           : `เหลือรอบว่างให้จองอีกเพียง ${p.remainingSlots} รอบ (ถึงวันที่ ${p.lastAvailableDate})`;
@@ -170,10 +176,9 @@ export async function GET(request: Request) {
           userId: agent.id,
           title: 'วันว่างเข้าชมใกล้หมดแล้ว',
           content: `ประกาศ "${p.title}" ${detail} แนะนำให้เปิดวันว่างเพิ่มเพื่อไม่ให้พลาดลูกค้า`,
-          type: 'viewing_slot',
+          type: SLOT_ALERT_TYPE,
           linkUrl: `/agent/edit-property/${p.propertyId}`
         }).catch(() => {}); // แจ้งเตือนล้มเหลวไม่ควรทำให้หน้าแรกโหลดไม่ขึ้น
-
       }
 
       // 2.9 ตรวจสอบสถานะแพ็กเกจสมาชิกแบบ Pro Agent (เช็คว่ายังไม่หมดอายุ)

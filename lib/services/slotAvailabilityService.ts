@@ -7,6 +7,12 @@ export const LOW_SLOT_THRESHOLD = 3;
 /** นับเฉพาะรอบที่อยู่ภายในกี่วันข้างหน้า (ไกลกว่านี้ลูกค้ายังไม่ค่อยจอง) */
 export const SLOT_LOOKAHEAD_DAYS = 30;
 
+/** เตือนบ้านหลังเดิมซ้ำได้เร็วสุดกี่ชั่วโมง (กันกระดิ่งท่วมเวลานายหน้ารีเฟรชหน้าแรกบ่อยๆ) */
+export const SLOT_ALERT_COOLDOWN_HOURS = 24;
+
+/** ชนิดของการแจ้งเตือนเรื่องวันว่าง ใช้ทั้งตอนสร้างและตอนเช็คว่าเคยเตือนไปแล้วหรือยัง */
+export const SLOT_ALERT_TYPE = 'viewing_slot';
+
 export interface LowSlotProperty {
   propertyId: string;
   title: string;
@@ -68,4 +74,35 @@ export async function findPropertiesWithLowSlots(
       };
     })
     .filter((p) => p.remainingSlots < LOW_SLOT_THRESHOLD);
+}
+
+/**
+ * คืนรายชื่อ propertyId ที่เพิ่งเตือนไปแล้วภายใน SLOT_ALERT_COOLDOWN_HOURS ชั่วโมง
+ *
+ * จำเป็นเพราะการเช็คทำงานทุกครั้งที่นายหน้าเปิดหน้าแรก ถ้าไม่กันไว้
+ * แค่รีเฟรช 10 ครั้งก็ได้แจ้งเตือนซ้ำ 10 อัน กระดิ่งจะใช้งานไม่ได้เลย
+ *
+ * ดูจาก link_url ของการแจ้งเตือนเดิม เพราะเก็บ propertyId อยู่ในนั้นอยู่แล้ว
+ * (ตาราง notifications ไม่มีคอลัมน์อ้างอิงบ้านโดยตรง)
+ */
+export async function findRecentlyAlertedPropertyIds(
+  agentId: string,
+  now: Date = new Date()
+): Promise<Set<string>> {
+  const cooldownSince = new Date(now.getTime() - SLOT_ALERT_COOLDOWN_HOURS * 60 * 60 * 1000);
+
+  const recentAlerts = await db.notifications.findMany({
+    where: {
+      user_id: agentId,
+      type: SLOT_ALERT_TYPE,
+      created_at: { gte: cooldownSince }
+    },
+    select: { link_url: true }
+  });
+
+  return new Set(
+    recentAlerts
+      .map((n) => n.link_url?.split('/').pop())
+      .filter((id): id is string => Boolean(id))
+  );
 }
