@@ -200,6 +200,7 @@ export async function GET(request: Request) {
           price: '฿' + Number(p.price).toLocaleString(),
           createdAt: p.created_at
         })),
+        lowSlotProperties,         // บ้านที่วันว่างใกล้หมด (เอาไปขึ้นแถบเตือนบนหน้าแรก)
         appointments: formattedApts // รายการนัดหมายที่จัดรูปแบบแล้ว
       });
     }

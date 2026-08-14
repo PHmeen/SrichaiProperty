@@ -73,6 +73,7 @@ export default function AgentHomePage() {
     totalViews: number;
     pendingChatCount: number;
     appointments: AppointmentData[];
+    lowSlotProperties?: { propertyId: string; title: string; remainingSlots: number; lastAvailableDate: string | null }[];
   } | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -139,6 +140,7 @@ export default function AgentHomePage() {
 
   const pendingApprovalCount = dbData?.pendingApprovalCount || 0;
   const pendingChatCount = dbData?.pendingChatCount || 0;
+  const lowSlotProperties = dbData?.lowSlotProperties || [];
 
   return (
     <div className="pt-16 min-h-screen bg-slate-50/50 text-slate-800 text-xs md:text-sm font-sans antialiased">
@@ -146,6 +148,42 @@ export default function AgentHomePage() {
 
         {/* Banner แจ้งเตือนรออนุมัติ */}
         <PendingApprovalBanner pendingCount={pendingApprovalCount} />
+
+        {/* 🔑 KEYWORD: แถบเตือนวันว่างใกล้หมดหน้าแรก */}
+        {/* เตือนซ้ำอีกชั้นนอกกระดิ่ง เพราะถ้ารอให้นายหน้ากดกระดิ่งเองอาจไม่ทันเสียลูกค้าไปแล้ว */}
+        {lowSlotProperties.length > 0 && (
+          <section className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-base">📅</span>
+              <h3 className="font-black text-amber-800 text-xs">
+                วันว่างเข้าชมใกล้หมดแล้ว {lowSlotProperties.length} ประกาศ
+              </h3>
+            </div>
+            <p className="text-[11px] text-amber-700 font-medium leading-relaxed">
+              ลูกค้าจะจองเข้าชมไม่ได้ถ้าไม่มีรอบว่างเหลือ แนะนำให้เปิดวันว่างเพิ่ม
+            </p>
+            <ul className="space-y-1.5">
+              {lowSlotProperties.map((p) => (
+                <li key={p.propertyId} className="flex items-center justify-between gap-3 bg-white border border-amber-100 rounded-xl px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-extrabold text-slate-800 line-clamp-1">{p.title}</p>
+                    <p className="text-[10px] font-bold text-amber-600">
+                      {p.remainingSlots === 0
+                        ? 'ไม่เหลือรอบว่างให้จองแล้ว'
+                        : `เหลือ ${p.remainingSlots} รอบ (ถึง ${p.lastAvailableDate})`}
+                    </p>
+                  </div>
+                  <Link
+                    href={`/agent/edit-property/${p.propertyId}`}
+                    className="shrink-0 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-lg text-[10px] transition"
+                  >
+                    เปิดวันว่างเพิ่ม
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* Welcome Header */}
         <section className="bg-gradient-to-r from-blue-700 via-blue-800 to-slate-900 rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-blue-900/10 space-y-2">
