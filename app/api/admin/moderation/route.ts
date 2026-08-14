@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db'; // ไคลเอนต์ Prisma สำหรับดึงประกาศตามสถานะการตรวจสอบ
 import { getServerSession } from 'next-auth/next'; // ดึงเซสชันเพื่อยืนยันสิทธิ์ admin
 import { authOptions } from '@/lib/authOptions'; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
+import { calculateModerationSla } from '@/lib/services/slaService'; // สูตรคำนวณ SLA ใช้ร่วมกับหน้า dashboard
 
 interface AdminSession {
   user?: {
@@ -53,6 +54,7 @@ export async function GET(req: Request) {
     const formattedProperties = properties.map((p) => {
       const allImages = p.property_images.map((img) => img.image_url);
       const mainImage = allImages[0] || null;
+      const slaInfo = calculateModerationSla(p.created_at);
 
       return {
         id: p.id,
@@ -71,7 +73,10 @@ export async function GET(req: Request) {
         createdAt: p.created_at,
         image: mainImage,
         images: allImages,
-        imageCount: allImages.length
+        imageCount: allImages.length,
+        slaLabel: slaInfo.label,
+        slaLevel: slaInfo.level,
+        slaMinutesLeft: slaInfo.minutesLeft
       };
     });
 
