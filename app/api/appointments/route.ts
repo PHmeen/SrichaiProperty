@@ -218,7 +218,7 @@ export async function PATCH(request: Request) {
     const user = await getAuthUser();
     if (!user) return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อน" }, { status: 401 });
 
-    const { id, action, date, timeSlot } = await request.json();
+    const { id, action, date, timeSlot, reason } = await request.json();
     if (!id) return NextResponse.json({ error: "กรุณาระบุรหัสนัดหมาย" }, { status: 400 });
 
     // 3.2 ค้นหาข้อมูลนัดหมายที่จะแก้ไข
@@ -254,11 +254,26 @@ export async function PATCH(request: Request) {
 
       if (appointment.status !== "pending") return NextResponse.json({ error: "นัดหมายนี้ถูกดำเนินการไปแล้ว" }, { status: 400 });
 
+      // 🔑 KEYWORD: เหตุผลที่นายหน้าปฏิเสธนัด
+      // ปฏิเสธต้องระบุเหตุผลเสมอ เพื่อให้ลูกค้ารู้ว่าทำไมถึงไม่ได้ และตัดสินใจจองรอบใหม่ได้ถูก
+      const rejectReason = typeof reason === "string" ? reason.trim() : "";
+      if (action === "reject" && !rejectReason) {
+        return NextResponse.json({ error: "กรุณาระบุเหตุผลในการปฏิเสธนัดหมาย" }, { status: 400 });
+      }
+
       // นายหน้าอนุมัติ (approved) หรือ ปฏิเสธ (rejected)
       const newStatus = action === "confirm" ? "approved" : "rejected";
-      const updated = await db.appointments.update({ where: { id }, data: { status: newStatus } });
+      const updated = await db.appointments.update({
+        where: { id },
+        data: {
+          status: newStatus,
+          ...(action === "reject" ? { cancel_reason: rejectReason } : {})
+        }
+      });
 
       // กรณีปฏิเสธ -> ปลดล็อกรอบเวลานัดหมายให้ผู้ใช้อื่นจองได้ต่อไป (is_booked = false)
+      // หมายเหตุ: การกันนายหน้ารับนัดชนข้ามบ้าน (hasAgentBookingConflict) ผูกกับ "สถานะนัด"
+      // พอสถานะเปลี่ยนเป็น rejected แล้ว รอบนี้จะหลุดจากการกันชนเองอัตโนมัติ ไม่ต้องปลดเพิ่ม
       if (action === "reject" && appointment.property_id) {
         await db.property_viewing_slots.updateMany({
           where: { property_id: appointment.property_id, available_date: appointment.appointment_date, time_slot: appointment.time_slot ?? undefined },
