@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next"; // ดึงเซสชันเพื่อยืนยันว่าเป็นนายหน้าเจ้าของบ้าน
 import { authOptions } from "@/lib/authOptions"; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
 import { db } from "@/lib/db"; // ไคลเอนต์ Prisma สำหรับจัดการรอบวันว่างให้เข้าชม
+import { ACTIVE_APPOINTMENT_STATUSES } from "@/lib/services/viewingSlotService"; // สถานะนัดหมายที่ยังถือว่า "จองอยู่จริง"
 
 interface AgentSession {
   user?: {
@@ -24,11 +25,11 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const propertyId = searchParams.get("propertyId");
 
-    // 🔑 KEYWORD: ดึงวันว่างที่บ้านหลังอื่นเปิดไว้แล้ว
+    // 🔑 KEYWORD: ดึงรอบที่นายหน้าติดนัดกับบ้านหลังอื่นแล้ว
     // โหมดพิเศษ: /api/properties/viewing-slots?agentBusy=1[&excludePropertyId=xxx]
-    // ใช้ตอนนายหน้าเปิดหน้า "ลงประกาศ" หรือ "แก้ไขประกาศ" เพื่อรู้ล่วงหน้าว่าตัวเองเปิดรอบไหนไว้ที่บ้านหลังอื่นแล้ว
-    // เดิมหน้าเว็บไม่รู้เรื่องนี้ นายหน้าจึงกดเลือกวันที่ชนได้ตามปกติ แล้วรอบนั้นถูกกรองทิ้งเงียบๆ ตอนบันทึก
-    // (ลงประกาศสำเร็จ แต่ลูกค้ากลับจองรอบนั้นไม่ได้ เพราะไม่เคยถูกบันทึกลงฐานข้อมูลจริง)
+    // ใช้ตอนนายหน้าเปิดหน้า "ลงประกาศ" หรือ "แก้ไขประกาศ" เพื่อรู้ล่วงหน้าว่าตัวเองมีนัดชนกับบ้านหลังอื่นวันไหนแล้ว
+    // เดิมดึงจาก "วันว่างที่เปิดไว้" (property_viewing_slots) แต่ตอนนี้เปิดวันว่างซ้อนกันได้ตามปกติแล้ว
+    // เปลี่ยนมาดึงจาก "นัดหมายที่มีคนจองจริง" (appointments) แทน เพราะนั่นคือจุดล็อกจริงของระบบ
     if (searchParams.get("agentBusy")) {
       const session = (await getServerSession(authOptions)) as AgentSession | null;
       if (!session?.user?.id || session.user.role !== "agent") {
@@ -38,28 +39,29 @@ export async function GET(req: Request) {
         );
       }
 
-      // ไม่นับบ้านหลังที่กำลังแก้ไขอยู่ (ไม่งั้นรอบที่ตัวเองเปิดไว้อยู่แล้วจะขึ้นว่า "ชนกับตัวเอง")
+      // ไม่นับบ้านหลังที่กำลังแก้ไขอยู่ (ไม่งั้นนัดของบ้านหลังนี้เองจะขึ้นว่า "ชนกับตัวเอง")
       const excludePropertyId = searchParams.get("excludePropertyId");
 
-      const busySlots = await db.property_viewing_slots.findMany({
+      const busyAppointments = await db.appointments.findMany({
         where: {
-          properties: { agent_id: session.user.id }, // เฉพาะบ้านของนายหน้าคนที่ล็อกอินอยู่
+          agent_id: session.user.id, // เฉพาะนัดของนายหน้าคนที่ล็อกอินอยู่
+          status: { in: ACTIVE_APPOINTMENT_STATUSES },
           ...(excludePropertyId ? { property_id: { not: excludePropertyId } } : {})
         },
         select: {
-          available_date: true,
+          appointment_date: true,
           time_slot: true,
           properties: { select: { title: true } } // เอาชื่อบ้านมาบอกด้วยว่าไปชนกับหลังไหน
         },
-        orderBy: [{ available_date: "asc" }, { time_slot: "asc" }]
+        orderBy: [{ appointment_date: "asc" }, { time_slot: "asc" }]
       });
 
-      const formatted = busySlots
-        .filter((s) => s.time_slot)
-        .map((s) => ({
-          date: toDateKey(s.available_date),
-          timeSlot: s.time_slot as string,
-          propertyTitle: s.properties?.title || "บ้านหลังอื่นของคุณ"
+      const formatted = busyAppointments
+        .filter((a) => a.time_slot)
+        .map((a) => ({
+          date: toDateKey(a.appointment_date),
+          timeSlot: a.time_slot as string,
+          propertyTitle: a.properties?.title || "บ้านหลังอื่นของคุณ"
         }));
 
       return NextResponse.json({ success: true, busySlots: formatted });

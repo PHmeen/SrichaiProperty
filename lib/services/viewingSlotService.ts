@@ -2,7 +2,7 @@
 import { db } from '@/lib/db';
 
 /** สถานะนัดหมายที่ยัง "จองอยู่จริง" — กันชนเฉพาะนัดที่ยังไม่ถูกยกเลิก/ปฏิเสธ/ปิดงาน */
-const ACTIVE_APPOINTMENT_STATUSES = ['pending', 'approved'];
+export const ACTIVE_APPOINTMENT_STATUSES = ['pending', 'approved'];
 
 /**
  * เช็คว่านายหน้าคนนี้มีนัดหมายที่ยัง active อยู่แล้วในวัน+เวลานี้ กับ "บ้านหลังอื่น" หรือไม่
