@@ -4,7 +4,6 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next"; // ดึงเซสชันเพื่อยืนยันว่าเป็นนายหน้าเจ้าของบ้าน
 import { authOptions } from "@/lib/authOptions"; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
 import { db } from "@/lib/db"; // ไคลเอนต์ Prisma สำหรับจัดการรอบวันว่างให้เข้าชม
-import { hasAgentSlotConflict } from "@/lib/services/viewingSlotService"; // ตรวจสอบว่ารอบเวลาที่เปิดใหม่ชนกับบ้านหลังอื่นของนายหน้าคนเดียวกันหรือไม่
 
 interface AgentSession {
   user?: {
@@ -136,15 +135,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // กันไม่ให้เปิดวันว่างซ้อนกับ "บ้านหลังอื่น" ของนายหน้าคนเดียวกัน
-    // (ถ้าปล่อยให้เปิดซ้อน ลูกค้า 2 คนจะจองคนละบ้านแต่เวลาเดียวกันได้ ทั้งที่นายหน้าไปได้แค่ที่เดียว)
-    if (await hasAgentSlotConflict(session.user.id, propertyId, new Date(date), timeSlot)) {
-      return NextResponse.json(
-        { error: "คุณเปิดวันว่างช่วงเวลานี้ไว้ที่บ้านหลังอื่นแล้ว ไม่สามารถเปิดซ้อนกันได้" },
-        { status: 400 }
-      );
-    }
-
+    // ไม่กันชนกับบ้านหลังอื่นตรงนี้แล้ว — เปิดวันว่างซ้อนกันหลายบ้านได้ตามปกติ
+    // จุดกันชนจริงย้ายไปเช็คตอนลูกค้ากดจอง (ดู hasAgentBookingConflict ใน api/appointments)
     const slot = await db.property_viewing_slots.upsert({
       where: {
         property_id_available_date_time_slot: {

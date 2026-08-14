@@ -1,31 +1,5 @@
-// 🔑 KEYWORD: กันนายหน้าเปิดวันว่างชนกันข้ามบ้าน
+// 🔑 KEYWORD: กันนายหน้ารับนัดชนกันข้ามบ้าน
 import { db } from '@/lib/db';
-
-/**
- * เช็คว่านายหน้าคนนี้เปิดวันว่างช่วงเวลานี้ไว้ที่ "บ้านหลังอื่น" อยู่แล้วหรือยัง
- * ป้องกันนายหน้าคนเดียวเปิดวันว่างซ้อนกันข้ามประกาศ (ซึ่งจะทำให้ถูกจอง 2 ที่พร้อมกันได้)
- *
- * @deprecated เลิกใช้แล้ว — เปลี่ยนไปล็อกตอนลูกค้ากดจองจริง (ดู hasAgentBookingConflict)
- * ของเดิมล็อกเร็วเกินไปตั้งแต่ตอนนายหน้าเปิดวันว่าง ทำให้บ้านหลังอื่นเปิดวันเดียวกันไม่ได้เลย
- * ทั้งที่ยังไม่มีลูกค้าจองจริง เสียโอกาสฟรีๆ ถ้าวันนั้นไม่มีคนจอง
- */
-export async function hasAgentSlotConflict(
-  agentId: string,
-  excludePropertyId: string,
-  availableDate: Date,
-  timeSlot: string
-): Promise<boolean> {
-  const conflict = await db.property_viewing_slots.findFirst({
-    where: {
-      available_date: availableDate,
-      time_slot: timeSlot,
-      property_id: { not: excludePropertyId },
-      properties: { agent_id: agentId }
-    },
-    select: { id: true }
-  });
-  return !!conflict;
-}
 
 /** สถานะนัดหมายที่ยัง "จองอยู่จริง" — กันชนเฉพาะนัดที่ยังไม่ถูกยกเลิก/ปฏิเสธ/ปิดงาน */
 const ACTIVE_APPOINTMENT_STATUSES = ['pending', 'approved'];
