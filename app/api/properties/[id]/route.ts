@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next"; // ดึงเซสชันเพื่อยืนยันว่าเป็นนายหน้าเจ้าของประกาศ
 import { authOptions } from "@/lib/authOptions"; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
 import { db } from "@/lib/db"; // ไคลเอนต์ Prisma สำหรับดึง/แก้ไข/ลบข้อมูลอสังหาริมทรัพย์
-import { hasAgentSlotConflict } from "@/lib/services/viewingSlotService"; // ตรวจสอบว่ารอบเวลานัดชมชนกับบ้านหลังอื่นของนายหน้าคนเดียวกันหรือไม่
 
 /**
  * ==============================================================================
@@ -199,30 +198,20 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
         });
       }
 
-      // เพิ่มรอบใหม่ที่เพิ่งถูกเลือกเข้ามา
+      // 🔑 KEYWORD: เพิ่มวันว่างตอนแก้ไขประกาศ
+      // เพิ่มรอบใหม่ที่เพิ่งถูกเลือกเข้ามา — ไม่กันชนกับบ้านหลังอื่นตรงนี้แล้ว
+      // จุดกันชนจริงย้ายไปเช็คตอนลูกค้ากดจอง (ดู hasAgentBookingConflict ใน api/appointments)
       const toCreate = viewingSlots.filter((s: { date: string; timeSlot: string }) => !existingKeys.has(`${s.date}|${s.timeSlot}`));
       if (toCreate.length > 0) {
-        // 🔑 KEYWORD: กันเปิดวันว่างซ้อนตอนแก้ไขประกาศ
-        // กันไม่ให้เปิดวันว่างซ้อนกับ "บ้านหลังอื่น" ของนายหน้าคนเดียวกัน — รอบที่ชนจะถูกกรองทิ้งเงียบๆ
-        const checkedToCreate = await Promise.all(
-          toCreate.map(async (s: { date: string; timeSlot: string }) => ({
-            slot: s,
-            conflict: await hasAgentSlotConflict(property.agent_id!, id, new Date(s.date), s.timeSlot)
-          }))
-        );
-        const nonConflicting = checkedToCreate.filter((c) => !c.conflict).map((c) => c.slot);
-
-        if (nonConflicting.length > 0) {
-          await db.property_viewing_slots.createMany({
-            data: nonConflicting.map((s) => ({
-              property_id: id,
-              available_date: new Date(s.date),
-              time_slot: s.timeSlot,
-              is_booked: false
-            })),
-            skipDuplicates: true
-          });
-        }
+        await db.property_viewing_slots.createMany({
+          data: toCreate.map((s: { date: string; timeSlot: string }) => ({
+            property_id: id,
+            available_date: new Date(s.date),
+            time_slot: s.timeSlot,
+            is_booked: false
+          })),
+          skipDuplicates: true
+        });
       }
     }
 

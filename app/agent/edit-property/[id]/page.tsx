@@ -200,9 +200,6 @@ export default function AgentEditPropertyPage() {
       return;
     }
 
-    // กันไว้อีกชั้น: ถ้ารอบนี้ชนกับบ้านหลังอื่น ห้ามเลือก (ปุ่มถูก disabled อยู่แล้ว แต่กันพลาด)
-    if (getBusySlot(dateStr, timeSlot)) return;
-
     setViewingSlots(prev => {
       const exists = prev.some(s => s.date === dateStr && s.timeSlot === timeSlot);
       if (exists) return prev.filter(s => !(s.date === dateStr && s.timeSlot === timeSlot));
@@ -490,26 +487,25 @@ export default function AgentEditPropertyPage() {
 
                   // 🔑 KEYWORD: วันที่ชนกับบ้านหลังอื่นในปฏิทิน
                   // busyCount = จำนวนรอบที่บ้านหลังอื่นของเราเปิดไว้ในวันนี้ (0, 1 หรือ 2)
-                  // 2 = เต็มทั้งเช้าและบ่าย → กดวันนี้ไม่ได้เลย · 1 = ยังเหลืออีกรอบให้เลือกได้
+                  // แค่ไว้เตือนเฉยๆ ไม่ได้บล็อกไม่ให้เปิดซ้อน — นายหน้าเปิดวันเดียวกันได้หลายบ้าน
+                  // ระบบล็อกจริงจะทำงานตอนมีลูกค้ากดจองรอบใดรอบหนึ่งแล้วเท่านั้น
                   const busyCount = countBusyOnDate(dateStr);
-                  const isFullyBusy = busyCount >= 2 && !hasSlots;
-                  const isPartlyBusy = busyCount > 0 && !isFullyBusy;
+                  const isBusy = busyCount > 0 && !hasSlots;
 
                   let dayClass = "w-8 h-8 flex items-center justify-center mx-auto rounded-full transition-all ";
                   if (isPast) dayClass += "text-slate-200 cursor-not-allowed";
-                  else if (isFullyBusy) dayClass += "bg-slate-200 text-slate-500 cursor-not-allowed line-through decoration-slate-500 ring-1 ring-slate-300";
                   else if (isSelected) dayClass += "bg-blue-600 text-white shadow-md active:scale-95 cursor-pointer";
                   else if (hasBooked) dayClass += "border border-amber-400 text-amber-700 bg-amber-50 hover:bg-amber-100 cursor-pointer";
                   else if (hasSlots) dayClass += "border border-emerald-400 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 cursor-pointer";
-                  else if (isPartlyBusy) dayClass += "border border-dashed border-slate-400 text-slate-500 bg-slate-50 hover:bg-slate-100 cursor-pointer";
+                  else if (isBusy) dayClass += "border border-dashed border-slate-400 text-slate-500 bg-slate-50 hover:bg-slate-100 cursor-pointer";
                   else dayClass += "text-slate-500 hover:bg-slate-50 cursor-pointer";
 
                   return (
                     <button
                       key={dayNum}
                       type="button"
-                      disabled={isPast || isFullyBusy}
-                      title={isFullyBusy ? 'บ้านหลังอื่นของคุณเปิดวันนี้ไว้ครบทั้งเช้าและบ่ายแล้ว' : undefined}
+                      disabled={isPast}
+                      title={isBusy ? 'คุณมีนัดชมบ้านหลังอื่นในวันนี้แล้ว เลือกได้ตามปกติ' : undefined}
                       onClick={() => setSelectedCalDate(dateStr)}
                       className={dayClass}
                     >
@@ -528,8 +524,8 @@ export default function AgentEditPropertyPage() {
                       const active = Boolean(found);
                       const booked = Boolean(found?.isBooked);
 
-                      // 🔑 KEYWORD: ปิดรอบที่บ้านหลังอื่นเปิดไว้แล้ว
-                      // ถ้ารอบนี้ชนกับบ้านหลังอื่นของเราเอง ต้องกดไม่ได้ + บอกไปเลยว่าไปชนกับหลังไหน
+                      // 🔑 KEYWORD: เตือนรอบที่บ้านหลังอื่นเปิดไว้แล้ว
+                      // แค่เตือนว่าไปชนกับบ้านหลังไหน ไม่ได้ปิดไม่ให้กด — เปิดซ้อนกันได้ตามปกติ
                       // (ไม่นับรอบที่บ้านหลังนี้เปิดไว้อยู่แล้ว เพราะ API กรอง excludePropertyId ให้ตั้งแต่ตอนดึงข้อมูล)
                       const busy = active ? undefined : getBusySlot(selectedCalDate, slot);
 
@@ -537,23 +533,22 @@ export default function AgentEditPropertyPage() {
                         <button
                           key={slot}
                           type="button"
-                          disabled={Boolean(busy)}
                           onClick={() => toggleViewingSlot(selectedCalDate, slot)}
-                          className={`p-3 rounded-xl border text-left transition ${
-                            busy
-                              ? 'border-slate-200 bg-slate-50 cursor-not-allowed opacity-70'
-                              : booked
-                                ? 'border-amber-400 bg-amber-50 cursor-pointer'
-                                : active
-                                  ? 'border-emerald-400 bg-emerald-50 cursor-pointer'
-                                  : 'border-slate-200 hover:border-blue-400 cursor-pointer'
+                          className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                            booked
+                              ? 'border-amber-400 bg-amber-50'
+                              : active
+                                ? 'border-emerald-400 bg-emerald-50'
+                                : busy
+                                  ? 'border-dashed border-slate-300 bg-slate-50 hover:border-blue-400'
+                                  : 'border-slate-200 hover:border-blue-400'
                           }`}
                         >
-                          <p className={`text-[11px] font-black ${busy ? 'text-slate-400' : 'text-slate-800'}`}>{slot === 'morning' ? 'รอบเช้า' : 'รอบบ่าย'}</p>
+                          <p className="text-[11px] font-black text-slate-800">{slot === 'morning' ? 'รอบเช้า' : 'รอบบ่าย'}</p>
                           <p className="text-[9px] text-slate-500 font-bold">{slot === 'morning' ? '09:00 - 12:00' : '13:00 - 17:00'}</p>
                           {busy ? (
-                            <p className="text-[9px] font-black mt-1 text-slate-500 leading-tight">
-                              🔒 ติดนัดที่ &quot;{busy.propertyTitle}&quot; แล้ว
+                            <p className="text-[9px] font-black mt-1 text-amber-600 leading-tight">
+                              ℹ️ ติดนัดที่ &quot;{busy.propertyTitle}&quot; แล้ว
                             </p>
                           ) : (
                             <p className={`text-[9px] font-black mt-1 ${booked ? 'text-amber-600' : active ? 'text-emerald-600' : 'text-slate-400'}`}>
@@ -572,8 +567,7 @@ export default function AgentEditPropertyPage() {
                 <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-emerald-400" /> เปิดรับจองอยู่</span>
                 <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-amber-400" /> มีลูกค้าจองแล้ว</span>
                 <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-600" /> เลือกอยู่</span>
-                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-dashed border-slate-400" /> บ้านหลังอื่นเปิดไว้บางรอบ</span>
-                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-300 ring-1 ring-slate-400" /> บ้านหลังอื่นเปิดครบแล้ว (เลือกไม่ได้)</span>
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-dashed border-slate-400" /> ติดนัดบ้านหลังอื่น (เลือกซ้อนได้ปกติ)</span>
               </div>
             </div>
 
@@ -584,7 +578,8 @@ export default function AgentEditPropertyPage() {
 
             {agentBusySlots.length > 0 && (
               <p className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 leading-relaxed">
-                ℹ️ วันที่เป็นเส้นประหรือสีเทา คือวันที่คุณเปิดให้เข้าชม<strong>บ้านหลังอื่น</strong>ไว้แล้ว เลือกซ้อนไม่ได้เพราะคุณไปนำชมได้ทีละที่
+                ℹ️ วันที่เป็นเส้นประ คือวันที่คุณมีนัดชม<strong>บ้านหลังอื่น</strong>อยู่แล้วจริงๆ (มีลูกค้าจองไว้)
+                ยังเปิดวันนี้ให้บ้านหลังนี้ได้ตามปกติ ระบบจะกันชนให้เองตอนมีลูกค้ากดจองรอบที่ชนกันจริง
               </p>
             )}
           </div>

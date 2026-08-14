@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next"; // ดึงเซสชั�
 import { authOptions } from "@/lib/authOptions"; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
 import { db } from "@/lib/db"; // ไคลเอนต์ Prisma สำหรับจัดการนัดหมายและสล็อตวันว่าง
 import { notifyUser } from "@/lib/notify"; // ส่งการแจ้งเตือนเมื่อมีการนัด/ยืนยัน/ยกเลิกนัดหมาย
+import { hasAgentBookingConflict } from "@/lib/services/viewingSlotService"; // เช็คว่านายหน้ามีนัดจริงกับบ้านหลังอื่นชนเวลานี้อยู่แล้วหรือไม่
 
 /**
  * ==============================================================================
@@ -154,6 +155,13 @@ export async function POST(request: Request) {
     if (!targetSlot) return NextResponse.json({ error: "ไม่พบรอบเข้าชมนี้ กรุณาเลือกวันและช่วงเวลาที่นายหน้าเปิดไว้" }, { status: 400 });
     if (targetSlot.is_booked) return NextResponse.json({ error: "ช่วงเวลานี้ถูกจองไปแล้ว" }, { status: 400 });
 
+    // 🔑 KEYWORD: ล็อกวันว่างตอนลูกค้าจองจริง
+    // 2.6.1 เช็คว่านายหน้าคนนี้มีนัดจริงกับ "บ้านหลังอื่น" ชนวัน+เวลานี้อยู่แล้วหรือไม่
+    // (จุดล็อกจริงของระบบ — ไม่ล็อกตั้งแต่ตอนเปิดวันว่าง เพราะนายหน้าไปนำชมได้ทีละที่)
+    if (property.agent_id && await hasAgentBookingConflict(property.agent_id, property.id, new Date(date), dbTimeSlot)) {
+      return NextResponse.json({ error: "นายหน้าติดนัดชมบ้านหลังอื่นในช่วงเวลานี้แล้ว กรุณาเลือกวันหรือเวลาอื่น" }, { status: 400 });
+    }
+
     // 2.7 สร้างคำขอนัดหมายใหม่ลงในตาราง appointments (สถานะเริ่มต้นเป็น 'pending')
     const newAppointment = await db.appointments.create({
       data: {
@@ -290,6 +298,11 @@ export async function PATCH(request: Request) {
         });
         if (!targetSlot) return NextResponse.json({ error: "ไม่พบวันว่างนี้ในระบบ" }, { status: 400 });
         if (targetSlot.is_booked) return NextResponse.json({ error: "ช่วงเวลานี้ถูกจองไปแล้ว" }, { status: 400 });
+
+        // เช็คนัดชนบ้านหลังอื่นของนายหน้าคนเดียวกันด้วย เหมือนตอนจองครั้งแรก
+        if (appointment.agent_id && await hasAgentBookingConflict(appointment.agent_id, appointment.property_id, new Date(date), timeSlot)) {
+          return NextResponse.json({ error: "นายหน้าติดนัดชมบ้านหลังอื่นในช่วงเวลานี้แล้ว กรุณาเลือกวันหรือเวลาอื่น" }, { status: 400 });
+        }
       }
 
       const updated = await db.appointments.update({
