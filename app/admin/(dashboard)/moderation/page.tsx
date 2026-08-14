@@ -26,6 +26,20 @@ interface PropertyData {
   slaMinutesLeft: number;
 }
 
+// 🔑 KEYWORD: รายการเหตุผลตีกลับประกาศ
+// แยกออกมาเป็นค่าคงที่เพื่อให้เพิ่ม/แก้ตัวเลือกได้ที่เดียว (รูปแบบเดียวกับโมดัลปฏิเสธนัดฝั่งนายหน้า)
+const REJECT_REASONS = [
+  'ข้อมูล/รูปภาพไม่ครบถ้วนหรือไม่ชัดเจน',
+  'รูปภาพไม่ตรงกับทรัพย์ที่ประกาศ',
+  'ราคาหรือรายละเอียดดูผิดปกติ ต้องตรวจสอบเพิ่มเติม',
+  'ข้อมูลไม่ตรงกับความเป็นจริง',
+  'เอกสารสิทธิ์ไม่ครบถ้วน',
+  'ทำเลที่ตั้งหรือที่อยู่ไม่ถูกต้อง',
+  'ประกาศซ้ำกับรายการที่มีอยู่แล้วในระบบ',
+  'ข้อความประกาศมีเนื้อหาไม่เหมาะสม',
+  'อื่นๆ'
+];
+
 export default function AdminModerationPage() {
   const [properties, setProperties] = useState<PropertyData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,13 +105,13 @@ export default function AdminModerationPage() {
 
   // === ระบบ "ปฏิเสธประกาศระบุเหตุผล" (Reject Modal) ===
   const [rejectingProperty, setRejectingProperty] = useState<PropertyData | null>(null);
-  const [rejectReasonOption, setRejectReasonOption] = useState<string>('ข้อมูล/รูปภาพไม่ครบถ้วนหรือไม่ชัดเจน');
+  const [rejectReasonOption, setRejectReasonOption] = useState<string>(REJECT_REASONS[0]);
   const [customRejectReason, setCustomRejectReason] = useState<string>('');
   const [submittingReject, setSubmittingReject] = useState(false);
 
   const openRejectModal = (property: PropertyData) => {
     setRejectingProperty(property);
-    setRejectReasonOption('ข้อมูล/รูปภาพไม่ครบถ้วนหรือไม่ชัดเจน');
+    setRejectReasonOption(REJECT_REASONS[0]);
     setCustomRejectReason('');
   };
 
@@ -306,13 +320,7 @@ export default function AdminModerationPage() {
               <div className="space-y-2">
                 <label className="block text-xs font-extrabold text-slate-700">กรุณาเลือกเหตุผลในการปฏิเสธ:</label>
 
-                {[
-                  'ข้อมูล/รูปภาพไม่ครบถ้วนหรือไม่ชัดเจน',
-                  'ราคาหรือรายละเอียดดูผิดปกติ ต้องตรวจสอบเพิ่มเติม',
-                  'ข้อมูลไม่ตรงกับความเป็นจริง',
-                  'เอกสารสิทธิ์ไม่ครบถ้วน',
-                  'อื่นๆ'
-                ].map((reasonOpt, idx) => (
+                {REJECT_REASONS.map((reasonOpt, idx) => (
                   <label key={idx} className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white transition cursor-pointer text-xs font-bold text-slate-700">
                     <input
                       type="radio"
