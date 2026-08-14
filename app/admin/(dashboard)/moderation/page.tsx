@@ -77,6 +77,13 @@ export default function AdminModerationPage() {
     await updateStatus(id, 'approved');
   };
 
+  // สีป้าย SLA ตามความด่วน: ปกติ = เขียว, ใกล้ครบ = เหลือง, ด่วน/เกินกำหนด = แดง
+  const slaBadgeClass = (level: PropertyData['slaLevel']) => {
+    if (level === 'urgent' || level === 'overdue') return 'bg-red-50 text-red-600 border-red-100';
+    if (level === 'warning') return 'bg-amber-50 text-amber-600 border-amber-100';
+    return 'bg-emerald-50 text-emerald-600 border-emerald-100';
+  };
+
   // === ระบบ "ปฏิเสธประกาศระบุเหตุผล" (Reject Modal) ===
   const [rejectingProperty, setRejectingProperty] = useState<PropertyData | null>(null);
   const [rejectReasonOption, setRejectReasonOption] = useState<string>('ข้อมูล/รูปภาพไม่ครบถ้วนหรือไม่ชัดเจน');
@@ -208,7 +215,7 @@ export default function AdminModerationPage() {
                           <div className="flex flex-col items-end gap-1.5">
                              <span className="text-[10px] text-slate-400 font-bold uppercase">ID: {property.id.slice(0, 8)}</span>
                              {activeTab === 'pending' && (
-                               <span className="bg-red-50 text-red-600 text-[10px] font-black px-2 py-1 rounded-md border border-red-100 flex items-center gap-1">
+                               <span className={`text-[10px] font-black px-2 py-1 rounded-md border flex items-center gap-1 ${slaBadgeClass(property.slaLevel)}`}>
                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                  SLA: {property.slaLabel}
                                </span>
