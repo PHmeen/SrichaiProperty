@@ -289,7 +289,7 @@ export async function PATCH(request: Request) {
         const notiTitle = action === "confirm" ? "ยืนยันคำขอนัดหมายเข้าชมโครงการ" : "แจ้งเปลี่ยนแปลงคำขอนัดหมาย";
         const notiContent = action === "confirm"
           ? `รายการนัดหมายเข้าชม "${propertyTitle}" ได้รับการยืนยันจากนายหน้าเรียบร้อยแล้ว`
-          : `รายการนัดหมายเข้าชม "${propertyTitle}" ไม่สามารถดำเนินการได้ในวันดังกล่าว กรุณาเลือกช่วงเวลาอื่น`;
+          : `รายการนัดหมายเข้าชม "${propertyTitle}" ถูกปฏิเสธโดยนายหน้า (เหตุผล: ${rejectReason}) รอบเวลานี้เปิดให้จองใหม่แล้ว หรือเลือกช่วงเวลาอื่นได้`;
         sendNotification(appointment.customer_id, notiTitle, notiContent, "appointment", "/customer/appointments");
       }
 
