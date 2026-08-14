@@ -18,6 +18,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import ReviewModal from '@/components/customer/ReviewModal';
 
 function CalendarIcon({ className }: { className?: string }) {
@@ -308,8 +309,18 @@ export default function AppointmentsPage() {
                     {apt.cancelReason && (
                       <div className="mt-1.5 text-xs bg-red-50 text-red-700 p-2 rounded-lg border border-red-100 font-bold flex items-start gap-1">
                         <ChatIcon className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                        <span>เหตุผลการยกเลิก: {apt.cancelReason}</span>
+                        <span>
+                          {apt.status === 'rejected' ? 'เหตุผลที่นายหน้าปฏิเสธ' : 'เหตุผลการยกเลิก'}: {apt.cancelReason}
+                        </span>
                       </div>
+                    )}
+
+                    {/* 🔑 KEYWORD: จองรอบใหม่หลังถูกปฏิเสธ */}
+                    {/* นายหน้าปฏิเสธแล้วรอบเวลาจะถูกปลดล็อกทันที ลูกค้าจองรอบใหม่ได้เลยจากตรงนี้ */}
+                    {apt.status === 'rejected' && (
+                      <p className="mt-1.5 text-[11px] font-bold text-slate-500">
+                        รอบเวลานี้เปิดให้จองใหม่แล้ว เลือกวันที่สะดวกได้อีกครั้ง
+                      </p>
                     )}
                   </div>
 
@@ -347,8 +358,17 @@ export default function AppointmentsPage() {
                       </button>
                     )}
 
+                    {apt.status === 'rejected' && (
+                      <Link
+                        href={`/book-appointment?propertyId=${apt.propertyId}`}
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-black text-xs transition cursor-pointer active:scale-95 flex items-center gap-1"
+                      >
+                        จองรอบใหม่
+                      </Link>
+                    )}
+
                     {(apt.status === 'approved' || apt.status === 'pending') && (
-                      <button 
+                      <button
                         onClick={() => openCancelModal(apt)}
                         className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg font-bold text-xs transition cursor-pointer active:scale-95"
                       >
