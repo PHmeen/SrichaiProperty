@@ -138,6 +138,7 @@ export default function PropertyDetailPage() {
 
   const { properties, propertiesLoading, favorites, toggleFavorite } = useApp();
 
+  // 🔑 KEYWORD: แก้บั๊กโชว์บ้านผิดหลัง ไม่ fallback
   // 1.1 ค้นหาข้อมูลอสังหาริมทรัพย์จาก ID ที่ตรงกันในฐานข้อมูล
   // หมายเหตุ: ห้าม fallback ไปที่บ้านหลังอื่น (เดิม || properties[0] ทำให้ id ที่หาไม่เจอ
   // ไปโชว์บ้านหลังแรกของระบบแทนแบบเนียนๆ โดยผู้ใช้ไม่รู้ตัว)
@@ -210,6 +211,7 @@ export default function PropertyDetailPage() {
     );
   }
 
+  // 🔑 KEYWORD: หน้าไม่พบประกาศ
   // โหลดเสร็จแล้วแต่หา id นี้ไม่เจอจริง (ถูกลบ/ยังไม่อนุมัติ/ลิงก์ผิด) — ต้องบอกตรงๆ ไม่ใช่โชว์บ้านอื่นแทน
   if (!property) {
     return (

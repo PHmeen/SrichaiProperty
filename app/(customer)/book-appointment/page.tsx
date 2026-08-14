@@ -57,6 +57,7 @@ function BookAppointmentForm() {
   // ----------------------------------------------------------------------------
   // 4. EFFECTS & FETCHING (ดึงข้อมูลวันว่างและวันหยุดจาก API)
   // ----------------------------------------------------------------------------
+  // 🔑 KEYWORD: ดึงวันว่างจริงมาให้ลูกค้าจอง
   // 4.1 โหลดวันและช่วงเวลาที่นายหน้าเปิดว่างสำหรับบ้านหลังนี้โดยเฉพาะ
   useEffect(() => {
     if (!property?.id) return;
@@ -101,6 +102,7 @@ function BookAppointmentForm() {
   const morningSlot = slotsForSelectedDate.find((s) => s.timeSlot === 'morning');
   const afternoonSlot = slotsForSelectedDate.find((s) => s.timeSlot === 'afternoon');
 
+  // 🔑 KEYWORD: เลือกวันที่รีเซ็ตรอบเวลา
   // ฟังก์ชันเลือกวันที่ในปฏิทิน (ล้างรอบเวลาเดิมทิ้งเมื่อเปลี่ยนวันใหม่)
   const handleDateSelect = (date: string) => {
     setSelectedDateStr(date);
@@ -217,6 +219,7 @@ function BookAppointmentForm() {
                   availableDates={availableDates}
                 />
 
+                {/* 🔑 KEYWORD: การ์ดเตือนไม่มีวันว่าง */}
                 {/* ข้อความเตือนกรณีไม่มีวันว่างเปิดให้จองเลย */}
                 {!slotsLoading && availableDates.length === 0 && (
                   <p className="text-[11px] font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-center">
@@ -297,6 +300,7 @@ function BookAppointmentForm() {
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 focus:bg-white transition text-slate-800 font-bold text-xs resize-none placeholder-slate-400"
                 />
 
+                {/* 🔑 KEYWORD: ปุ่มยืนยันการนัดหมาย */}
                 <button
                   type="submit"
                   disabled={submitting || !selectedDateStr || !selectedTimeSlot}

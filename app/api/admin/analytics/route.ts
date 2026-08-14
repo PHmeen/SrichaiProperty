@@ -1,3 +1,4 @@
+// 🔑 KEYWORD: หน้ากราฟสถิติแอดมิน
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next'; // ดึงเซสชันปัจจุบันเพื่อตรวจสิทธิ์ admin
 import { authOptions } from '@/lib/authOptions'; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
@@ -20,6 +21,7 @@ interface Bucket {
   end: Date;
 }
 
+// 🔑 KEYWORD: แบ่งช่วงเวลากราฟ วันเดือนปี
 // สร้างช่วงเวลา (bucket) สำหรับกราฟ ใช้รูปแบบเดียวกับกราฟสถิติฝั่งนายหน้า (agent/dashboard)
 // เพื่อให้ UX การสลับ วัน/เดือน/ปี เหมือนกันทั้งระบบ
 function getBuckets(range: RangeType): Bucket[] {
@@ -65,6 +67,7 @@ function getBuckets(range: RangeType): Bucket[] {
 
 const APPOINTMENT_STATUSES = ['pending', 'approved', 'completed', 'rejected', 'cancelled'] as const;
 
+// 🔑 KEYWORD: ดึงสถิติแอดมิน นัดหมายผู้ใช้ยอดวิว
 // GET: สถิติภาพรวมสำหรับหน้า /admin/analytics (นัดหมาย, ยอดเข้าชมบ้าน, ผู้ใช้/นายหน้า)
 export async function GET(request: Request) {
   try {

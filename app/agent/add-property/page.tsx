@@ -28,6 +28,13 @@ interface ViewingSlot {
   timeSlot: 'morning' | 'afternoon'; // รอบเช้า (09:00-12:00) หรือ รอบบ่าย (13:00-17:00)
 }
 
+// รอบเวลาที่ "บ้านหลังอื่นของนายหน้าคนเดียวกัน" เปิดไว้แล้ว (เปิดซ้อนไม่ได้เพราะไปดูได้ทีละที่)
+interface AgentBusySlot {
+  date: string;
+  timeSlot: string;
+  propertyTitle: string; // ชื่อบ้านหลังที่เปิดรอบนี้ไว้ ใช้บอกผู้ใช้ว่าไปชนกับหลังไหน
+}
+
 // ชื่อเดือนภาษาไทยสำหรับแสดงผลบนปฏิทิน
 const MONTH_NAMES_TH = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -74,12 +81,25 @@ export default function AgentAddPropertyPage() {
   const [calMonth, setCalMonth] = useState(today.getMonth()); // 0-11
   const [viewingSlots, setViewingSlots] = useState<ViewingSlot[]>([]);
   const [selectedCalDate, setSelectedCalDate] = useState<string | null>(null);
+  const [agentBusySlots, setAgentBusySlots] = useState<AgentBusySlot[]>([]); // รอบที่บ้านหลังอื่นของเราเปิดไว้แล้ว
 
   // ----------------------------------------------------------------------------
   // [4] Effect: ดึงรายชื่อจังหวัดทั้งหมดจาก API เมื่อเริ่มต้นหน้าเพจ
   // ----------------------------------------------------------------------------
   useEffect(() => {
     fetch('/api/locations?type=provinces').then(r => r.json()).then(d => Array.isArray(d) && setProvinces(d));
+  }, []);
+
+  // 🔑 KEYWORD: โหลดวันที่บ้านหลังอื่นเปิดไว้แล้ว
+  // ----------------------------------------------------------------------------
+  // [4.1] Effect: ดึงรอบเวลาที่บ้านหลังอื่นของเราเปิดไว้แล้ว มากันไม่ให้เลือกซ้อน
+  // (นายหน้าไปนำชมได้ทีละที่ ถ้าเปิดวัน+รอบเดียวกันไว้ 2 หลัง ลูกค้าจะจองชนกันเอง)
+  // ----------------------------------------------------------------------------
+  useEffect(() => {
+    fetch('/api/properties/viewing-slots?agentBusy=1')
+      .then(r => r.json())
+      .then(d => { if (d.success && Array.isArray(d.busySlots)) setAgentBusySlots(d.busySlots); })
+      .catch(() => {}); // โหลดไม่ได้ก็ปล่อยผ่าน หลังบ้านยังกันซ้อนให้อยู่ดี
   }, []);
 
   // ----------------------------------------------------------------------------
@@ -115,8 +135,20 @@ export default function AgentAddPropertyPage() {
   // ดึงรายการสล็อตเวลาของวันที่กำหนด
   const getSlotsForDate = (dateStr: string) => viewingSlots.filter(s => s.date === dateStr);
 
+  // 🔑 KEYWORD: เช็ครอบที่ชนกับบ้านหลังอื่น
+  // คืนค่าข้อมูลบ้านหลังอื่นที่เปิดรอบนี้ไว้แล้ว (ถ้าไม่ชนจะได้ undefined)
+  const getBusySlot = (dateStr: string, timeSlot: 'morning' | 'afternoon') =>
+    agentBusySlots.find(s => s.date === dateStr && s.timeSlot === timeSlot);
+
+  // นับว่าวันนี้ถูกบ้านหลังอื่นจองไปกี่รอบแล้ว (2 = เต็มทั้งเช้าและบ่าย → กดวันนี้ไม่ได้เลย)
+  const countBusyOnDate = (dateStr: string) =>
+    agentBusySlots.filter(s => s.date === dateStr).length;
+
   // สลับการเลือก / ยกเลิกช่วงเวลา (รอบเช้า/รอบบ่าย) ของวันที่เลือก
   const toggleViewingSlot = (dateStr: string, timeSlot: 'morning' | 'afternoon') => {
+    // กันไว้อีกชั้น: ถ้ารอบนี้ชนกับบ้านหลังอื่น ห้ามเลือก (ปุ่มถูก disabled อยู่แล้ว แต่กันพลาด)
+    if (getBusySlot(dateStr, timeSlot)) return;
+
     setViewingSlots(prev => {
       const exists = prev.some(s => s.date === dateStr && s.timeSlot === timeSlot);
       if (exists) return prev.filter(s => !(s.date === dateStr && s.timeSlot === timeSlot));
@@ -444,17 +476,27 @@ export default function AgentAddPropertyPage() {
                   const isPast = cellDate < todayStart;
                   const hasSlots = getSlotsForDate(dateStr).length > 0;
 
+                  // 🔑 KEYWORD: วันที่ชนกับบ้านหลังอื่นในปฏิทิน
+                  // busyCount = จำนวนรอบที่บ้านหลังอื่นของเราเปิดไว้ในวันนี้ (0, 1 หรือ 2)
+                  // 2 = เต็มทั้งเช้าและบ่าย → กดวันนี้ไม่ได้เลย · 1 = ยังเหลืออีกรอบให้เลือกได้
+                  const busyCount = countBusyOnDate(dateStr);
+                  const isFullyBusy = busyCount >= 2;
+                  const isPartlyBusy = busyCount === 1;
+
                   let dayClass = "w-8 h-8 flex items-center justify-center mx-auto rounded-full transition-all ";
                   if (isPast) dayClass += "text-slate-200 cursor-not-allowed";
+                  else if (isFullyBusy) dayClass += "bg-slate-200 text-slate-500 cursor-not-allowed line-through decoration-slate-500 ring-1 ring-slate-300";
                   else if (isSelected) dayClass += "bg-blue-600 text-white shadow-md active:scale-95 cursor-pointer";
                   else if (hasSlots) dayClass += "border border-emerald-400 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 cursor-pointer";
+                  else if (isPartlyBusy) dayClass += "border border-dashed border-slate-400 text-slate-500 bg-slate-50 hover:bg-slate-100 cursor-pointer";
                   else dayClass += "text-slate-500 hover:bg-slate-50 cursor-pointer";
 
                   return (
                     <button
                       key={dayNum}
                       type="button"
-                      disabled={isPast}
+                      disabled={isPast || isFullyBusy}
+                      title={isFullyBusy ? 'บ้านหลังอื่นของคุณเปิดวันนี้ไว้ครบทั้งเช้าและบ่ายแล้ว' : undefined}
                       onClick={() => setSelectedCalDate(dateStr)}
                       className={dayClass}
                     >
@@ -470,29 +512,61 @@ export default function AgentAddPropertyPage() {
                   <div className="grid grid-cols-2 gap-2">
                     {(['morning', 'afternoon'] as const).map(slot => {
                       const active = getSlotsForDate(selectedCalDate).some(s => s.timeSlot === slot);
+
+                      // 🔑 KEYWORD: ปิดรอบที่บ้านหลังอื่นเปิดไว้แล้ว
+                      // ถ้ารอบนี้ชนกับบ้านหลังอื่นของเราเอง ต้องกดไม่ได้ + บอกไปเลยว่าไปชนกับหลังไหน
+                      const busy = getBusySlot(selectedCalDate, slot);
+
                       return (
                         <button
                           key={slot}
                           type="button"
+                          disabled={Boolean(busy)}
                           onClick={() => toggleViewingSlot(selectedCalDate, slot)}
-                          className={`p-3 rounded-xl border text-left transition cursor-pointer ${active ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 hover:border-blue-400'}`}
+                          className={`p-3 rounded-xl border text-left transition ${
+                            busy
+                              ? 'border-slate-200 bg-slate-50 cursor-not-allowed opacity-70'
+                              : active
+                                ? 'border-emerald-400 bg-emerald-50 cursor-pointer'
+                                : 'border-slate-200 hover:border-blue-400 cursor-pointer'
+                          }`}
                         >
-                          <p className="text-[11px] font-black text-slate-800">{slot === 'morning' ? 'รอบเช้า' : 'รอบบ่าย'}</p>
+                          <p className={`text-[11px] font-black ${busy ? 'text-slate-400' : 'text-slate-800'}`}>{slot === 'morning' ? 'รอบเช้า' : 'รอบบ่าย'}</p>
                           <p className="text-[9px] text-slate-500 font-bold">{slot === 'morning' ? '09:00 - 12:00' : '13:00 - 17:00'}</p>
-                          <p className={`text-[9px] font-black mt-1 ${active ? 'text-emerald-600' : 'text-slate-400'}`}>
-                            {active ? '✓ เลือกไว้แล้ว' : 'ยังไม่ได้เลือก'}
-                          </p>
+                          {busy ? (
+                            <p className="text-[9px] font-black mt-1 text-amber-600 leading-tight">
+                              🔒 ติดนัดที่ &quot;{busy.propertyTitle}&quot; แล้ว
+                            </p>
+                          ) : (
+                            <p className={`text-[9px] font-black mt-1 ${active ? 'text-emerald-600' : 'text-slate-400'}`}>
+                              {active ? '✓ เลือกไว้แล้ว' : 'ยังไม่ได้เลือก'}
+                            </p>
+                          )}
                         </button>
                       );
                     })}
                   </div>
                 </div>
               )}
+
+              {/* 🔑 KEYWORD: แถบคำอธิบายสีปฏิทินนายหน้า */}
+              <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 mt-4 pt-3 border-t border-slate-100 text-[9px] font-bold text-slate-400">
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-emerald-400" /> เปิดว่างไว้</span>
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-600" /> เลือกอยู่</span>
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-dashed border-slate-400" /> บ้านหลังอื่นเปิดไว้บางรอบ</span>
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-300 ring-1 ring-slate-400" /> บ้านหลังอื่นเปิดครบแล้ว (เลือกไม่ได้)</span>
+              </div>
             </div>
 
             {viewingSlots.length > 0 && (
               <p className="text-[10px] font-bold text-emerald-600">
                 ✓ เลือกไว้แล้วทั้งหมด {viewingSlots.length} ช่วงเวลา
+              </p>
+            )}
+
+            {agentBusySlots.length > 0 && (
+              <p className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 leading-relaxed">
+                ℹ️ วันที่เป็นเส้นประหรือถูกขีดฆ่า คือวันที่คุณเปิดให้เข้าชม<strong>บ้านหลังอื่น</strong>ไว้แล้ว เลือกซ้อนไม่ได้เพราะคุณไปนำชมได้ทีละที่
               </p>
             )}
           </div>
