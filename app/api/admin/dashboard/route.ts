@@ -2,9 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next"; // ดึงเซสชันเพื่อตรวจสอบสิทธิ์ admin
 import { authOptions } from "@/lib/authOptions"; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
 import { db } from "@/lib/db"; // ไคลเอนต์ Prisma นับจำนวนประกาศ/ตัวแทน/รายงาน/kyc ที่รอดำเนินการ
-
-const MODERATION_SLA_HOURS = 24;
-const MODERATION_SLA_URGENT_HOURS = 4;
+import { calculateModerationSla } from "@/lib/services/slaService"; // สูตรคำนวณ SLA ใช้ร่วมกับหน้า moderation
 
 export async function GET(request: Request) {
   try {
@@ -67,13 +65,8 @@ export async function GET(request: Request) {
       db.reports.findMany({ take: 5, orderBy: { created_at: "desc" }, select: { id: true, reason: true, status: true, created_at: true } })
     ]);
 
-    const now = Date.now();
     const moderationItems = pendingProperties.map(p => {
-      const deadline = new Date(p.created_at).getTime() + MODERATION_SLA_HOURS * 60 * 60 * 1000;
-      const hoursLeft = (deadline - now) / (60 * 60 * 1000);
-      const sla = hoursLeft > 0
-        ? `เหลือเวลา ${Math.ceil(hoursLeft)} ชม.`
-        : `เกินกำหนด ${Math.ceil(-hoursLeft)} ชม.`;
+      const slaInfo = calculateModerationSla(p.created_at);
 
       return {
         id: p.id,
@@ -84,8 +77,9 @@ export async function GET(request: Request) {
         plan: p.users?.plan_type === "pro" ? "PRO Member" : "Basic Plan",
         isPremium: Number(p.price) > 7000000,
         isVerified: p.users?.is_verified || false,
-        sla,
-        slaUrgent: hoursLeft <= MODERATION_SLA_URGENT_HOURS,
+        sla: slaInfo.label,
+        slaLevel: slaInfo.level,
+        slaUrgent: slaInfo.level === "urgent" || slaInfo.level === "overdue",
         image: p.property_images[0]?.image_url || ""
       };
     });
