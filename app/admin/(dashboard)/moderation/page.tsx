@@ -21,6 +21,9 @@ interface PropertyData {
   image: string | null;
   images?: string[];
   imageCount: number;
+  slaLabel: string;
+  slaLevel: 'normal' | 'warning' | 'urgent' | 'overdue';
+  slaMinutesLeft: number;
 }
 
 export default function AdminModerationPage() {
@@ -207,7 +210,7 @@ export default function AdminModerationPage() {
                              {activeTab === 'pending' && (
                                <span className="bg-red-50 text-red-600 text-[10px] font-black px-2 py-1 rounded-md border border-red-100 flex items-center gap-1">
                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                 SLA: เหลือ 45 นาที
+                                 SLA: {property.slaLabel}
                                </span>
                              )}
                           </div>
