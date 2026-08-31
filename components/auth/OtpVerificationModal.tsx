@@ -1,11 +1,23 @@
+/**
+ * ==============================================================================
+ * หน้าต่างลอยยืนยันรหัส OTP 6 หลัก (OTP Verification Modal Component)
+ * /components/auth/OtpVerificationModal.tsx
+ * ==============================================================================
+ * วัตถุประสงค์:
+ * 1. แสดง Pop-up รับรหัส OTP 6 หลักในการยืนยันตัวตนเบอร์โทรศัพท์ (สมัครสมาชิก/นายหน้า)
+ * 2. ช่องกรอกรหัสตัวเลข 6 ช่องพร้อมเลื่อนไปช่องถัดไปอัตโนมัติ
+ * ==============================================================================
+ */
+
 import React from 'react';
 
+/** Props สำหรับ OtpVerificationModal Component */
 interface Props {
-  show: boolean;
-  onClose: () => void;
-  otpValues: string[];
-  onOtpChange: (index: number, value: string) => void;
-  onVerify: () => void;
+  show: boolean;                                        // สภาวะแสดง/ซ่อน Modal
+  onClose: () => void;                                  // ฟังก์ชันปิด Modal
+  otpValues: string[];                                  // อาร์เรย์รหัส 6 หลัก [digit1, digit2, ...]
+  onOtpChange: (index: number, value: string) => void; // ฟังก์ชันเปลี่ยนค่าแต่ละช่อง OTP
+  onVerify: () => void;                                 // ฟังก์ชันยิงยืนยัน OTP
 }
 
 export default function OtpVerificationModal({ show, onClose, otpValues, onOtpChange, onVerify }: Props) {

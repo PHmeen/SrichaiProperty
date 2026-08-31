@@ -1,9 +1,21 @@
 'use client';
 
+/**
+ * ==============================================================================
+ * แถบการแจ้งเตือนและการยินยอมใช้งานคุกกี้ (PDPA Cookie Banner Component)
+ * /components/auth/CookieBanner.tsx
+ * ==============================================================================
+ * วัตถุประสงค์:
+ * 1. แสดงแถบประกาศแจ้งเตือนเรื่องการใช้คุกกี้และนโยบายส่วนบุคคลตามกฎหมาย PDPA ด้านล่างสุดของหน้าจอ
+ * 2. มีปุ่มกดยอมรับเพื่อบันทึกสภาวะการยินยอม
+ * ==============================================================================
+ */
+
+/** Props สำหรับ CookieBanner Component */
 interface CookieBannerProps {
-  show: boolean;
-  onAccept: () => void;
-  onOpenPrivacy: () => void;
+  show: boolean;           // สภาวะแสดง/ซ่อน แถบ Cookie Banner
+  onAccept: () => void;     // ฟังก์ชันเมื่อกดยอมรับคุกกี้
+  onOpenPrivacy: () => void;// ฟังก์ชันเปิดอ่านนโยบายความเป็นส่วนตัว
 }
 
 export default function CookieBanner({ show, onAccept, onOpenPrivacy }: CookieBannerProps) {

@@ -1,23 +1,37 @@
+/**
+ * ==============================================================================
+ * คอมโพเนนต์การ์ดตรวจสอบอนุมัติเอกสาร KYC นายหน้า (Admin KYC Agent Card)
+ * /components/admin/AdminKycAgentCard.tsx
+ * ==============================================================================
+ * วัตถุประสงค์:
+ * 1. แสดงรายละเอียดนายหน้าที่ยื่นคำขออนุมัติสิทธิ์เป็น Agent (รูปโปรไฟล์, ชื่อ-สกุล, อีเมล, เบอร์โทร)
+ * 2. แสดงรูปภาพเอกสารยืนยันตัวตน (บัตรประชาชน / ใบอนุญาตนายหน้า) ให้แอดมินตรวจสอบ
+ * 3. มีปุ่มดำเนินการ อนุมัติ (Approved) / ปฏิเสธ (Rejected) / ลบข้อมูลนายหน้า
+ * ==============================================================================
+ */
+
 import React from 'react';
 import Image from 'next/image'; // ใช้แสดงรูปโปรไฟล์เอเย่นต์และรูปเอกสาร KYC
 
+/** โครงสร้างข้อมูลเอเย่นต์/นายหน้าสำหรับตรวจสอบ KYC */
 export interface AgentData {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  phone: string;
-  profile_image: string | null;
-  kyc_doc: string | null;
-  status: string;
-  created_at: string;
+  id: string;                   // รหัสผู้ใช้งาน (User ID)
+  email: string;                // อีเมลประจำบัญชี
+  first_name: string;           // ชื่อจริง
+  last_name: string;            // นามสกุล
+  phone: string;                // เบอร์โทรศัพท์ติดต่อ
+  profile_image: string | null; // URL รูปโปรไฟล์
+  kyc_doc: string | null;       // URL รูปถ่ายเอกสารยืนยันตัวตน (KYC)
+  status: string;               // สถานะการอนุมัติ (pending = รอตรวจ, approved = อนุมัติแล้ว, rejected = ไม่อนุมัติ)
+  created_at: string;           // วันเวลาที่ส่งยื่นเอกสาร
 }
 
+/** Props สำหรับ AdminKycAgentCard Component */
 interface Props {
-  agent: AgentData;
-  activeTab: 'pending' | 'approved' | 'rejected';
-  onUpdateStatus: (userId: string, status: string) => void;
-  onDeleteAgent?: (userId: string) => void;
+  agent: AgentData;                                              // ข้อมูลนายหน้า 1 รายการ
+  activeTab: 'pending' | 'approved' | 'rejected';                // แท็บที่เปิดดูอยู่ปัจจุบัน
+  onUpdateStatus: (userId: string, status: string) => void;     // ฟังก์ชันเปลี่ยนสถานะอนุมัติ/ปฏิเสธ
+  onDeleteAgent?: (userId: string) => void;                       // ฟังก์ชันลบข้อมูลนายหน้าออกจากระบบ
 }
 
 export default function AdminKycAgentCard({ agent, activeTab, onUpdateStatus, onDeleteAgent }: Props) {

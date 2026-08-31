@@ -1,9 +1,22 @@
 import React from 'react';
 import Image from 'next/image';
 
+/**
+ * ==============================================================================
+ * คอมโพเนนต์อัปโหลดและแสดงตัวอย่างรูปภาพประกาศ (Image Uploader Component)
+ * /components/property/ImageUploader.tsx
+ * ==============================================================================
+ * วัตถุประสงค์:
+ * 1. รับไฟล์รูปภาพบ้าน/คอนโดจากผู้ใช้ แล้วยิงส่งไปยัง API `/api/upload` (FormData)
+ * 2. แสดงตัวอย่างรูปภาพ (Thumbnail Preview) ที่อัปโหลดแล้ว
+ * 3. มีปุ่มลบรูปภาพแต่ละรูปออกได้ตามต้องการ
+ * ==============================================================================
+ */
+
+/** Props สำหรับ ImageUploader Component */
 interface Props {
-  uploadedImages: string[];
-  setUploadedImages: React.Dispatch<React.SetStateAction<string[]>>;
+  uploadedImages: string[];                                          // รายชื่อ URL รูปภาพที่อัปโหลดแล้ว
+  setUploadedImages: React.Dispatch<React.SetStateAction<string[]>>;// ฟังก์ชันอัปเดตอาร์เรย์ URL รูปภาพ
 }
 
 export default function ImageUploader({ uploadedImages, setUploadedImages }: Props) {

@@ -1,11 +1,24 @@
 'use client';
 
+/**
+ * ==============================================================================
+ * หน้าต่างลอยแนบสลิปชำระเงินอัปเกรดนายหน้าเป็น PRO Agent (Upgrade Pro Modal)
+ * /components/agent/UpgradeProModal.tsx
+ * ==============================================================================
+ * วัตถุประสงค์:
+ * 1. แสดง Pop-up ยืนยันข้อมูลสิทธิประโยชน์แพ็กเกจ PRO Agent (599 บาท/เดือน)
+ * 2. ช่องทางแนบสลิปการโอนเงิน (FormData) ส่งไปยัง API `/api/packages/checkout`
+ * 3. แจ้งเตือนสถานะเมื่อยื่นสลิปสำเร็จเพื่อรอแอนมินตรวจสอบ
+ * ==============================================================================
+ */
+
 import React, { useState } from 'react';
 
+/** Props สำหรับ UpgradeProModal Component */
 interface UpgradeProModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess?: () => void;
+  isOpen: boolean;       // สภาวะเปิด/ปิด Modal
+  onClose: () => void;   // ฟังก์ชันปิด Modal
+  onSuccess?: () => void;// ฟังก์ชัน Callback เมื่อยื่นสลิปชำระเงินสำเร็จ
 }
 
 export default function UpgradeProModal({ isOpen, onClose, onSuccess }: UpgradeProModalProps) {

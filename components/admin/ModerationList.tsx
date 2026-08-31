@@ -1,23 +1,37 @@
+/**
+ * ==============================================================================
+ * คอมโพเนนต์รายการประกาศอสังหาริมทรัพย์ที่รอการอนุมัติ (Moderation List Component)
+ * /components/admin/ModerationList.tsx
+ * ==============================================================================
+ * วัตถุประสงค์:
+ * 1. แสดงรายการประกาศบ้าน/คอนโดที่นายหน้าเพิ่งส่งเข้ามาใหม่ และรอแอดมินอนุมัติ
+ * 2. แสดงข้อมูลสรุป เช่น รหัสประกาศ, รูปตัวอย่าง, ชื่อประกาศ, ราคาขาย/เช่า, ชื่อผู้ลงประกาศ และแพ็กเกจ
+ * 3. มีปุ่มกดอนุมัติ (Approve) และปฏิเสธ (Reject) พร้อมฟังก์ชัน Callback ส่งกลับหน้าหลัก
+ * ==============================================================================
+ */
+
 import React from 'react';
 import Image from 'next/image'; // ใช้แสดงรูปตัวอย่างประกาศแต่ละรายการที่รอตรวจสอบ
 
+/** โครงสร้างรายการประกาศสำหรับแอดมินตรวจสอบ */
 interface ModerationItem {
-  id: string;
-  title: string;
-  code: string;
-  price: string;
-  seller: string;
-  plan: string;
-  isVerified?: boolean;
-  sla: string;
-  slaUrgent?: boolean;
-  image?: string;
+  id: string;          // รหัสประกาศ (ID ในฐานข้อมูล)
+  title: string;       // ชื่อหัวข้อประกาศ
+  code: string;        // รหัสย่อประกาศ (เช่น PROP-001)
+  price: string;       // ราคาแสดงผล (เช่น 3,500,000 บาท)
+  seller: string;      // ชื่อผู้ลงประกาศ / นายหน้า
+  plan: string;        // แพ็กเกจที่ใช้ลงประกาศ (เช่น Standard, PRO)
+  isVerified?: boolean;// สถานะยืนยันแล้วหรือไม่
+  sla: string;         // ระยะเวลา SLA คงเหลือที่ต้องตรวจ
+  slaUrgent?: boolean; // ธงเตือนเร่งด่วนตาม SLA
+  image?: string;      // URL รูปภาพหน้าปกประกาศ
 }
 
+/** Props สำหรับ ModerationList Component */
 interface Props {
-  items: ModerationItem[];
-  onApprove: (id: string, title: string) => void;
-  onReject: (id: string, title: string) => void;
+  items: ModerationItem[];                         // รายชื่อประกาศที่รอตรวจสอบ
+  onApprove: (id: string, title: string) => void;  // ฟังก์ชัน Callback เมื่อแอดมินกดอนุมัติประกาศ
+  onReject: (id: string, title: string) => void;   // ฟังก์ชัน Callback เมื่อแอดมินกดปฏิเสธประกาศ
 }
 
 export default function ModerationList({ items, onApprove, onReject }: Props) {

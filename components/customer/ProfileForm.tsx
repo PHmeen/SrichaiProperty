@@ -1,37 +1,52 @@
 'use client';
 
+/**
+ * ==============================================================================
+ * ฟอร์มจัดการและแก้ไขข้อมูลส่วนตัวผู้ใช้งาน (Profile Form Component)
+ * /components/customer/ProfileForm.tsx
+ * ==============================================================================
+ * วัตถุประสงค์หลัก:
+ * 1. ฟอร์มแก้ไขข้อมูลส่วนตัว (ชื่อจริง, นามสกุล, เบอร์โทรศัพท์, LINE ID)
+ * 2. ตั้งค่าการรับการแจ้งเตือน (Email & SMS Notifications)
+ * 3. ฟอร์มเปลี่ยนรหัสผ่านใหม่ (Current Password, New Password, Confirm Password)
+ * 4. แสดงประวัติการเข้าสู่ระบบล่าสุด (อุปกรณ์, IP Address)
+ * 5. ระบบขอลบบัญชีผู้ใช้งานออกจากระบบพร้อม Modal ยืนยัน
+ * ==============================================================================
+ */
+
 import React, { useState } from 'react';
 import { signOut } from 'next-auth/react'; // ใช้ออกจากระบบหลังลบบัญชีหรือเปลี่ยนรหัสผ่านสำเร็จ
 
+/** Props สำหรับ ProfileForm Component */
 interface ProfileFormProps {
-  firstName: string;
-  setFirstName: (val: string) => void;
-  lastName: string;
-  setLastName: (val: string) => void;
-  phone: string;
-  setPhone: (val: string) => void;
-  lineId: string;
-  setLineId: (val: string) => void;
-  email: string;
-  emailNotification: boolean;
-  setEmailNotification: (val: boolean) => void;
-  smsNotification: boolean;
-  setSmsNotification: (val: boolean) => void;
-  currentPassword: string;
-  setCurrentPassword: (val: string) => void;
-  newPassword: string;
-  setNewPassword: (val: string) => void;
-  confirmPassword: string;
-  setConfirmPassword: (val: string) => void;
-  isSaving: boolean;
-  isLoadingProfile: boolean;
-  statusMsg: { type: 'success' | 'error'; text: string } | null;
-  lastLoginTime: string;
-  loginDevice: string;
-  loginIp: string;
-  isVerified: boolean;
-  handleSaveProfile: (e: React.FormEvent) => void;
-  onResetProfile: () => void;
+  firstName: string;                                   // ชื่อจริง
+  setFirstName: (val: string) => void;                // ฟังก์ชันอัปเดตชื่อจริง
+  lastName: string;                                    // นามสกุล
+  setLastName: (val: string) => void;                 // ฟังก์ชันอัปเดตนามสกุล
+  phone: string;                                       // เบอร์โทรศัพท์
+  setPhone: (val: string) => void;                    // ฟังก์ชันอัปเดตเบอร์โทร
+  lineId: string;                                      // LINE ID
+  setLineId: (val: string) => void;                   // ฟังก์ชันอัปเดต LINE ID
+  email: string;                                       // อีเมลผู้ใช้ (อ่านอย่างเดียว)
+  emailNotification: boolean;                          // สภาวะการเปิด/ปิดรับการแจ้งเตือนผ่านอีเมล
+  setEmailNotification: (val: boolean) => void;       // ฟังก์ชันสลับแจ้งเตือนอีเมล
+  smsNotification: boolean;                            // สภาวะการเปิด/ปิดรับการแจ้งเตือนผ่าน SMS
+  setSmsNotification: (val: boolean) => void;         // ฟังก์ชันสลับแจ้งเตือน SMS
+  currentPassword: string;                             // รหัสผ่านปัจจุบัน
+  setCurrentPassword: (val: string) => void;          // ฟังก์ชันอัปเดตรหัสผ่านปัจจุบัน
+  newPassword: string;                                 // รหัสผ่านใหม่
+  setNewPassword: (val: string) => void;              // ฟังก์ชันอัปเดตรหัสผ่านใหม่
+  confirmPassword: string;                             // ยืนยันรหัสผ่านใหม่
+  setConfirmPassword: (val: string) => void;          // ฟังก์ชันอัปเดตยืนยันรหัสผ่านใหม่
+  isSaving: boolean;                                   // สภาวะกำลังบันทึกข้อมูล
+  isLoadingProfile: boolean;                           // สภาวะกำลังโหลดข้อมูลโปรไฟล์
+  statusMsg: { type: 'success' | 'error'; text: string } | null; // ข้อความแจ้งสถานะสำเร็จ/ล้มเหลว
+  lastLoginTime: string;                               // วันเวลาเข้าสู่ระบบล่าสุด
+  loginDevice: string;                                 // อุปกรณ์ที่ใช้เข้าสู่ระบบ
+  loginIp: string;                                     // หมายเลข IP ที่ใช้เข้าสู่ระบบ
+  isVerified: boolean;                                 // สถานะการยืนยันตัวตน
+  handleSaveProfile: (e: React.FormEvent) => void;     // ฟังก์ชันบันทึกข้อมูลโปรไฟล์
+  onResetProfile: () => void;                          // ฟังก์ชันคืนค่าฟอร์มเป็นค่าเดิม
 }
 
 const DELETE_CONFIRM_TEXT = 'ลบบัญชี';
