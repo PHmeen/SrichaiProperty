@@ -117,14 +117,14 @@ export default function AgentAppointmentsPage() {
     }
   }, [sessionStatus]);
 
-  const handleAction = async (id: string, action: 'confirm' | 'reject' | 'complete') => {
-    const confirmMsg = action === 'confirm'
-      ? 'ยืนยันรับคิวนัดหมายนี้ใช่หรือไม่?'
-      : action === 'reject'
-        ? 'ต้องการปฏิเสธคำขอนัดหมายนี้ใช่หรือไม่?'
+  const handleAction = async (id: string, action: 'confirm' | 'reject' | 'complete', reason?: string) => {
+    // การปฏิเสธใช้โมดัลเลือกเหตุผลแทน (ดู rejectingApt) จึงไม่ต้องถามยืนยันซ้ำอีก
+    if (action !== 'reject') {
+      const confirmMsg = action === 'confirm'
+        ? 'ยืนยันรับคิวนัดหมายนี้ใช่หรือไม่?'
         : 'ทำเครื่องหมายว่านัดหมายนี้เสร็จสิ้นแล้วใช่หรือไม่?';
-
-    if (!confirm(confirmMsg)) return;
+      if (!confirm(confirmMsg)) return;
+    }
 
     setBusyId(id);
     setBusyAction(action);
@@ -132,7 +132,7 @@ export default function AgentAppointmentsPage() {
       const res = await fetch('/api/appointments', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, action })
+        body: JSON.stringify({ id, action, ...(reason ? { reason } : {}) })
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -154,6 +154,44 @@ export default function AgentAppointmentsPage() {
       setBusyId(null);
       setBusyAction(null);
     }
+  };
+
+  // === โมดัล "ปฏิเสธนัดหมายพร้อมระบุเหตุผล" ===
+  // เหตุผลจะถูกส่งไปเก็บใน cancel_reason และแสดงให้ลูกค้าเห็นในหน้านัดหมายของเขา
+  const REJECT_REASONS = [
+    'ติดนัดหมายอื่นในช่วงเวลานี้',
+    'เจ้าของบ้านไม่สะดวกให้เข้าชมวันดังกล่าว',
+    'ทรัพย์นี้มีผู้จองหรือปิดการขายแล้ว',
+    'ต้องการนัดหมายล่วงหน้ามากกว่านี้',
+    'อื่นๆ'
+  ];
+
+  const [rejectingApt, setRejectingApt] = useState<AgentAppointment | null>(null);
+  const [rejectReasonOption, setRejectReasonOption] = useState<string>(REJECT_REASONS[0]);
+  const [customRejectReason, setCustomRejectReason] = useState('');
+
+  const openRejectModal = (apt: AgentAppointment) => {
+    setRejectingApt(apt);
+    setRejectReasonOption(REJECT_REASONS[0]);
+    setCustomRejectReason('');
+  };
+
+  const closeRejectModal = () => {
+    setRejectingApt(null);
+    setCustomRejectReason('');
+  };
+
+  const confirmReject = async () => {
+    if (!rejectingApt) return;
+    const finalReason = rejectReasonOption === 'อื่นๆ' ? customRejectReason.trim() : rejectReasonOption;
+    if (rejectReasonOption === 'อื่นๆ' && !finalReason) {
+      setToast({ kind: 'error', text: 'กรุณาระบุเหตุผลในการปฏิเสธ' });
+      return;
+    }
+
+    const targetId = rejectingApt.id;
+    closeRejectModal();
+    await handleAction(targetId, 'reject', finalReason);
   };
 
   const handleCalPrevMonth = () => {
@@ -487,7 +525,7 @@ export default function AgentAppointmentsPage() {
                             </button>
                             <button
                               disabled={busyId === apt.id}
-                              onClick={() => handleAction(apt.id, 'reject')}
+                              onClick={() => openRejectModal(apt)}
                               className="flex-1 px-3 py-2 bg-red-50 hover:bg-red-500 hover:text-white text-red-600 border border-red-200 hover:border-red-500 font-bold rounded-lg text-[10px] transition-all duration-150 active:scale-95 cursor-pointer disabled:opacity-60 disabled:cursor-wait"
                             >
                               {busyId === apt.id && busyAction === 'reject' ? 'กำลังปฏิเสธ...' : 'ปฏิเสธ'}
@@ -550,6 +588,79 @@ export default function AgentAppointmentsPage() {
           </div>
         </div>
       </main>
+
+      {/* 🔑 KEYWORD: โมดัลปฏิเสธนัดหมายระบุเหตุผล */}
+      {rejectingApt && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 border border-slate-100">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="font-extrabold text-red-600 text-base flex items-center gap-1.5">
+                <span>🚫</span> ปฏิเสธคำขอนัดหมาย
+              </h3>
+              <button onClick={closeRejectModal} className="text-slate-400 hover:text-slate-600 font-bold text-lg cursor-pointer">✕</button>
+            </div>
+
+            <div>
+              <p className="text-xs font-bold text-slate-500">คำขอจาก:</p>
+              <p className="text-sm font-extrabold text-slate-900">{rejectingApt.customerName}</p>
+              <p className="text-xs font-medium text-slate-500 mt-0.5 line-clamp-1">{rejectingApt.propertyTitle}</p>
+              <p className="text-[11px] font-bold text-slate-600 mt-1">
+                📅 {formatDateTH(rejectingApt.date)}, {timeSlotLabel(rejectingApt.timeSlot)}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-extrabold text-slate-700">กรุณาเลือกเหตุผลในการปฏิเสธ:</label>
+
+              {REJECT_REASONS.map((reasonOpt, idx) => (
+                <label key={idx} className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white transition cursor-pointer text-xs font-bold text-slate-700">
+                  <input
+                    type="radio"
+                    name="agentRejectReason"
+                    value={reasonOpt}
+                    checked={rejectReasonOption === reasonOpt}
+                    onChange={(e) => setRejectReasonOption(e.target.value)}
+                    className="accent-red-600"
+                  />
+                  <span>{reasonOpt}</span>
+                </label>
+              ))}
+
+              {rejectReasonOption === 'อื่นๆ' && (
+                <textarea
+                  rows={2}
+                  placeholder="พิมพ์ระบุเหตุผลเพิ่มเติม..."
+                  value={customRejectReason}
+                  onChange={(e) => setCustomRejectReason(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-red-500 mt-2"
+                />
+              )}
+            </div>
+
+            <p className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 leading-relaxed">
+              ℹ️ ลูกค้าจะเห็นเหตุผลนี้ และรอบเวลานี้จะกลับมาเปิดให้จองใหม่ทันที
+            </p>
+
+            <div className="flex items-center justify-end gap-2 border-t pt-3">
+              <button
+                type="button"
+                onClick={closeRejectModal}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs cursor-pointer"
+              >
+                ย้อนกลับ
+              </button>
+              <button
+                type="button"
+                onClick={confirmReject}
+                disabled={busyId === rejectingApt.id}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs cursor-pointer shadow disabled:opacity-50"
+              >
+                {busyId === rejectingApt.id ? 'กำลังปฏิเสธ...' : 'ยืนยันปฏิเสธ'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

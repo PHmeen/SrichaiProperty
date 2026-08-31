@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next"; // ดึงเซสชั�
 import { authOptions } from "@/lib/authOptions"; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
 import { db } from "@/lib/db"; // ไคลเอนต์ Prisma สำหรับจัดการนัดหมายและสล็อตวันว่าง
 import { notifyUser } from "@/lib/notify"; // ส่งการแจ้งเตือนเมื่อมีการนัด/ยืนยัน/ยกเลิกนัดหมาย
+import { hasAgentBookingConflict } from "@/lib/services/viewingSlotService"; // เช็คว่านายหน้ามีนัดจริงกับบ้านหลังอื่นชนเวลานี้อยู่แล้วหรือไม่
 
 /**
  * ==============================================================================
@@ -128,6 +129,7 @@ export async function POST(request: Request) {
     const property = await db.properties.findUnique({ where: { id: propertyId } });
     if (!property) return NextResponse.json({ error: "ไม่พบข้อมูลอสังหาริมทรัพย์นี้" }, { status: 404 });
 
+    // 🔑 KEYWORD: กฎ 1 ลูกค้า 1 บ้าน จองซ้อนไม่ได้
     // 2.4 ตรวจสอบกฎธุรกิจ: ลูกค้า 1 คน จองค้างไว้ได้ทีละ 1 นัดต่อบ้าน 1 หลัง ( status: pending หรือ approved )
     const existing = await db.appointments.findFirst({
       where: { customer_id: user.id, property_id: property.id, status: { in: ["pending", "approved"] } }
@@ -139,6 +141,7 @@ export async function POST(request: Request) {
     // 2.5 แปลงข้อความรอบเวลาให้อยู่ในคีย์มาตรฐาน DB ('morning' หรือ 'afternoon')
     const dbTimeSlot = timeSlot.includes("13:") || timeSlot.includes("15:") || timeSlot.includes("บ่าย") || timeSlot.toLowerCase().includes("afternoon") ? "afternoon" : "morning";
 
+    // 🔑 KEYWORD: เช็ครอบว่างจริงก่อนจอง
     // 2.6 ตรวจสอบว่ารอบเวลานี้เปิดว่างจริงในตาราง property_viewing_slots และยังไม่มีคนจองคิวไปก่อน
     const targetSlot = await db.property_viewing_slots.findUnique({
       where: {
@@ -151,6 +154,13 @@ export async function POST(request: Request) {
     });
     if (!targetSlot) return NextResponse.json({ error: "ไม่พบรอบเข้าชมนี้ กรุณาเลือกวันและช่วงเวลาที่นายหน้าเปิดไว้" }, { status: 400 });
     if (targetSlot.is_booked) return NextResponse.json({ error: "ช่วงเวลานี้ถูกจองไปแล้ว" }, { status: 400 });
+
+    // 🔑 KEYWORD: ล็อกวันว่างตอนลูกค้าจองจริง
+    // 2.6.1 เช็คว่านายหน้าคนนี้มีนัดจริงกับ "บ้านหลังอื่น" ชนวัน+เวลานี้อยู่แล้วหรือไม่
+    // (จุดล็อกจริงของระบบ — ไม่ล็อกตั้งแต่ตอนเปิดวันว่าง เพราะนายหน้าไปนำชมได้ทีละที่)
+    if (property.agent_id && await hasAgentBookingConflict(property.agent_id, property.id, new Date(date), dbTimeSlot)) {
+      return NextResponse.json({ error: "นายหน้าติดนัดชมบ้านหลังอื่นในช่วงเวลานี้แล้ว กรุณาเลือกวันหรือเวลาอื่น" }, { status: 400 });
+    }
 
     // 2.7 สร้างคำขอนัดหมายใหม่ลงในตาราง appointments (สถานะเริ่มต้นเป็น 'pending')
     const newAppointment = await db.appointments.create({
@@ -165,6 +175,7 @@ export async function POST(request: Request) {
       }
     });
 
+    // 🔑 KEYWORD: ล็อกรอบเวลาหลังจองสำเร็จ
     // 2.8 ล็อกรอบเวลานี้ในตาราง property_viewing_slots ทันทีเพื่อป้องกันไม่ให้ผู้อื่นจองซ้ำ (is_booked = true)
     await db.property_viewing_slots.updateMany({
       where: { property_id: property.id, available_date: new Date(date), time_slot: dbTimeSlot },
@@ -207,13 +218,14 @@ export async function PATCH(request: Request) {
     const user = await getAuthUser();
     if (!user) return NextResponse.json({ error: "กรุณาเข้าสู่ระบบก่อน" }, { status: 401 });
 
-    const { id, action, date, timeSlot } = await request.json();
+    const { id, action, date, timeSlot, reason } = await request.json();
     if (!id) return NextResponse.json({ error: "กรุณาระบุรหัสนัดหมาย" }, { status: 400 });
 
     // 3.2 ค้นหาข้อมูลนัดหมายที่จะแก้ไข
     const appointment = await db.appointments.findUnique({ where: { id } });
     if (!appointment) return NextResponse.json({ error: "ไม่พบนัดหมายนี้ในระบบ" }, { status: 404 });
 
+    // 🔑 KEYWORD: นายหน้ารับปฏิเสธปิดงานนัดหมาย
     // --------------------------------------------------------------------------
     // (ก) กรณีฝั่งนายหน้าจัดการ: ยืนยัน (confirm), ปฏิเสธ (reject), หรือ ปิดงาน (complete)
     // --------------------------------------------------------------------------
@@ -242,11 +254,26 @@ export async function PATCH(request: Request) {
 
       if (appointment.status !== "pending") return NextResponse.json({ error: "นัดหมายนี้ถูกดำเนินการไปแล้ว" }, { status: 400 });
 
+      // 🔑 KEYWORD: เหตุผลที่นายหน้าปฏิเสธนัด
+      // ปฏิเสธต้องระบุเหตุผลเสมอ เพื่อให้ลูกค้ารู้ว่าทำไมถึงไม่ได้ และตัดสินใจจองรอบใหม่ได้ถูก
+      const rejectReason = typeof reason === "string" ? reason.trim() : "";
+      if (action === "reject" && !rejectReason) {
+        return NextResponse.json({ error: "กรุณาระบุเหตุผลในการปฏิเสธนัดหมาย" }, { status: 400 });
+      }
+
       // นายหน้าอนุมัติ (approved) หรือ ปฏิเสธ (rejected)
       const newStatus = action === "confirm" ? "approved" : "rejected";
-      const updated = await db.appointments.update({ where: { id }, data: { status: newStatus } });
+      const updated = await db.appointments.update({
+        where: { id },
+        data: {
+          status: newStatus,
+          ...(action === "reject" ? { cancel_reason: rejectReason } : {})
+        }
+      });
 
       // กรณีปฏิเสธ -> ปลดล็อกรอบเวลานัดหมายให้ผู้ใช้อื่นจองได้ต่อไป (is_booked = false)
+      // หมายเหตุ: การกันนายหน้ารับนัดชนข้ามบ้าน (hasAgentBookingConflict) ผูกกับ "สถานะนัด"
+      // พอสถานะเปลี่ยนเป็น rejected แล้ว รอบนี้จะหลุดจากการกันชนเองอัตโนมัติ ไม่ต้องปลดเพิ่ม
       if (action === "reject" && appointment.property_id) {
         await db.property_viewing_slots.updateMany({
           where: { property_id: appointment.property_id, available_date: appointment.appointment_date, time_slot: appointment.time_slot ?? undefined },
@@ -262,13 +289,14 @@ export async function PATCH(request: Request) {
         const notiTitle = action === "confirm" ? "ยืนยันคำขอนัดหมายเข้าชมโครงการ" : "แจ้งเปลี่ยนแปลงคำขอนัดหมาย";
         const notiContent = action === "confirm"
           ? `รายการนัดหมายเข้าชม "${propertyTitle}" ได้รับการยืนยันจากนายหน้าเรียบร้อยแล้ว`
-          : `รายการนัดหมายเข้าชม "${propertyTitle}" ไม่สามารถดำเนินการได้ในวันดังกล่าว กรุณาเลือกช่วงเวลาอื่น`;
+          : `รายการนัดหมายเข้าชม "${propertyTitle}" ถูกปฏิเสธโดยนายหน้า (เหตุผล: ${rejectReason}) รอบเวลานี้เปิดให้จองใหม่แล้ว หรือเลือกช่วงเวลาอื่นได้`;
         sendNotification(appointment.customer_id, notiTitle, notiContent, "appointment", "/customer/appointments");
       }
 
       return NextResponse.json({ success: true, data: updated });
     }
 
+    // 🔑 KEYWORD: ลูกค้าขอเปลี่ยนวันนัด
     // --------------------------------------------------------------------------
     // (ข) กรณีฝั่งลูกค้าจัดการ: ขอเปลี่ยนวันและเวลานัดหมายใหม่
     // --------------------------------------------------------------------------
@@ -285,6 +313,11 @@ export async function PATCH(request: Request) {
         });
         if (!targetSlot) return NextResponse.json({ error: "ไม่พบวันว่างนี้ในระบบ" }, { status: 400 });
         if (targetSlot.is_booked) return NextResponse.json({ error: "ช่วงเวลานี้ถูกจองไปแล้ว" }, { status: 400 });
+
+        // เช็คนัดชนบ้านหลังอื่นของนายหน้าคนเดียวกันด้วย เหมือนตอนจองครั้งแรก
+        if (appointment.agent_id && await hasAgentBookingConflict(appointment.agent_id, appointment.property_id, new Date(date), timeSlot)) {
+          return NextResponse.json({ error: "นายหน้าติดนัดชมบ้านหลังอื่นในช่วงเวลานี้แล้ว กรุณาเลือกวันหรือเวลาอื่น" }, { status: 400 });
+        }
       }
 
       const updated = await db.appointments.update({
@@ -340,6 +373,7 @@ export async function DELETE(request: Request) {
     const isAgent = appointment.agent_id === user.id;
     if (!isCustomer && !isAgent) return NextResponse.json({ error: "คุณไม่มีสิทธิ์ยกเลิกนัดหมายนี้" }, { status: 403 });
 
+    // 🔑 KEYWORD: กันยกเลิกนัดซ้ำ
     // 4.5 ป้องกันการยกเลิกซ้ำในนัดที่ปิดงานไปแล้ว (completed, cancelled, rejected)
     if (["completed", "cancelled", "rejected"].includes(appointment.status || "")) {
       return NextResponse.json({ error: "นัดหมายนี้ถูกปิดไปแล้ว ไม่สามารถยกเลิกซ้ำได้" }, { status: 400 });

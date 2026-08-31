@@ -18,6 +18,13 @@ interface ViewingSlot {
   isBooked?: boolean; // รอบที่ลูกค้าจองไปแล้ว ลบออกไม่ได้
 }
 
+// รอบเวลาที่ "บ้านหลังอื่นของนายหน้าคนเดียวกัน" เปิดไว้แล้ว (ไม่นับบ้านหลังที่กำลังแก้ไขอยู่)
+interface AgentBusySlot {
+  date: string;
+  timeSlot: string;
+  propertyTitle: string;
+}
+
 const MONTH_NAMES_TH = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
@@ -54,6 +61,7 @@ export default function AgentEditPropertyPage() {
   const [calMonth, setCalMonth] = useState(today.getMonth()); // 0-11
   const [viewingSlots, setViewingSlots] = useState<ViewingSlot[]>([]);
   const [selectedCalDate, setSelectedCalDate] = useState<string | null>(null);
+  const [agentBusySlots, setAgentBusySlots] = useState<AgentBusySlot[]>([]); // รอบที่บ้านหลังอื่นของเราเปิดไว้แล้ว
 
   // โหลดรายชื่อจังหวัดทั้งหมด
   useEffect(() => {
@@ -62,6 +70,16 @@ export default function AgentEditPropertyPage() {
       .then(d => Array.isArray(d) && setProvinces(d))
       .catch(err => console.error(err));
   }, []);
+
+  // 🔑 KEYWORD: โหลดวันที่บ้านหลังอื่นเปิดไว้แล้ว
+  // ดึงรอบเวลาที่บ้าน "หลังอื่น" ของเราเปิดไว้ (ส่ง excludePropertyId เพื่อไม่ให้นับรอบของบ้านหลังนี้เองว่าชน)
+  useEffect(() => {
+    if (!propertyId) return;
+    fetch(`/api/properties/viewing-slots?agentBusy=1&excludePropertyId=${propertyId}`)
+      .then(r => r.json())
+      .then(d => { if (d.success && Array.isArray(d.busySlots)) setAgentBusySlots(d.busySlots); })
+      .catch(() => {}); // โหลดไม่ได้ก็ปล่อยผ่าน หลังบ้านยังกันซ้อนให้อยู่ดี
+  }, [propertyId]);
 
   // โหลดข้อมูลบ้านหลังนี้ + วันว่างเดิม
   useEffect(() => {
@@ -164,6 +182,15 @@ export default function AgentEditPropertyPage() {
   };
 
   const getSlotsForDate = (dateStr: string) => viewingSlots.filter(s => s.date === dateStr);
+
+  // 🔑 KEYWORD: เช็ครอบที่ชนกับบ้านหลังอื่น
+  // คืนค่าข้อมูลบ้านหลังอื่นที่เปิดรอบนี้ไว้แล้ว (ถ้าไม่ชนจะได้ undefined)
+  const getBusySlot = (dateStr: string, timeSlot: 'morning' | 'afternoon') =>
+    agentBusySlots.find(s => s.date === dateStr && s.timeSlot === timeSlot);
+
+  // นับว่าวันนี้ถูกบ้านหลังอื่นจองไปกี่รอบแล้ว (2 = เต็มทั้งเช้าและบ่าย → กดวันนี้ไม่ได้เลย)
+  const countBusyOnDate = (dateStr: string) =>
+    agentBusySlots.filter(s => s.date === dateStr).length;
 
   const toggleViewingSlot = (dateStr: string, timeSlot: 'morning' | 'afternoon') => {
     const target = viewingSlots.find(s => s.date === dateStr && s.timeSlot === timeSlot);
@@ -458,11 +485,19 @@ export default function AgentEditPropertyPage() {
                   const hasSlots = daySlots.length > 0;
                   const hasBooked = daySlots.some(s => s.isBooked);
 
+                  // 🔑 KEYWORD: วันที่ชนกับบ้านหลังอื่นในปฏิทิน
+                  // busyCount = จำนวนรอบที่บ้านหลังอื่นของเราเปิดไว้ในวันนี้ (0, 1 หรือ 2)
+                  // แค่ไว้เตือนเฉยๆ ไม่ได้บล็อกไม่ให้เปิดซ้อน — นายหน้าเปิดวันเดียวกันได้หลายบ้าน
+                  // ระบบล็อกจริงจะทำงานตอนมีลูกค้ากดจองรอบใดรอบหนึ่งแล้วเท่านั้น
+                  const busyCount = countBusyOnDate(dateStr);
+                  const isBusy = busyCount > 0 && !hasSlots;
+
                   let dayClass = "w-8 h-8 flex items-center justify-center mx-auto rounded-full transition-all ";
                   if (isPast) dayClass += "text-slate-200 cursor-not-allowed";
                   else if (isSelected) dayClass += "bg-blue-600 text-white shadow-md active:scale-95 cursor-pointer";
                   else if (hasBooked) dayClass += "border border-amber-400 text-amber-700 bg-amber-50 hover:bg-amber-100 cursor-pointer";
                   else if (hasSlots) dayClass += "border border-emerald-400 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 cursor-pointer";
+                  else if (isBusy) dayClass += "border border-dashed border-slate-400 text-slate-500 bg-slate-50 hover:bg-slate-100 cursor-pointer";
                   else dayClass += "text-slate-500 hover:bg-slate-50 cursor-pointer";
 
                   return (
@@ -470,6 +505,7 @@ export default function AgentEditPropertyPage() {
                       key={dayNum}
                       type="button"
                       disabled={isPast}
+                      title={isBusy ? 'คุณมีนัดชมบ้านหลังอื่นในวันนี้แล้ว เลือกได้ตามปกติ' : undefined}
                       onClick={() => setSelectedCalDate(dateStr)}
                       className={dayClass}
                     >
@@ -488,6 +524,11 @@ export default function AgentEditPropertyPage() {
                       const active = Boolean(found);
                       const booked = Boolean(found?.isBooked);
 
+                      // 🔑 KEYWORD: เตือนรอบที่บ้านหลังอื่นเปิดไว้แล้ว
+                      // แค่เตือนว่าไปชนกับบ้านหลังไหน ไม่ได้ปิดไม่ให้กด — เปิดซ้อนกันได้ตามปกติ
+                      // (ไม่นับรอบที่บ้านหลังนี้เปิดไว้อยู่แล้ว เพราะ API กรอง excludePropertyId ให้ตั้งแต่ตอนดึงข้อมูล)
+                      const busy = active ? undefined : getBusySlot(selectedCalDate, slot);
+
                       return (
                         <button
                           key={slot}
@@ -498,26 +539,49 @@ export default function AgentEditPropertyPage() {
                               ? 'border-amber-400 bg-amber-50'
                               : active
                                 ? 'border-emerald-400 bg-emerald-50'
-                                : 'border-slate-200 hover:border-blue-400'
+                                : busy
+                                  ? 'border-dashed border-slate-300 bg-slate-50 hover:border-blue-400'
+                                  : 'border-slate-200 hover:border-blue-400'
                           }`}
                         >
                           <p className="text-[11px] font-black text-slate-800">{slot === 'morning' ? 'รอบเช้า' : 'รอบบ่าย'}</p>
                           <p className="text-[9px] text-slate-500 font-bold">{slot === 'morning' ? '09:00 - 12:00' : '13:00 - 17:00'}</p>
-                          <p className={`text-[9px] font-black mt-1 ${booked ? 'text-amber-600' : active ? 'text-emerald-600' : 'text-slate-400'}`}>
-                            {booked ? '🔒 มีลูกค้าจองแล้ว' : active ? '✓ เปิดรับจองอยู่' : 'ยังไม่ได้เปิด'}
-                          </p>
+                          {busy ? (
+                            <p className="text-[9px] font-black mt-1 text-amber-600 leading-tight">
+                              ℹ️ ติดนัดที่ &quot;{busy.propertyTitle}&quot; แล้ว
+                            </p>
+                          ) : (
+                            <p className={`text-[9px] font-black mt-1 ${booked ? 'text-amber-600' : active ? 'text-emerald-600' : 'text-slate-400'}`}>
+                              {booked ? '🔒 มีลูกค้าจองแล้ว' : active ? '✓ เปิดรับจองอยู่' : 'ยังไม่ได้เปิด'}
+                            </p>
+                          )}
                         </button>
                       );
                     })}
                   </div>
                 </div>
               )}
+
+              {/* 🔑 KEYWORD: แถบคำอธิบายสีปฏิทินนายหน้า */}
+              <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 mt-4 pt-3 border-t border-slate-100 text-[9px] font-bold text-slate-400">
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-emerald-400" /> เปิดรับจองอยู่</span>
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-amber-400" /> มีลูกค้าจองแล้ว</span>
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-600" /> เลือกอยู่</span>
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-dashed border-slate-400" /> ติดนัดบ้านหลังอื่น (เลือกซ้อนได้ปกติ)</span>
+              </div>
             </div>
 
             <div className="flex items-center gap-4 text-[10px] font-bold">
               <span className="text-emerald-600">✓ เปิดรับจองอยู่ {viewingSlots.length - bookedCount} ช่วงเวลา</span>
               <span className="text-amber-600">🔒 ถูกจองแล้ว {bookedCount} ช่วงเวลา</span>
             </div>
+
+            {agentBusySlots.length > 0 && (
+              <p className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 leading-relaxed">
+                ℹ️ วันที่เป็นเส้นประ คือวันที่คุณมีนัดชม<strong>บ้านหลังอื่น</strong>อยู่แล้วจริงๆ (มีลูกค้าจองไว้)
+                ยังเปิดวันนี้ให้บ้านหลังนี้ได้ตามปกติ ระบบจะกันชนให้เองตอนมีลูกค้ากดจองรอบที่ชนกันจริง
+              </p>
+            )}
           </div>
 
           {/* Action Buttons */}

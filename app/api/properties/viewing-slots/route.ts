@@ -1,9 +1,10 @@
+// 🔑 KEYWORD: ตารางลงวันว่างนายหน้าของบ้านแต่ละหลัง
 // === API วันเวลาที่เปิดให้ลูกค้าจองเข้าชม "บ้านแต่ละหลัง" (ผูกกับ property_id) ===
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next"; // ดึงเซสชันเพื่อยืนยันว่าเป็นนายหน้าเจ้าของบ้าน
 import { authOptions } from "@/lib/authOptions"; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
 import { db } from "@/lib/db"; // ไคลเอนต์ Prisma สำหรับจัดการรอบวันว่างให้เข้าชม
-import { hasAgentSlotConflict } from "@/lib/services/viewingSlotService"; // ตรวจสอบว่ารอบเวลาที่เปิดใหม่ชนกับบ้านหลังอื่นของนายหน้าคนเดียวกันหรือไม่
+import { ACTIVE_APPOINTMENT_STATUSES } from "@/lib/services/viewingSlotService"; // สถานะนัดหมายที่ยังถือว่า "จองอยู่จริง"
 
 interface AgentSession {
   user?: {
@@ -12,12 +13,59 @@ interface AgentSession {
   };
 }
 
+// แปลง Date เป็นข้อความ "YYYY-MM-DD" (อ่านค่าแบบ UTC เพราะคอลัมน์ available_date เป็นชนิด Date ล้วน ไม่มีเวลา)
+const toDateKey = (d: Date) =>
+  `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+
+// 🔑 KEYWORD: ดึงวันว่างของบ้านหลังเดียว
 // GET: ดึงวันว่างของบ้านหลังหนึ่งๆ — สาธารณะ (ลูกค้าและนายหน้าใช้ร่วมกันได้)
 // ใช้: /api/properties/viewing-slots?propertyId=xxxx
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const propertyId = searchParams.get("propertyId");
+
+    // 🔑 KEYWORD: ดึงรอบที่นายหน้าติดนัดกับบ้านหลังอื่นแล้ว
+    // โหมดพิเศษ: /api/properties/viewing-slots?agentBusy=1[&excludePropertyId=xxx]
+    // ใช้ตอนนายหน้าเปิดหน้า "ลงประกาศ" หรือ "แก้ไขประกาศ" เพื่อรู้ล่วงหน้าว่าตัวเองมีนัดชนกับบ้านหลังอื่นวันไหนแล้ว
+    // เดิมดึงจาก "วันว่างที่เปิดไว้" (property_viewing_slots) แต่ตอนนี้เปิดวันว่างซ้อนกันได้ตามปกติแล้ว
+    // เปลี่ยนมาดึงจาก "นัดหมายที่มีคนจองจริง" (appointments) แทน เพราะนั่นคือจุดล็อกจริงของระบบ
+    if (searchParams.get("agentBusy")) {
+      const session = (await getServerSession(authOptions)) as AgentSession | null;
+      if (!session?.user?.id || session.user.role !== "agent") {
+        return NextResponse.json(
+          { error: "อนุญาตเฉพาะบัญชีนายหน้าเท่านั้น" },
+          { status: 401 }
+        );
+      }
+
+      // ไม่นับบ้านหลังที่กำลังแก้ไขอยู่ (ไม่งั้นนัดของบ้านหลังนี้เองจะขึ้นว่า "ชนกับตัวเอง")
+      const excludePropertyId = searchParams.get("excludePropertyId");
+
+      const busyAppointments = await db.appointments.findMany({
+        where: {
+          agent_id: session.user.id, // เฉพาะนัดของนายหน้าคนที่ล็อกอินอยู่
+          status: { in: ACTIVE_APPOINTMENT_STATUSES },
+          ...(excludePropertyId ? { property_id: { not: excludePropertyId } } : {})
+        },
+        select: {
+          appointment_date: true,
+          time_slot: true,
+          properties: { select: { title: true } } // เอาชื่อบ้านมาบอกด้วยว่าไปชนกับหลังไหน
+        },
+        orderBy: [{ appointment_date: "asc" }, { time_slot: "asc" }]
+      });
+
+      const formatted = busyAppointments
+        .filter((a) => a.time_slot)
+        .map((a) => ({
+          date: toDateKey(a.appointment_date),
+          timeSlot: a.time_slot as string,
+          propertyTitle: a.properties?.title || "บ้านหลังอื่นของคุณ"
+        }));
+
+      return NextResponse.json({ success: true, busySlots: formatted });
+    }
 
     if (!propertyId) {
       return NextResponse.json(
@@ -33,23 +81,42 @@ export async function GET(req: Request) {
     // (บ้านที่เพิ่งสร้างใหม่ ไม่เคยมีใครจอง กลับขึ้นว่า "ถูกจองแล้ว" เพราะบ้านหลังอื่นของนายหน้าคนเดิมถูกจอง)
     // ตามแผนเดิมที่ตกลงไว้ว่าจะเลิกใช้ระบบ agent_availabilities ทั้งหมด จึงตัดส่วนนี้ออก
     // เหลือใช้แค่ property_viewing_slots ซึ่งผูกกับ property_id ตรงตัวเท่านั้น
-    const propertySlots = await db.property_viewing_slots.findMany({
-      where: { property_id: propertyId },
-      orderBy: [{ available_date: "asc" }, { time_slot: "asc" }]
-    });
+    const [propertySlots, property] = await Promise.all([
+      db.property_viewing_slots.findMany({
+        where: { property_id: propertyId },
+        orderBy: [{ available_date: "asc" }, { time_slot: "asc" }]
+      }),
+      db.properties.findUnique({ where: { id: propertyId }, select: { agent_id: true } })
+    ]);
+
+    // 🔑 KEYWORD: เตือนลูกค้าว่านายหน้าติดนัดบ้านหลังอื่น
+    // นายหน้าเปิดวันว่างซ้อนกันได้หลายบ้าน (ดู viewingSlotService) รอบไหนของบ้านหลังนี้
+    // ที่ตรงกับนัดจริงของนายหน้าคนเดียวกันที่บ้านหลังอื่น ต้องบอกลูกค้าไว้ก่อนกดจอง
+    // (ฝั่งเซิร์ฟเวอร์กันซ้ำอยู่แล้วที่ api/appointments แต่ฝั่งนี้ทำให้ลูกค้าไม่เสียเวลากดแล้วโดนปฏิเสธ)
+    let agentBusyKeys = new Set<string>();
+    if (property?.agent_id) {
+      const busyAppointments = await db.appointments.findMany({
+        where: {
+          agent_id: property.agent_id,
+          property_id: { not: propertyId },
+          status: { in: ACTIVE_APPOINTMENT_STATUSES }
+        },
+        select: { appointment_date: true, time_slot: true }
+      });
+      agentBusyKeys = new Set(
+        busyAppointments.map((a) => `${toDateKey(a.appointment_date)}|${a.time_slot}`)
+      );
+    }
 
     const formatted = propertySlots
       .filter((s) => s.time_slot)
-      .map((s) => {
-        const d = new Date(s.available_date);
-        const dateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
-        return {
-          id: s.id,
-          date: dateStr,
-          timeSlot: s.time_slot as string,
-          isBooked: Boolean(s.is_booked)
-        };
-      });
+      .map((s) => ({
+        id: s.id,
+        date: toDateKey(s.available_date),
+        timeSlot: s.time_slot as string,
+        isBooked: Boolean(s.is_booked),
+        agentBusyElsewhere: agentBusyKeys.has(`${toDateKey(s.available_date)}|${s.time_slot}`)
+      }));
 
     return NextResponse.json({ success: true, slots: formatted });
   } catch (error) {
@@ -62,6 +129,7 @@ export async function GET(req: Request) {
   }
 }
 
+// 🔑 KEYWORD: เปิดวันว่างให้บ้าน กันชนวันว่าง
 // POST: นายหน้าเปิดวันว่างเพิ่มให้บ้านหลังที่ลงประกาศไปแล้ว (ใช้ตอนแก้ไขทีหลัง)
 export async function POST(req: Request) {
   try {
@@ -92,15 +160,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // กันไม่ให้เปิดวันว่างซ้อนกับ "บ้านหลังอื่น" ของนายหน้าคนเดียวกัน
-    // (ถ้าปล่อยให้เปิดซ้อน ลูกค้า 2 คนจะจองคนละบ้านแต่เวลาเดียวกันได้ ทั้งที่นายหน้าไปได้แค่ที่เดียว)
-    if (await hasAgentSlotConflict(session.user.id, propertyId, new Date(date), timeSlot)) {
-      return NextResponse.json(
-        { error: "คุณเปิดวันว่างช่วงเวลานี้ไว้ที่บ้านหลังอื่นแล้ว ไม่สามารถเปิดซ้อนกันได้" },
-        { status: 400 }
-      );
-    }
-
+    // ไม่กันชนกับบ้านหลังอื่นตรงนี้แล้ว — เปิดวันว่างซ้อนกันหลายบ้านได้ตามปกติ
+    // จุดกันชนจริงย้ายไปเช็คตอนลูกค้ากดจอง (ดู hasAgentBookingConflict ใน api/appointments)
     const slot = await db.property_viewing_slots.upsert({
       where: {
         property_id_available_date_time_slot: {
@@ -129,6 +190,7 @@ export async function POST(req: Request) {
   }
 }
 
+// 🔑 KEYWORD: ปิดวันว่างบ้าน ลบวันว่าง
 // DELETE: นายหน้าปิดวันว่างของบ้านหลังนี้ (ทำไม่ได้ถ้าลูกค้าจองไปแล้ว)
 export async function DELETE(req: Request) {
   try {

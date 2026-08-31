@@ -35,7 +35,24 @@ interface PropertyData {
   image: string | null;          // URL รูปภาพหน้าปกหลัก
   images?: string[];             // อาร์เรย์รูปภาพเพิ่มเติมทั้งหมด
   imageCount: number;            // จำนวนรูปภาพทั้งหมดที่มีในประกาศ
+  slaLabel: string;              // ข้อความแสดงเวลา SLA (เช่น เหลือ 45 นาที)
+  slaLevel: 'normal' | 'warning' | 'urgent' | 'overdue'; // ระดับความด่วนของ SLA
+  slaMinutesLeft: number;        // จำนวนนาทีที่เหลือตาม SLA
 }
+
+// 🔑 KEYWORD: รายการเหตุผลตีกลับประกาศ
+// แยกออกมาเป็นค่าคงที่เพื่อให้เพิ่ม/แก้ตัวเลือกได้ที่เดียว (รูปแบบเดียวกับโมดัลปฏิเสธนัดฝั่งนายหน้า)
+const REJECT_REASONS = [
+  'ข้อมูล/รูปภาพไม่ครบถ้วนหรือไม่ชัดเจน',
+  'รูปภาพไม่ตรงกับทรัพย์ที่ประกาศ',
+  'ราคาหรือรายละเอียดดูผิดปกติ ต้องตรวจสอบเพิ่มเติม',
+  'ข้อมูลไม่ตรงกับความเป็นจริง',
+  'เอกสารสิทธิ์ไม่ครบถ้วน',
+  'ทำเลที่ตั้งหรือที่อยู่ไม่ถูกต้อง',
+  'ประกาศซ้ำกับรายการที่มีอยู่แล้วในระบบ',
+  'ข้อความประกาศมีเนื้อหาไม่เหมาะสม',
+  'อื่นๆ'
+];
 
 export default function AdminModerationPage() {
   // ------------------------------------------------------------------------------
@@ -50,6 +67,11 @@ export default function AdminModerationPage() {
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
   // สภาวะตัวกรองประเภทการขาย/เช่า ('all' = ทั้งหมด, 'sale' = ขาย, 'rent' = เช่า)
   const [listingTypeFilter, setListingTypeFilter] = useState<'all' | 'sale' | 'rent'>('all');
+  const [sortBySla, setSortBySla] = useState(false);
+
+  const displayedProperties = sortBySla
+    ? [...properties].sort((a, b) => a.slaMinutesLeft - b.slaMinutesLeft)
+    : properties;
 
   // ------------------------------------------------------------------------------
   // 2. API FETCHING & HANDLERS (ฟังก์ชันการเชื่อมต่อ API และจัดการอีเวนต์)
@@ -104,6 +126,13 @@ export default function AdminModerationPage() {
     await updateStatus(id, 'approved');
   };
 
+  // สีป้าย SLA ตามความด่วน: ปกติ = เขียว, ใกล้ครบ = เหลือง, ด่วน/เกินกำหนด = แดง
+  const slaBadgeClass = (level: PropertyData['slaLevel']) => {
+    if (level === 'urgent' || level === 'overdue') return 'bg-red-50 text-red-600 border-red-100';
+    if (level === 'warning') return 'bg-amber-50 text-amber-600 border-amber-100';
+    return 'bg-emerald-50 text-emerald-600 border-emerald-100';
+  };
+
   // ------------------------------------------------------------------------------
   // 3. REJECT MODAL STATE & LOGIC (ระบบป๊อบอัปปฏิเสธประกาศพร้อมระบุเหตุผล)
   // ------------------------------------------------------------------------------
@@ -111,7 +140,7 @@ export default function AdminModerationPage() {
   // สภาวะเก็บข้อมูลประกาศที่กำลังถูกเลือกเพื่อปฏิเสธ (ถ้าเป็น null คือปิด Modal)
   const [rejectingProperty, setRejectingProperty] = useState<PropertyData | null>(null);
   // สภาวะเก็บตัวเลือกเหตุผลในการปฏิเสธที่แอดมินเลือก
-  const [rejectReasonOption, setRejectReasonOption] = useState<string>('ข้อมูล/รูปภาพไม่ครบถ้วนหรือไม่ชัดเจน');
+  const [rejectReasonOption, setRejectReasonOption] = useState<string>(REJECT_REASONS[0]);
   // สภาวะเก็บข้อความเหตุผลเพิ่มเติมกรณีเลือก 'อื่นๆ'
   const [customRejectReason, setCustomRejectReason] = useState<string>('');
   // สภาวะกำลังกดส่งการปฏิเสธ
@@ -120,7 +149,7 @@ export default function AdminModerationPage() {
   /** เปิด Modal ปฏิเสธประกาศ */
   const openRejectModal = (property: PropertyData) => {
     setRejectingProperty(property);
-    setRejectReasonOption('ข้อมูล/รูปภาพไม่ครบถ้วนหรือไม่ชัดเจน');
+    setRejectReasonOption(REJECT_REASONS[0]);
     setCustomRejectReason('');
   };
 
@@ -195,7 +224,12 @@ export default function AdminModerationPage() {
                 <option value="sale">เฉพาะขาย</option>
                 <option value="rent">เฉพาะเช่า</option>
               </select>
-              <button className="bg-white border border-slate-200 text-slate-600 font-bold py-2 px-4 rounded-lg text-xs hover:bg-slate-50 transition shadow-sm">เรียงตาม SLA (ด่วนสุด)</button>
+              <button
+                onClick={() => setSortBySla((prev) => !prev)}
+                className={`border font-bold py-2 px-4 rounded-lg text-xs transition shadow-sm ${sortBySla ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+              >
+                เรียงตาม SLA (ด่วนสุด)
+              </button>
             </div>
           </div>
 
@@ -206,7 +240,7 @@ export default function AdminModerationPage() {
                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
                <p className="text-slate-500 font-bold">กำลังโหลดคิวประกาศ...</p>
              </div>
-          ) : properties.length === 0 ? (
+          ) : displayedProperties.length === 0 ? (
             // แสดงกล่องว่างเปล่ากรณีไม่มีข้อมูลในสถานะนั้นๆ
             <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm">
               <div className="text-4xl mb-4">🏠</div>
@@ -216,7 +250,7 @@ export default function AdminModerationPage() {
           ) : (
             // แสดงรายการประกาศในคิวแบบการ์ด
             <div className="space-y-5">
-              {properties.map((property) => (
+              {displayedProperties.map((property) => (
                 <div key={property.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow">
                   {/* แถบสีขอบซ้ายแสดงสถานะ (ส้ม = รอตรวจ, เขียว = อนุมัติ, เทา = ปฏิเสธ) */}
                   <div className="flex">
@@ -279,9 +313,9 @@ export default function AdminModerationPage() {
                              <span className="text-[10px] text-slate-400 font-bold uppercase">ID: {property.id.slice(0, 8)}</span>
                              {/* ตัวแจ้งเตือนเวลา SLA สำหรับคิวรออนุมัติ */}
                              {activeTab === 'pending' && (
-                               <span className="bg-red-50 text-red-600 text-[10px] font-black px-2 py-1 rounded-md border border-red-100 flex items-center gap-1">
+                               <span className={`text-[10px] font-black px-2 py-1 rounded-md border flex items-center gap-1 ${slaBadgeClass(property.slaLevel)}`}>
                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                 SLA: เหลือ 45 นาที
+                                 SLA: {property.slaLabel}
                                </span>
                              )}
                           </div>
@@ -372,13 +406,7 @@ export default function AdminModerationPage() {
               <div className="space-y-2">
                 <label className="block text-xs font-extrabold text-slate-700">กรุณาเลือกเหตุผลในการปฏิเสธ:</label>
 
-                {[
-                  'ข้อมูล/รูปภาพไม่ครบถ้วนหรือไม่ชัดเจน',
-                  'ราคาหรือรายละเอียดดูผิดปกติ ต้องตรวจสอบเพิ่มเติม',
-                  'ข้อมูลไม่ตรงกับความเป็นจริง',
-                  'เอกสารสิทธิ์ไม่ครบถ้วน',
-                  'อื่นๆ'
-                ].map((reasonOpt, idx) => (
+                {REJECT_REASONS.map((reasonOpt, idx) => (
                   <label key={idx} className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white transition cursor-pointer text-xs font-bold text-slate-700">
                     <input
                       type="radio"
