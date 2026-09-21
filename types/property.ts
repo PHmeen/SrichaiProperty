@@ -2,7 +2,13 @@ export interface PropertyNearbyItem {
   id?: number | string;
   name: string;
   type?: string | null;
+  category?: 'shopping' | 'education' | 'hospital' | 'transport' | string;
+  transitType?: 'bus' | 'train' | 'ferry' | 'flight' | string;
   distance?: number | null;
+  distanceKm?: number | null;
+  distanceText?: string | null;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface Property {

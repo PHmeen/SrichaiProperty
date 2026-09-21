@@ -40,7 +40,10 @@ import {
   HeartPulse,
   ShoppingBag,
   Plane,
-  Compass,
+  Bus,
+  Train,
+  Ship,
+  LayoutGrid,
   ExternalLink,
   Bed,
   Bath,
@@ -57,6 +60,7 @@ import {
   ChevronRight,
   Heart
 } from 'lucide-react';
+import { getGoogleMapsDirectionsUrl, type NearbyPlaceResult } from '@/lib/nearbyService';
 
 // ปิด SSR สำหรับแผนที่เสมอ — Leaflet เข้าถึง window/document ตอนโหลดโมดูล
 const PropertyLocationMap = dynamic(() => import('@/components/property/PropertyLocationMap'), {
@@ -141,63 +145,67 @@ interface NearbyMeta {
   colorClass: string;
 }
 
-function getNearbyMeta(type?: string | null): NearbyMeta {
-  const t = (type || '').toLowerCase();
-  if (t.includes('education') || t.includes('school') || t.includes('ศึกษา') || t.includes('เรียน') || t.includes('มหา')) {
+function getNearbyMeta(category?: string | null, transitType?: string | null): NearbyMeta {
+  const c = (category || '').toLowerCase();
+  const baseStyle = {
+    bgClass: 'bg-slate-100/90 border border-slate-200/80 group-hover:bg-blue-50 group-hover:border-blue-200 transition-colors',
+    colorClass: 'text-slate-700 group-hover:text-blue-600 transition-colors',
+  };
+
+  if (c === 'shopping' || c.includes('ห้าง') || c.includes('ตลาด') || c.includes('มอลล์') || c.includes('เซ็นทรัล') || c.includes('shop')) {
+    return {
+      icon: ShoppingBag,
+      label: 'ห้างสรรพสินค้า / ตลาด',
+      ...baseStyle,
+    };
+  }
+  if (c === 'education' || c.includes('ศึกษา') || c.includes('เรียน') || c.includes('มหา') || c.includes('school')) {
     return {
       icon: GraduationCap,
       label: 'สถานศึกษา',
-      bgClass: 'bg-indigo-50 border border-indigo-100',
-      colorClass: 'text-indigo-600',
+      ...baseStyle,
     };
   }
-  if (t.includes('hospital') || t.includes('hosp') || t.includes('พยาบาล') || t.includes('แพทย์') || t.includes('คลินิก')) {
+  if (c === 'hospital' || c.includes('พยาบาล') || c.includes('แพทย์') || c.includes('คลินิก') || c.includes('hosp')) {
     return {
       icon: HeartPulse,
-      label: 'สถานพยาบาล',
-      bgClass: 'bg-rose-50 border border-rose-100',
-      colorClass: 'text-rose-600',
+      label: 'โรงพยาบาล / สถานพยาบาล',
+      ...baseStyle,
     };
   }
-  if (t.includes('shopping') || t.includes('shop') || t.includes('ห้าง') || t.includes('ตลาด') || t.includes('มอลล์') || t.includes('เซ็นทรัล')) {
+  if (c === 'transport' || c.includes('transit') || c.includes('ขนส่ง') || c.includes('คมนาคม') || c.includes('สถานี') || c.includes('สนามบิน')) {
+    if (transitType === 'flight' || c.includes('สนามบิน') || c.includes('บิน') || c.includes('airport')) {
+      return {
+        icon: Plane,
+        label: 'ขนส่งสาธารณะ (สายการบิน)',
+        ...baseStyle,
+      };
+    }
+    if (transitType === 'train' || c.includes('รถไฟ') || c.includes('ราง')) {
+      return {
+        icon: Train,
+        label: 'ขนส่งสาธารณะ (รถไฟ)',
+        ...baseStyle,
+      };
+    }
+    if (transitType === 'ferry' || c.includes('เรือ') || c.includes('แพ') || c.includes('ท่าเรือ')) {
+      return {
+        icon: Ship,
+        label: 'ขนส่งสาธารณะ (เรือข้ามฟาก)',
+        ...baseStyle,
+      };
+    }
     return {
-      icon: ShoppingBag,
-      label: 'ห้างสรรพสินค้า / แหล่งช้อปปิ้ง',
-      bgClass: 'bg-amber-50 border border-amber-100',
-      colorClass: 'text-amber-600',
-    };
-  }
-  if (t.includes('transport') || t.includes('transit') || t.includes('สนามบิน') || t.includes('บิน') || t.includes('สถานี') || t.includes('รถไฟ')) {
-    return {
-      icon: Plane,
-      label: 'การเดินทาง / คมนาคม',
-      bgClass: 'bg-sky-50 border border-sky-100',
-      colorClass: 'text-sky-600',
-    };
-  }
-  if (t.includes('attraction') || t.includes('attract') || t.includes('เที่ยว') || t.includes('หาด') || t.includes('ทะเล') || t.includes('สวน')) {
-    return {
-      icon: Compass,
-      label: 'สถานที่พักผ่อน / ท่องเที่ยว',
-      bgClass: 'bg-emerald-50 border border-emerald-100',
-      colorClass: 'text-emerald-600',
+      icon: Bus,
+      label: 'ขนส่งสาธารณะ (รถโดยสาร)',
+      ...baseStyle,
     };
   }
   return {
     icon: MapPin,
-    label: 'สถานที่ใกล้เคียง',
-    bgClass: 'bg-slate-100 border border-slate-200',
-    colorClass: 'text-slate-600',
+    label: 'สถานที่สำคัญ',
+    ...baseStyle,
   };
-}
-
-function formatDistance(meters?: number | null): string | null {
-  if (meters == null || isNaN(meters)) return null;
-  if (meters >= 1000) {
-    const km = meters / 1000;
-    return `${km % 1 === 0 ? km : km.toFixed(1)} กม.`;
-  }
-  return `${meters} เมตร`;
 }
 
 export default function PropertyDetailPage() {
@@ -210,9 +218,53 @@ export default function PropertyDetailPage() {
   const { properties, propertiesLoading, favorites, toggleFavorite } = useApp();
 
   // 1.1 ค้นหาข้อมูลอสังหาริมทรัพย์จาก ID ที่ตรงกันในฐานข้อมูล
-  // หมายเหตุ: ห้าม fallback ไปที่บ้านหลังอื่น (เดิม || properties[0] ทำให้ id ที่หาไม่เจอ
-  // ไปโชว์บ้านหลังแรกของระบบแทนแบบเนียนๆ โดยผู้ใช้ไม่รู้ตัว)
   const property = properties.find((p) => String(p.id) === String(id));
+
+  // 1.2 จัดการสถานที่สำคัญหลัก 5 แท็บแบบ Real-time Dynamic จาก OpenStreetMap (ปลอดข้อมูลฮาร์ดโค้ด 100%)
+  const [activeNearbyTab, setActiveNearbyTab] = useState<'all' | 'shopping' | 'education' | 'hospital' | 'transport'>('all');
+  const [nearbyData, setNearbyData] = useState<{
+    propertyId: string;
+    data: {
+      all: NearbyPlaceResult[];
+      shopping: NearbyPlaceResult[];
+      education: NearbyPlaceResult[];
+      hospital: NearbyPlaceResult[];
+      transport: NearbyPlaceResult[];
+    };
+  } | null>(null);
+
+  const isNearbyLoading = Boolean(property && (!nearbyData || nearbyData.propertyId !== String(property.id)));
+
+  useEffect(() => {
+    if (!property) return;
+    const lat = property.latitude != null ? Number(property.latitude) : 7.0089;
+    const lng = property.longitude != null ? Number(property.longitude) : 100.4812;
+
+    let isMounted = true;
+
+    fetch(`/api/nearby?lat=${lat}&lng=${lng}`)
+      .then((res) => res.json())
+      .then((res) => {
+        if (isMounted && res.success && res.data) {
+          setNearbyData({
+            propertyId: String(property.id),
+            data: res.data
+          });
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to fetch dynamic nearby places from OSM:', err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [property]);
+
+  const activePlaces = useMemo<NearbyPlaceResult[]>(() => {
+    if (!nearbyData || nearbyData.propertyId !== String(property?.id)) return [];
+    return nearbyData.data[activeNearbyTab] || [];
+  }, [nearbyData, activeNearbyTab, property?.id]);
 
   // 1.2 ค้นหาอสังหาริมทรัพย์ที่คล้ายกัน (ประเภทเดียวกัน หรือ ทำเลเดียวกัน หรือ ช่วงราคาใกล้เคียง ไม่รวมหลังปัจจุบัน)
   const similarProperties = useMemo(() => {
@@ -398,7 +450,7 @@ export default function PropertyDetailPage() {
           ส่วนที่ 1: แถบนำทางด้านบน (STICKY BREADCRUMB & ACTION BUTTONS)
           ======================================================================== */}
       <div className="bg-white border-b border-slate-200/80 sticky top-16 z-40 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center text-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center text-xs">
           {/* Breadcrumb ลิงก์ย้อนกลับไปหน้าต่างๆ */}
           <nav className="flex text-slate-500 font-extrabold whitespace-nowrap overflow-x-auto items-center gap-1">
             <Link href="/home" className="hover:text-blue-600 transition-colors">หน้าแรก</Link>
@@ -421,12 +473,12 @@ export default function PropertyDetailPage() {
         </div>
       </div>
 
-      <main className="max-w-5xl mx-auto px-4 py-8 space-y-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
         {/* ========================================================================
             ส่วนที่ 2: กริดแสดงรูปภาพอสังหาฯ (PHOTO GALLERY GRID - 5 SLOTS)
             ======================================================================== */}
-        <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-3 rounded-3xl overflow-hidden shadow-sm border border-slate-200/40 bg-white md:h-[420px]">
+        <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-3 rounded-3xl overflow-hidden shadow-sm border border-slate-200/40 bg-white md:h-[460px]">
           {galleryImages.slice(0, 5).map((img, idx) => (
             <div
               key={idx}
@@ -606,60 +658,141 @@ export default function PropertyDetailPage() {
                 </div>
               </div>
 
-              {/* สถานที่สำคัญใกล้เคียง (Nearby Places) */}
-              <div className="space-y-3 pt-4 border-t border-slate-100">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                    <Navigation className="w-3.5 h-3.5 text-emerald-600" />
-                    สถานที่สำคัญใกล้เคียง
-                  </h3>
-                  {property.nearbies && property.nearbies.length > 0 && (
-                    <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
-                      {property.nearbies.length} แห่ง
+              {/* สถานที่สำคัญระดับหลักและศูนย์กลางคมนาคม (Major Landmarks & Transit Hubs) */}
+              <div className="space-y-4 pt-6 border-t border-slate-100">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                      <Navigation className="w-4 h-4 text-blue-600" />
+                      สถานที่สำคัญและขนส่งสาธารณะรอบโครงการ (สแกนจาก OpenStreetMap)
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">
+                      สแกนหาสถานที่สำคัญหลักรอบพิกัดบ้านสดๆ ผ่าน OpenStreetMap (รองรับทุกทำเลทั่วประเทศ)
+                    </p>
+                  </div>
+                  {isNearbyLoading ? (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200/80 shrink-0 self-start sm:self-auto">
+                      <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
+                      กำลังสแกนผ่าน OpenStreetMap...
                     </span>
-                  )}
+                  ) : activePlaces.length > 0 ? (
+                    <span className="text-xs font-black text-blue-700 bg-blue-50/80 px-3 py-1 rounded-full border border-blue-200/60 shrink-0 self-start sm:self-auto">
+                      {activeNearbyTab === 'all' ? '4 จุดสำคัญเด่นรอบบ้าน' : `พบ ${activePlaces.length} แห่งในหมวดนี้`}
+                    </span>
+                  ) : null}
                 </div>
 
-                {property.nearbies && property.nearbies.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {property.nearbies.map((place, idx) => {
-                      const meta = getNearbyMeta(place.type);
+                {/* แถบ Segmented Filter Tabs สไตล์ Apple Capsule */}
+                <div className="flex items-center gap-1.5 p-1.5 bg-slate-100/90 rounded-2xl overflow-x-auto scrollbar-none border border-slate-200/70 shadow-2xs">
+                  {[
+                    { id: 'all', label: 'ทั้งหมด', icon: LayoutGrid },
+                    { id: 'shopping', label: 'ห้างสรรพสินค้า / ตลาด', icon: ShoppingBag },
+                    { id: 'education', label: 'สถานศึกษา', icon: GraduationCap },
+                    { id: 'hospital', label: 'โรงพยาบาล', icon: HeartPulse },
+                    { id: 'transport', label: 'ขนส่งสาธารณะ', icon: Bus },
+                  ].map((tab) => {
+                    const TabIcon = tab.icon;
+                    const isActive = activeNearbyTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setActiveNearbyTab(tab.id as 'all' | 'shopping' | 'education' | 'hospital' | 'transport')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap shrink-0 ${
+                          isActive
+                            ? 'bg-white text-blue-600 shadow-xs font-black border border-slate-200/60'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                        }`}
+                      >
+                        <TabIcon className={`w-3.5 h-3.5 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
+                        <span>{tab.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* รายการการ์ดสถานที่ */}
+                {isNearbyLoading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
+                    {[1, 2, 3, 4].map((n) => (
+                      <div key={n} className="p-4 rounded-2xl bg-white border border-slate-200/80 animate-pulse space-y-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-11 h-11 bg-slate-200 rounded-2xl shrink-0" />
+                          <div className="space-y-1.5 flex-1">
+                            <div className="h-4 bg-slate-200 rounded-md w-3/4" />
+                            <div className="h-3 bg-slate-100 rounded-md w-1/3" />
+                          </div>
+                        </div>
+                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                          <div className="h-5 bg-slate-100 rounded-xl w-24" />
+                          <div className="h-7 bg-slate-200 rounded-xl w-20" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : activePlaces.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
+                    {activePlaces.map((place) => {
+                      const meta = getNearbyMeta(place.category, place.transitType);
                       const NearbyIcon = meta.icon;
-                      const formattedDistance = formatDistance(place.distance);
                       return (
                         <div
-                          key={idx}
-                          className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/60 border border-slate-200/60 hover:bg-slate-50 hover:border-slate-300/80 transition-all duration-200 group"
+                          key={place.id}
+                          className="flex flex-col justify-between p-4 rounded-2xl bg-white border border-slate-200/90 hover:border-blue-400/80 hover:shadow-md transition-all duration-200 group gap-3.5"
                         >
-                          <div className="flex items-center gap-3 min-w-0 pr-2">
-                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${meta.bgClass} ${meta.colorClass} shadow-2xs`}>
-                              <NearbyIcon className="w-4 h-4" />
+                          <div className="flex items-start gap-3.5 min-w-0">
+                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 bg-blue-50/80 border border-blue-100 text-blue-600 shadow-2xs group-hover:scale-105 group-hover:bg-blue-600 group-hover:text-white transition-all duration-200">
+                              <NearbyIcon className="w-5 h-5" />
                             </div>
-                            <div className="min-w-0">
-                              <p className="text-xs font-extrabold text-slate-800 truncate group-hover:text-slate-900" title={place.name}>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-black text-slate-900 line-clamp-1 group-hover:text-blue-600 transition-colors" title={place.name}>
                                 {place.name}
                               </p>
-                              <p className="text-[10px] font-medium text-slate-400 mt-0.5">
-                                {meta.label}
-                              </p>
+                              <div className="mt-1">
+                                <span className="inline-flex items-center text-[11px] font-semibold text-slate-500 bg-slate-100/90 px-2 py-0.5 rounded-md border border-slate-200/50">
+                                  {meta.label}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                          {formattedDistance && (
-                            <div className="shrink-0 text-right">
-                              <span className="inline-flex items-center gap-1 text-[11px] font-black text-slate-700 bg-white px-2.5 py-1 rounded-xl border border-slate-200/80 shadow-2xs">
-                                <MapPin className="w-3 h-3 text-emerald-600 shrink-0" />
-                                {formattedDistance}
+
+                          <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                            {place.distanceText ? (
+                              <span className="inline-flex items-center gap-1.5 text-xs font-black text-slate-700 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200/80 shadow-2xs">
+                                <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                ห่าง {place.distanceText}
                               </span>
-                            </div>
-                          )}
+                            ) : <span />}
+                            <a
+                              href={getGoogleMapsDirectionsUrl(
+                                property?.latitude,
+                                property?.longitude,
+                                place.lat,
+                                place.lng,
+                                property?.location
+                              )}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 px-3.5 py-1.5 rounded-xl shadow-2xs hover:shadow transition-all group/btn"
+                              title={`เปิดเส้นทางจากบ้านไป ${place.name} ใน Google Maps`}
+                            >
+                              <span>เปิดนำทาง</span>
+                              <ExternalLink className="w-3.5 h-3.5 text-blue-200 group-hover/btn:text-white transition-colors" />
+                            </a>
+                          </div>
                         </div>
                       );
                     })}
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-400 italic bg-slate-50/40 p-3.5 rounded-2xl border border-slate-200/40">
-                    ไม่มีข้อมูลสถานที่สำคัญใกล้เคียงที่ระบุสำหรับประกาศนี้
-                  </p>
+                  <div className="text-center py-8 px-4 bg-slate-50/60 rounded-2xl border border-slate-200/60 space-y-1.5">
+                    <p className="text-xs text-slate-600 font-bold">
+                      ไม่พบข้อมูลสถานที่สำคัญในหมวดหมู่นี้
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      ระบบทำการสแกนรอบพิกัดจริงของบ้านผ่าน OpenStreetMap เรียบร้อยแล้ว (ไม่มีการแสดงข้อมูลจำลองหรือข้อมูลที่เขียนขึ้นเอง)
+                    </p>
+                  </div>
                 )}
               </div>
 

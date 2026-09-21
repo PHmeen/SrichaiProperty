@@ -99,7 +99,7 @@ export async function GET() {
           type_id: p.type_id,
           tag: isPremium ? "ทรัพย์พรีเมียม" : "ทรัพย์ทั่วไป",
           tagBg: isPremium ? "bg-amber-600" : "bg-blue-600",
-          location: "📍 " + p.location,
+          location: p.location,
           bedrooms: p.bedrooms || 0,
           bathrooms: p.bathrooms || 0,
           area: Number(p.area_sqm) || 0,
