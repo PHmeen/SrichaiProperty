@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link'; // ใช้ลิงก์ไปหน้าแดชบอร์ดกรณีไม่มีการส่งฟังก์ชัน onViewPending มา
+import { Clock } from 'lucide-react';
 
 interface PendingApprovalBannerProps {
   pendingCount: number;
@@ -12,16 +13,13 @@ export default function PendingApprovalBanner({ pendingCount, onViewPending }: P
   if (pendingCount <= 0) return null;
 
   return (
-    <section className="bg-amber-50 border-2 border-amber-300 rounded-3xl p-5 text-amber-950 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
-      <div className="flex items-center gap-4 text-left">
-        <div className="w-12 h-12 bg-amber-500 text-slate-950 rounded-2xl flex items-center justify-center font-black text-xl shrink-0">
-          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="9" />
-            <path d="M12 7v5l3 3" />
-          </svg>
+    <section className="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 text-amber-950 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xs">
+      <div className="flex items-center gap-3.5 text-left">
+        <div className="w-10 h-10 bg-amber-500 text-slate-950 rounded-xl flex items-center justify-center font-black shrink-0">
+          <Clock className="w-5 h-5 text-slate-950" />
         </div>
         <div>
-          <h4 className="font-extrabold text-sm md:text-base text-amber-900">
+          <h4 className="font-extrabold text-xs md:text-sm text-amber-900">
             คุณมีประกาศ {pendingCount} รายการที่อยู่ระหว่างรอแอดมินอนุมัติ
           </h4>
           <p className="text-amber-800/80 text-[11px] mt-0.5 font-medium">

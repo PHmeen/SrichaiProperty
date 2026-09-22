@@ -114,13 +114,17 @@ export async function GET(request: Request) {
       });
 
       // 2.6 ดึงรายการนัดหมายชมสถานที่ (Appointments) ล่าสุดไม่เกิน 10 รายการ
-      // พร้อมเชื่อมโยงตารางอสังหาริมทรัพย์ (properties) และข้อมูลลูกค้าผู้ขอนัดหมาย (users)
+      // พร้อมเชื่อมโยงตารางอสังหาริมทรัพย์ (properties) และรูปภาพหน้าปก รวมถึงข้อมูลลูกค้าผู้ขอนัดหมาย (users)
       const appointments = await db.appointments.findMany({
         where: { agent_id: agent.id },
         include: {
-          properties: true,
+          properties: {
+            include: {
+              property_images: { orderBy: { order_index: 'asc' }, take: 1 }
+            }
+          },
           users_appointments_customer_idTousers: {
-            select: { first_name: true, last_name: true, phone: true }
+            select: { id: true, first_name: true, last_name: true, phone: true }
           }
         },
         orderBy: { appointment_date: 'asc' },
@@ -137,6 +141,7 @@ export async function GET(request: Request) {
         const customerPhone = customer?.phone || '-';
         // แปลงวันที่เป็น YYYY-MM-DD
         const aptDateStr = apt.appointment_date ? apt.appointment_date.toISOString().split('T')[0] : '';
+        const propImage = apt.properties?.property_images?.[0]?.image_url || null;
         
         return {
           id: apt.id,
@@ -147,17 +152,30 @@ export async function GET(request: Request) {
           timeSlot: apt.time_slot || 'ไม่ระบุเวลา',
           // แสดงข้อความเวลาแบบอ่านง่าย เช่น ช่วงเช้า 10:00 น., ช่วงบ่าย 14:00 น.
           time: apt.time_slot === 'morning' ? '10:00 น.' : apt.time_slot === 'afternoon' ? '14:00 น.' : (apt.time_slot || 'ไม่ระบุเวลา'),
-          title: apt.status === 'approved' || apt.status === 'completed' ? '✓ นัดหมายสำเร็จแล้ว' : '🏠 นัดชมสถานที่จริง (Site Visit)',
+          title: apt.status === 'approved' || apt.status === 'completed' ? '✓ นัดหมายสำเร็จแล้ว' : 'นัดชมสถานที่จริง',
           detail: `${customerName} (📞 ${customerPhone}) - สนใจ ${apt.properties?.title || 'อสังหาฯ'}`,
-          note: apt.note ? `บันทึก: ${apt.note}` : 'ยังไม่มีบันทึกนัดหมายเพิ่มเติม',
-          propertyTitle: apt.properties?.title || 'อสังหาฯ',
+          note: apt.note ? apt.note.trim() : '',
+          propertyId: apt.property_id,
+          propertyTitle: apt.properties?.title || 'อสังหาริมทรัพย์',
+          propertyImage: propImage,
+          propertyPrice: apt.properties?.price ? Number(apt.properties.price) : null,
           propertyCode: apt.property_id ? apt.property_id.substring(0, 7).toUpperCase() : 'PR-XXXX',
           customerName,
           customerPhone
         };
       });
 
-      // 2.8 เช็คว่ามีบ้านหลังไหนวันว่างใกล้หมดไหม แล้วส่งการแจ้งเตือนให้เปิดรอบเพิ่ม
+      // 2.8 ดึงรายการอสังหาริมทรัพย์ล่าสุด 3 รายการของนายหน้า เพื่อแสดงพรีวิวพอร์ตล่าสุด
+      const recentProperties = await db.properties.findMany({
+        where: { agent_id: agent.id },
+        include: {
+          property_images: { orderBy: { order_index: 'asc' }, take: 1 }
+        },
+        orderBy: { created_at: 'desc' },
+        take: 3
+      });
+
+      // 2.9 เช็คว่ามีบ้านหลังไหนวันว่างใกล้หมดไหม แล้วส่งการแจ้งเตือนให้เปิดรอบเพิ่ม
       // เช็คตอนนายหน้าเปิดหน้าแรก (ไม่ต้องตั้ง cron job แยก) — ระบบเห็นตอนเขาเข้ามาใช้งานพอดี
       const [lowSlotProperties, alreadyAlertedIds] = await Promise.all([
         findPropertiesWithLowSlots(agent.id),
@@ -180,10 +198,10 @@ export async function GET(request: Request) {
         }).catch(() => {}); // แจ้งเตือนล้มเหลวไม่ควรทำให้หน้าแรกโหลดไม่ขึ้น
       }
 
-      // 2.9 ตรวจสอบสถานะแพ็กเกจสมาชิกแบบ Pro Agent (เช็คว่ายังไม่หมดอายุ)
+      // 2.10 ตรวจสอบสถานะแพ็กเกจสมาชิกแบบ Pro Agent (เช็คว่ายังไม่หมดอายุ)
       const isPro = agent.plan_type === 'pro' && (!agent.plan_expired_at || new Date(agent.plan_expired_at) > new Date());
 
-      // 2.10 ส่งข้อมูลตอบกลับทั้งหมดกลับไปยัง Frontend
+      // 2.11 ส่งข้อมูลตอบกลับทั้งหมดกลับไปยัง Frontend
       return NextResponse.json({
         propertiesCount,           // จำนวนอสังหาฯ ทั้งหมดของนายหน้า
         pendingAptsCount,          // จำนวนนัดหมายที่รอดำเนินการ
@@ -193,6 +211,26 @@ export async function GET(request: Request) {
         planType: agent.plan_type || 'basic', // ประเภทแพ็กเกจปัจจุบัน
         isPro,                     // สถานะสิทธิ์ Pro Agent (true/false)
         planExpiredAt: agent.plan_expired_at, // วันหมดอายุแพ็กเกจ
+        agentProfile: {
+          id: agent.id,
+          name: `${agent.first_name || ''} ${agent.last_name || ''}`.trim() || 'นายหน้า',
+          phone: agent.phone || '-',
+          email: agent.email,
+          specialtyZone: agent.specialty_zone || 'พื้นที่สงขลา-หาดใหญ่',
+          experience: agent.experience || 'นายหน้ามืออาชีพ',
+          isVerified: Boolean(agent.is_verified),
+          avatar: agent.profile_image || null,
+          agentCode: 'AGT-' + agent.id.substring(0, 4).toUpperCase()
+        },
+        recentProperties: recentProperties.map(p => ({
+          id: p.id,
+          title: p.title,
+          price: Number(p.price) || 0,
+          viewsCount: p.views_count || 0,
+          status: p.status,
+          image: p.property_images?.[0]?.image_url || null,
+          listingType: p.listing_type || 'sale'
+        })),
         pendingApprovalProperties: pendingProperties.map(p => ({
           id: p.id,
           title: p.title,
