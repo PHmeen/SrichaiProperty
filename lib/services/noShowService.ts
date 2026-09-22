@@ -4,6 +4,7 @@
 // ไฟล์นี้รวม logic ที่เกี่ยวกับการยืนยันผลจริง (มาจริง/ไม่มาตามนัด) ไว้ที่เดียว
 // ตามแพตเทิร์นเดิมของโปรเจกต์ (ดู slaService.ts, viewingSlotService.ts)
 import { db } from '@/lib/db';
+import { notifyUser } from '@/lib/notify';
 import { NO_SHOW_LIMIT, VISIT_CONFIRM_GRACE_DAYS, APPOINTMENT_STATUS } from '@/lib/constants';
 
 /**
@@ -58,7 +59,14 @@ export async function autoCancelExpiredRescheduleOffers(): Promise<void> {
       status: APPOINTMENT_STATUS.AWAITING_CUSTOMER,
       appointment_date: { lt: today }
     },
-    select: { id: true, property_id: true, appointment_date: true, time_slot: true }
+    select: { 
+      id: true, 
+      property_id: true, 
+      appointment_date: true, 
+      time_slot: true,
+      customer_id: true,
+      properties: { select: { title: true } }
+    }
   });
 
   for (const apt of expired) {
@@ -75,6 +83,17 @@ export async function autoCancelExpiredRescheduleOffers(): Promise<void> {
         where: { property_id: apt.property_id, available_date: apt.appointment_date, time_slot: apt.time_slot ?? undefined },
         data: { is_booked: false }
       });
+    }
+
+    if (apt.customer_id) {
+      const propTitle = apt.properties?.title || 'อสังหาริมทรัพย์';
+      notifyUser({
+        userId: apt.customer_id,
+        title: 'แจ้งยกเลิกคำขอนัดหมายอัตโนมัติ',
+        content: `นัดหมายเข้าชม "${propTitle}" ถูกยกเลิกเนื่องจากพ้นกำหนดเวลายืนยันวันใหม่ ท่านสามารถเลือกจองรอบใหม่ที่สะดวกได้ตลอดเวลา`,
+        type: 'appointment',
+        linkUrl: '/appointments'
+      }).catch(err => console.error('Error sending auto-cancel notification:', err));
     }
   }
 }

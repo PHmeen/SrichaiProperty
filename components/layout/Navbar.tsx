@@ -158,10 +158,12 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* 4. ปุ่ม Hamburger สลับสภาวะเปิด/ปิดเมนูบนมือถือ (Mobile Toggle) */}
-          <div className="flex items-center lg:hidden">
+          {/* 4. ปุ่มเครื่องมือและการแจ้งเตือนบนมือถือ (Mobile Controls & Notification) */}
+          <div className="flex items-center gap-1.5 lg:hidden">
+            {session && <NotificationBell />}
+
             {session && isUserAdmin && (
-              <Link href="/admin/dashboard" className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black px-2.5 py-1.5 rounded-lg text-[10px] shadow-sm mr-2 flex items-center gap-1 cursor-pointer whitespace-nowrap">
+              <Link href="/admin/dashboard" className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black px-2.5 py-1.5 rounded-lg text-[10px] shadow-sm flex items-center gap-1 cursor-pointer whitespace-nowrap">
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
@@ -169,7 +171,7 @@ export default function Navbar() {
               </Link>
             )}
             
-            <button onClick={() => setIsOpen(!isOpen)} className="p-2 text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded-xl focus:outline-none transition cursor-pointer">
+            <button onClick={() => setIsOpen(!isOpen)} className="p-2 text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded-xl focus:outline-none transition cursor-pointer" aria-label="เมนูหลัก">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {isOpen ? (
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />

@@ -244,6 +244,16 @@ export default function AppointmentsPage() {
   };
   const todayKey = getTodayKey();
 
+  const getTomorrowKey = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  const tomorrowKey = getTomorrowKey();
+
   // จัดกลุ่มนัดหมาย:
   // - ยกเลิกแล้ว: status เป็น cancelled หรือ rejected
   // - กำลังจะมาถึง: ยังไม่ยกเลิก, ยังไม่ completed และ วันที่นัด >= วันนี้
@@ -342,6 +352,32 @@ export default function AppointmentsPage() {
           </div>
         )}
 
+        {/* แบนเนอร์เตือนคิวนัดหมายวันนี้ */}
+        {(() => {
+          const todayApprovedApt = appointments.find(a => a.date === todayKey && a.status === 'approved');
+          if (!todayApprovedApt || activeTab !== 'upcoming') return null;
+          return (
+            <div className="mb-6 flex items-start sm:items-center justify-between gap-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 text-xs font-bold text-blue-900 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-blue-600 text-white shadow-md shadow-blue-500/20 shrink-0 flex items-center justify-center">
+                  <Calendar className="w-5 h-5 shrink-0" />
+                </div>
+                <div>
+                  <span className="inline-block font-extrabold text-sm text-blue-950">
+                    วันนี้คุณมีนัดหมายเข้าชมโครงการ!
+                  </span>
+                  <p className="text-xs text-blue-700 font-medium mt-0.5">
+                    &ldquo;{todayApprovedApt.propertyName}&rdquo; &bull; {todayApprovedApt.timeSlotText || todayApprovedApt.timeSlot}
+                  </p>
+                </div>
+              </div>
+              <span className="shrink-0 px-2.5 py-1 rounded-lg bg-white border border-blue-200 text-blue-800 text-[11px] font-bold shadow-xs">
+                นัดหมายวันนี้
+              </span>
+            </div>
+          );
+        })()}
+
         {/* 4.3 รายการการ์ดนัดหมาย */}
         <div className="space-y-4">
           {loading ? (
@@ -399,9 +435,23 @@ export default function AppointmentsPage() {
 
                   {/* รายละเอียดทรัพย์สิน ชื่อนายหน้า และเหตุผลการยกเลิก (ถ้ามี) */}
                   <div className="flex-1 space-y-1.5">
-                    <span className={`inline-block px-2.5 py-0.5 rounded-full border text-[10px] font-black ${statusDetails.bg} ${statusDetails.color}`}>
-                      {statusDetails.text}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full border text-[10px] font-black ${statusDetails.bg} ${statusDetails.color}`}>
+                        {statusDetails.text}
+                      </span>
+                      {apt.status === 'approved' && apt.date === todayKey && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-[10px] font-black bg-blue-100 text-blue-800 border-blue-300 animate-pulse">
+                          <Calendar className="w-3 h-3 shrink-0" />
+                          นัดหมายวันนี้
+                        </span>
+                      )}
+                      {apt.status === 'approved' && apt.date === tomorrowKey && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-[10px] font-black bg-indigo-50 text-indigo-700 border-indigo-200">
+                          <Calendar className="w-3 h-3 shrink-0" />
+                          นัดหมายวันพรุ่งนี้
+                        </span>
+                      )}
+                    </div>
                     <h3 className="font-extrabold text-slate-900 text-sm line-clamp-1">{apt.propertyName}</h3>
                     <div className="text-blue-700 font-extrabold text-xs">{apt.propertyPrice}</div>
 

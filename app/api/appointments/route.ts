@@ -582,6 +582,20 @@ export async function PATCH(request: Request) {
         });
       });
 
+      // แจ้งเตือนไปยังนายหน้าผู้ดูแลเมื่อลูกค้าขอเปลี่ยนวันเวลา
+      if (appointment.agent_id) {
+        const prop = await db.properties.findUnique({ where: { id: appointment.property_id }, select: { title: true } });
+        const customerName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "ลูกค้า";
+        const timeLabel = timeSlot === "morning" ? "ช่วงเช้า (10:00 - 12:00 น.)" : timeSlot === "afternoon" ? "ช่วงบ่าย (14:00 - 16:00 น.)" : timeSlot;
+        sendNotification(
+          appointment.agent_id,
+          "ลูกค้าขอเปลี่ยนวันเวลานัดหมาย",
+          `คุณ ${customerName} ได้ขอเปลี่ยนวันนัดเข้าชม "${prop?.title || "อสังหาริมทรัพย์"}" เป็นวันที่ ${date} (${timeLabel})`,
+          "appointment",
+          "/agent/appointments"
+        );
+      }
+
       return NextResponse.json({ success: true, data: updated });
     }
 

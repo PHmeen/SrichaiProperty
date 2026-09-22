@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/authOptions"; // ค่าคอนฟิก 
 import { db } from "@/lib/db"; // ไคลเอนต์ Prisma สำหรับจัดการข้อมูลการแจ้งเตือน
 import { getPusher } from "@/lib/pusher"; // ยิงอีเวนต์แจ้งอุปกรณ์อื่นให้รีโหลดการแจ้งเตือนแบบเรียลไทม์
 import { notificationChannelName } from "@/lib/notificationChannel"; // สร้างชื่อ channel ของ Pusher ต่อผู้ใช้
+import { checkAndSendAppointmentReminders } from "@/lib/services/appointmentReminderService"; // ตรวจสอบและส่งการแจ้งเตือนเตือนนัดหมายล่วงหน้า (Upcoming Reminder)
 
 interface SessionUser {
   user?: {
@@ -28,12 +29,17 @@ export async function GET() {
 
     const user = await db.users.findUnique({
       where: { email: session.user.email },
-      select: { id: true }
+      select: { id: true, role_id: true }
     });
 
     if (!user) {
       return NextResponse.json({ error: "ไม่พบผู้ใช้ในระบบ" }, { status: 404 });
     }
+
+    // ⚡ ตรวจสอบและสร้างการแจ้งเตือนเตือนความจำนัดหมายล่วงหน้า (วันนี้ / พรุ่งนี้) อัตโนมัติ
+    await checkAndSendAppointmentReminders(user.id, user.role_id).catch(err => {
+      console.error("checkAndSendAppointmentReminders error:", err);
+    });
 
     const notifications = await db.notifications.findMany({
       where: { user_id: user.id },
