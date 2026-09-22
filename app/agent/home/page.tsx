@@ -16,19 +16,14 @@ import {
   Plus,
   Check,
   Eye,
-  Sparkles,
   ChevronRight,
-  TrendingUp,
-  User,
   Loader2,
-  CalendarClock,
   CalendarDays,
   AlertTriangle,
   Building2,
   ExternalLink,
-  FileText,
-  ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  Navigation
 } from 'lucide-react';
 
 interface AppointmentData {
@@ -40,6 +35,9 @@ interface AppointmentData {
   timeSlot?: string;
   propertyId?: string;
   propertyTitle: string;
+  propertyLocation?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   propertyImage?: string | null;
   propertyPrice?: number | null;
   propertyCode?: string;
@@ -392,9 +390,8 @@ export default function AgentHomePage() {
             <section className="bg-white border border-slate-200/90 rounded-2xl shadow-2xs overflow-hidden">
               <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h2 className="font-extrabold text-slate-900 text-sm sm:text-base flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-slate-500" />
-                    <span>ตารางนัดหมายพาลูกค้าชมบ้าน</span>
+                  <h2 className="font-extrabold text-slate-900 text-sm sm:text-base">
+                    ตารางนัดหมายพาลูกค้าชมบ้าน
                   </h2>
                   <p className="text-[11px] text-slate-400 mt-0.5">
                     คิวงานนำชมโครงการจริง กดยืนยันรับนัดหรือโทรหาลูกค้าได้ทันที
@@ -419,7 +416,6 @@ export default function AgentHomePage() {
                       : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
                   }`}
                 >
-                  <Clock className="w-3 h-3" />
                   <span>วันนี้ ({todayAptsList.length})</span>
                 </button>
                 <button
@@ -494,6 +490,11 @@ export default function AgentHomePage() {
                   filteredApts.map((apt) => {
                     const isToday = apt.date === todayKey;
                     const isPendingAction = apt.rawStatus === 'pending';
+                    const mapsUrl = apt.latitude && apt.longitude
+                      ? `https://www.google.com/maps/dir/?api=1&destination=${apt.latitude},${apt.longitude}`
+                      : (apt.propertyLocation || apt.propertyTitle)
+                      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(apt.propertyLocation || apt.propertyTitle)}`
+                      : null;
 
                     return (
                       <div
@@ -562,15 +563,13 @@ export default function AgentHomePage() {
                             ) : null}
                           </h3>
 
-                          <p className="text-slate-600 text-xs font-medium inline-flex items-center gap-1.5">
-                            <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            <span>ลูกค้า: <strong className="text-slate-900">{apt.customerName}</strong></span>
+                          <p className="text-slate-600 text-xs font-medium">
+                            ลูกค้า: <strong className="text-slate-900">{apt.customerName}</strong>
                           </p>
 
                           {/* โน้ตบันทึกเพิ่มเติมจากลูกค้า (ถ้ามี) */}
                           {apt.note && (
-                            <div className="text-[11px] text-slate-600 bg-slate-50/90 border border-slate-200/60 rounded-lg px-2.5 py-1.5 flex items-start gap-1.5">
-                              <FileText className="w-3 h-3 text-slate-400 shrink-0 mt-0.5" />
+                            <div className="text-[11px] text-slate-600 bg-slate-50/90 border border-slate-200/60 rounded-lg px-2.5 py-1.5">
                               <span className="line-clamp-1 italic">“{apt.note}”</span>
                             </div>
                           )}
@@ -591,6 +590,19 @@ export default function AgentHomePage() {
                               )}
                               <span>ยืนยันรับนัด</span>
                             </button>
+                          )}
+
+                          {mapsUrl && (
+                            <a
+                              href={mapsUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-full sm:w-auto inline-flex items-center justify-center gap-1 px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-xs transition shadow-2xs active:scale-95 cursor-pointer"
+                              title="เปิด Google Maps เพื่อนำทางไปสถานที่จริง"
+                            >
+                              <Navigation className="w-3 h-3" />
+                              <span>นำทาง</span>
+                            </a>
                           )}
 
                           {apt.customerPhone ? (
@@ -622,9 +634,8 @@ export default function AgentHomePage() {
             {recentProperties.length > 0 && (
               <section className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-3">
                 <div className="flex items-center justify-between">
-                  <h2 className="font-extrabold text-slate-900 text-xs sm:text-sm flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-slate-500" />
-                    <span>ประกาศล่าสุดในพอร์ตของคุณ</span>
+                  <h2 className="font-extrabold text-slate-900 text-xs sm:text-sm">
+                    ประกาศล่าสุดในพอร์ตของคุณ
                   </h2>
                   <Link href="/agent/dashboard" className="text-blue-600 hover:text-blue-700 font-bold text-xs">
                     ดูสต็อกทั้งหมด ({propertiesCount}) →
@@ -687,8 +698,8 @@ export default function AgentHomePage() {
                   โควต้าลงประกาศ
                 </span>
                 {isPro ? (
-                  <span className="text-[10px] font-black px-2 py-0.5 bg-amber-100 text-amber-800 rounded-md border border-amber-300 inline-flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" /> PRO สมาชิก
+                  <span className="text-[10px] font-black px-2 py-0.5 bg-amber-100 text-amber-800 rounded-md border border-amber-300">
+                    PRO สมาชิก
                   </span>
                 ) : (
                   <span className="text-[10px] font-bold text-slate-500">
@@ -749,20 +760,14 @@ export default function AgentHomePage() {
 
               <div className="divide-y divide-slate-100">
                 <div className="py-2.5 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-slate-600 text-xs">
-                    <Eye className="w-4 h-4 text-slate-400" />
-                    <span>ยอดเข้าชมประกาศสะสม</span>
-                  </div>
+                  <span className="text-slate-600 text-xs">ยอดเข้าชมประกาศสะสม</span>
                   <strong className="font-extrabold text-slate-900 text-sm">
                     {(dbData?.totalViews || 0).toLocaleString()} ครั้ง
                   </strong>
                 </div>
 
                 <div className="py-2.5 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-slate-600 text-xs">
-                    <Home className="w-4 h-4 text-slate-400" />
-                    <span>ประกาศในระบบทั้งหมด</span>
-                  </div>
+                  <span className="text-slate-600 text-xs">ประกาศในระบบทั้งหมด</span>
                   <strong className="font-extrabold text-slate-900 text-sm">
                     {propertiesCount} รายการ
                   </strong>
@@ -770,10 +775,7 @@ export default function AgentHomePage() {
 
                 {pendingApprovalCount > 0 && (
                   <div className="py-2.5 flex items-center justify-between text-amber-700">
-                    <div className="flex items-center gap-2 text-xs font-bold">
-                      <Clock className="w-4 h-4 text-amber-600" />
-                      <span>รอแอดมินอนุมัติ</span>
-                    </div>
+                    <span className="text-xs font-bold">รอแอดมินอนุมัติ</span>
                     <strong className="font-black text-sm">
                       {pendingApprovalCount} รายการ
                     </strong>
@@ -818,17 +820,13 @@ export default function AgentHomePage() {
                 </div>
               ) : pendingChatCount > 0 ? (
                 <div className="flex items-center justify-between p-3 bg-emerald-50 border border-emerald-200/80 rounded-xl text-emerald-900">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span className="text-xs font-bold">มี {pendingChatCount} แชทใหม่รอนายหน้าตอบ</span>
-                  </div>
+                  <span className="text-xs font-bold">มี {pendingChatCount} แชทใหม่รอนายหน้าตอบ</span>
                   <Link href="/agent/chat" className="text-xs font-black text-emerald-700 hover:underline">
                     ตอบทันที →
                   </Link>
                 </div>
               ) : (
-                <div className="flex items-center gap-2.5 p-3 bg-slate-50 border border-slate-200/60 rounded-xl text-slate-600 text-xs">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                <div className="p-3 bg-slate-50 border border-slate-200/60 rounded-xl text-slate-600 text-xs">
                   <span>ไม่มีงานค้างด่วนในขณะนี้ คุณพร้อมรับลูกค้าได้เต็มที่</span>
                 </div>
               )}

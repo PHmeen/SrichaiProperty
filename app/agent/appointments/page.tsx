@@ -10,6 +10,17 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
+import {
+  Calendar,
+  Phone,
+  MessageSquare,
+  Navigation,
+  Check,
+  X,
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight
+} from 'lucide-react';
 
 interface AgentAppointment {
   id: string;
@@ -22,6 +33,9 @@ interface AgentAppointment {
   propertyId: string;
   propertyTitle: string;
   propertyImage: string;
+  location?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   originalDate: string | null;
   originalTimeSlot: string | null;
   wasEdited: boolean;
@@ -310,7 +324,7 @@ export default function AgentAppointmentsPage() {
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Link href="/agent/dashboard" className="w-8 h-8 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-500 hover:text-slate-900 transition">
-              ←
+              <ChevronLeft className="w-4 h-4" />
             </Link>
             <div>
               <h1 className="text-base md:text-lg font-black text-slate-900">ระบบจัดการคิวนัดหมาย</h1>
@@ -333,9 +347,13 @@ export default function AgentAppointmentsPage() {
         <div className="space-y-5">
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
             <div className="flex items-center justify-between mb-3 px-1">
-              <button type="button" onClick={handleCalPrevMonth} className="text-slate-400 hover:text-slate-600 font-bold text-xs p-1 cursor-pointer">&lt;</button>
+              <button type="button" onClick={handleCalPrevMonth} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer" aria-label="เดือนก่อนหน้า">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
               <span className="text-xs font-black text-slate-800">{MONTH_NAMES_TH[calMonth]} {calYear + 543}</span>
-              <button type="button" onClick={handleCalNextMonth} className="text-slate-400 hover:text-slate-600 font-bold text-xs p-1 cursor-pointer">&gt;</button>
+              <button type="button" onClick={handleCalNextMonth} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer" aria-label="เดือนถัดไป">
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
 
             <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-black pb-2 mb-2 border-b border-slate-100">
@@ -403,11 +421,8 @@ export default function AgentAppointmentsPage() {
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
-            <h4 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-              <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              <span>สรุปคิวงานสัปดาห์นี้</span>
+            <h4 className="font-extrabold text-slate-900 text-xs">
+              สรุปคิวงานสัปดาห์นี้
             </h4>
 
             <div className="flex items-center justify-between text-[11px]">
@@ -479,7 +494,14 @@ export default function AgentAppointmentsPage() {
                 ไม่มีนัดหมายในหมวดหมู่นี้
               </div>
             ) : (
-              sortedList.map(apt => (
+              sortedList.map(apt => {
+                const mapsUrl = apt.latitude && apt.longitude
+                  ? `https://www.google.com/maps/dir/?api=1&destination=${apt.latitude},${apt.longitude}`
+                  : (apt.location || apt.propertyTitle)
+                  ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(apt.location || apt.propertyTitle)}`
+                  : null;
+
+                return (
                 <div
                   key={apt.id}
                   className={`bg-white rounded-2xl border p-4 shadow-sm flex flex-col md:flex-row gap-4 relative overflow-hidden transition-all hover:shadow-md ${
@@ -527,9 +549,7 @@ export default function AgentAppointmentsPage() {
                       )}
 
                       <p className="text-[11px] font-black text-slate-800 flex items-center gap-1.5">
-                        <svg className="w-3.5 h-3.5 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
+                        <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                         <span>{formatDateTH(apt.date)}, {timeSlotLabel(apt.timeSlot)}</span>
                         {apt.wasEdited && <span className="text-[9px] font-bold text-blue-600">(แก้ไขใหม่)</span>}
                       </p>
@@ -552,6 +572,29 @@ export default function AgentAppointmentsPage() {
                     </div>
 
                     <div className="flex md:flex-col gap-1.5 w-full">
+                      {mapsUrl && (
+                        <a
+                          href={mapsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full text-center px-3 py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-lg text-[10px] shadow-xs active:scale-95 transition flex items-center justify-center gap-1 cursor-pointer"
+                          title="เปิด Google Maps นำทางขับรถไปบ้านหลังนี้"
+                        >
+                          <Navigation className="w-3 h-3" />
+                          <span>นำทางไปบ้าน</span>
+                        </a>
+                      )}
+
+                      {apt.customerPhone && (
+                        <a
+                          href={`tel:${apt.customerPhone}`}
+                          className="w-full text-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-[10px] shadow-xs active:scale-95 transition flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <Phone className="w-3 h-3" />
+                          <span>โทร: {apt.customerPhone}</span>
+                        </a>
+                      )}
+
                       {apt.status === 'pending' && (
                         <>
                           <button
@@ -566,9 +609,7 @@ export default function AgentAppointmentsPage() {
                               </>
                             ) : (
                               <>
-                                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
-                                </svg>
+                                <Check className="w-3.5 h-3.5 text-white stroke-[2.5]" />
                                 <span>ยืนยันรับคิวนี้</span>
                               </>
                             )}
@@ -592,9 +633,10 @@ export default function AgentAppointmentsPage() {
                                   window.location.href = '/agent/chat';
                                 }
                               }}
-                              className="flex-1 text-center px-3 py-2 bg-white border border-slate-200 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-700 text-slate-700 font-bold rounded-lg text-[10px] transition-all duration-150 active:scale-95 cursor-pointer"
+                              className="flex-1 text-center px-3 py-2 bg-white border border-slate-200 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-700 text-slate-700 font-bold rounded-lg text-[10px] transition-all duration-150 active:scale-95 cursor-pointer inline-flex items-center justify-center gap-1"
                             >
-                              แชทคุย
+                              <MessageSquare className="w-3 h-3" />
+                              <span>แชทคุย</span>
                             </button>
                             <button
                               disabled={busyId === apt.id}
@@ -626,9 +668,10 @@ export default function AgentAppointmentsPage() {
                               window.location.href = '/agent/chat';
                             }
                           }}
-                          className="w-full text-center px-3 py-2 bg-white border border-slate-200 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-700 text-slate-700 font-bold rounded-lg text-[10px] transition-all duration-150 active:scale-95 cursor-pointer"
+                          className="w-full text-center px-3 py-2 bg-white border border-slate-200 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-700 text-slate-700 font-bold rounded-lg text-[10px] transition-all duration-150 active:scale-95 cursor-pointer inline-flex items-center justify-center gap-1"
                         >
-                          แชทคุย
+                          <MessageSquare className="w-3 h-3" />
+                          <span>แชทคุย</span>
                         </button>
                       )}
 
@@ -691,8 +734,9 @@ export default function AgentAppointmentsPage() {
                     </div>
                   </div>
                 </div>
-              ))
-            )}
+              );
+            })
+          )}
           </div>
         </div>
       </main>
@@ -702,15 +746,11 @@ export default function AgentAppointmentsPage() {
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 border border-slate-100">
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-extrabold text-red-600 text-base flex items-center gap-1.5">
-                <svg className="w-4 h-4 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                </svg>
+                <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
                 <span>ปฏิเสธคำขอนัดหมาย</span>
               </h3>
               <button onClick={closeRejectModal} className="text-slate-400 hover:text-slate-600 transition cursor-pointer p-1" aria-label="ปิด">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -719,9 +759,7 @@ export default function AgentAppointmentsPage() {
               <p className="text-sm font-extrabold text-slate-900">{rejectingApt.customerName}</p>
               <p className="text-xs font-medium text-slate-500 mt-0.5 line-clamp-1">{rejectingApt.propertyTitle}</p>
               <p className="text-[11px] font-bold text-slate-600 mt-1 flex items-center gap-1">
-                <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
+                <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <span>{formatDateTH(rejectingApt.date)}, {timeSlotLabel(rejectingApt.timeSlot)}</span>
               </p>
             </div>

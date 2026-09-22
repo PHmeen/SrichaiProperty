@@ -157,6 +157,9 @@ export async function GET(request: Request) {
           note: apt.note ? apt.note.trim() : '',
           propertyId: apt.property_id,
           propertyTitle: apt.properties?.title || 'อสังหาริมทรัพย์',
+          propertyLocation: apt.properties?.location || '',
+          latitude: apt.properties?.latitude ? Number(apt.properties.latitude) : null,
+          longitude: apt.properties?.longitude ? Number(apt.properties.longitude) : null,
           propertyImage: propImage,
           propertyPrice: apt.properties?.price ? Number(apt.properties.price) : null,
           propertyCode: apt.property_id ? apt.property_id.substring(0, 7).toUpperCase() : 'PR-XXXX',
@@ -329,6 +332,7 @@ export async function GET(request: Request) {
           price: '฿' + Number(p.price).toLocaleString(), // ฟอร์แมตราคามีเครื่องหมายจุลภาค เช่น ฿5,000,000
           rawPrice: Number(p.price),
           type: p.property_types?.name || 'บ้านเดี่ยว',
+          listingType: p.listing_type || 'sale',
           status: p.status, // สถานะอนุมัติ: approved, pending, rejected
           rejectReason: p.reject_reason || null, // เหตุผลที่โดนปฏิเสธ (ถ้ามี)
           location: p.location,

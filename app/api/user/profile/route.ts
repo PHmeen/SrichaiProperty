@@ -48,6 +48,9 @@ export async function GET() {
         is_verified: true,
         plan_type: true,
         plan_expired_at: true,
+        experience: true,
+        specialty_zone: true,
+        specialty_type: true,
         created_at: true,
         login_histories: {
           take: 1,
@@ -81,6 +84,9 @@ export async function GET() {
         planType: user.plan_type || "basic",
         planExpiredAt: user.plan_expired_at || null,
         isPro,
+        experience: user.experience || "",
+        specialtyZone: user.specialty_zone || "",
+        specialtyType: user.specialty_type || "",
         lastLogin: user.login_histories[0] || null,
       },
     });
@@ -98,7 +104,18 @@ export async function PUT(request: Request) {
     if (error) return error;
 
     const body = await request.json();
-    const { firstName, lastName, phone, lineId, profileImage, newPassword, currentPassword } = body;
+    const { 
+      firstName, 
+      lastName, 
+      phone, 
+      lineId, 
+      profileImage, 
+      experience,
+      specialtyZone,
+      specialtyType,
+      newPassword, 
+      currentPassword 
+    } = body;
 
     // 2.1 ตรวจสอบความถูกต้องของข้อมูล (Validation)
     if (firstName !== undefined && (!firstName || firstName.trim().length === 0 || firstName.trim().length > 100)) {
@@ -133,6 +150,9 @@ export async function PUT(request: Request) {
     if (phone !== undefined) updateData.phone = phone.trim();
     if (lineId !== undefined) updateData.line_id = lineId.trim();
     if (profileImage !== undefined) updateData.profile_image = profileImage;
+    if (experience !== undefined) updateData.experience = String(experience).trim();
+    if (specialtyZone !== undefined) updateData.specialty_zone = String(specialtyZone).trim();
+    if (specialtyType !== undefined) updateData.specialty_type = String(specialtyType).trim();
 
     if (newPassword && newPassword.trim() !== "") {
       if (newPassword.length < 6) {
@@ -156,7 +176,18 @@ export async function PUT(request: Request) {
     const updatedUser = await db.users.update({
       where: { id: targetUser.id },
       data: updateData,
-      select: { id: true, email: true, first_name: true, last_name: true, phone: true, line_id: true, profile_image: true },
+      select: {
+        id: true,
+        email: true,
+        first_name: true,
+        last_name: true,
+        phone: true,
+        line_id: true,
+        profile_image: true,
+        experience: true,
+        specialty_zone: true,
+        specialty_type: true
+      },
     });
 
     return NextResponse.json({
@@ -170,6 +201,9 @@ export async function PUT(request: Request) {
         phone: updatedUser.phone,
         lineId: updatedUser.line_id,
         profileImage: updatedUser.profile_image,
+        experience: updatedUser.experience,
+        specialtyZone: updatedUser.specialty_zone,
+        specialtyType: updatedUser.specialty_type,
       },
     });
   } catch (err) {

@@ -48,6 +48,7 @@ export interface PropertyData {
   title: string;
   price: string;
   type: string;
+  listingType?: string;
   status: 'approved' | 'pending' | 'rejected';
   rejectReason?: string | null;
   image: string;
