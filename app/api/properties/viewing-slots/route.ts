@@ -17,6 +17,10 @@ interface AgentSession {
 const toDateKey = (d: Date) =>
   `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
 
+// เที่ยงคืนของวันนี้แบบ UTC — ใช้ตัดรอบที่ผ่านไปแล้วออก (คอลัมน์ available_date เป็น Date ล้วน)
+const startOfTodayUTC = (now: Date = new Date()) =>
+  new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+
 // GET: ดึงวันว่างของบ้านหลังหนึ่งๆ — สาธารณะ (ลูกค้าและนายหน้าใช้ร่วมกันได้)
 // ใช้: /api/properties/viewing-slots?propertyId=xxxx
 export async function GET(req: Request) {
@@ -25,9 +29,10 @@ export async function GET(req: Request) {
     const propertyId = searchParams.get("propertyId");
 
     // โหมดพิเศษ: /api/properties/viewing-slots?agentBusy=1[&excludePropertyId=xxx]
-    // ใช้ตอนนายหน้าเปิดหน้า "ลงประกาศ" หรือ "แก้ไขประกาศ" เพื่อรู้ล่วงหน้าว่าตัวเองมีนัดชนกับบ้านหลังอื่นวันไหนแล้ว
-    // เดิมดึงจาก "วันว่างที่เปิดไว้" (property_viewing_slots) แต่ตอนนี้เปิดวันว่างซ้อนกันได้ตามปกติแล้ว
-    // เปลี่ยนมาดึงจาก "นัดหมายที่มีคนจองจริง" (appointments) แทน เพราะนั่นคือจุดล็อกจริงของระบบ
+    // ใช้ตอนนายหน้าเปิดหน้า "ลงประกาศ" หรือ "แก้ไขประกาศ" เพื่อรู้ว่าวันไหนไปทับกับบ้านหลังอื่นของตัวเอง
+    // คืนกลับ 2 ชุด แยกความหมายกันชัดเจน (ทั้งคู่ไม่บล็อกการเปิดวันว่าง แค่บอกให้รู้)
+    //   busySlots      = รอบที่ "มีลูกค้าจองจริง" กับบ้านหลังอื่น -> วันนั้นนายหน้าไปนำชมที่นี่ไม่ได้แน่ๆ
+    //   otherOpenSlots = รอบที่บ้านหลังอื่น "เปิดวันว่างไว้เฉยๆ" ยังไม่มีใครจอง -> แค่บอกว่าเปิดทับกันอยู่
     if (searchParams.get("agentBusy")) {
       const session = (await getServerSession(authOptions)) as AgentSession | null;
       if (!session?.user?.id || session.user.role !== "agent") {
@@ -62,7 +67,36 @@ export async function GET(req: Request) {
           propertyTitle: a.properties?.title || "บ้านหลังอื่นของคุณ"
         }));
 
-      return NextResponse.json({ success: true, busySlots: formatted });
+      // รอบที่บ้านหลังอื่นเปิดวันว่างไว้แต่ยังไม่มีใครจอง (is_booked = false)
+      // ไม่ใช่การกันชน — นายหน้าเปิดวันเดียวกันได้หลายบ้านตามปกติ แค่ให้เห็นว่าเปิดทับกันอยู่กี่หลัง
+      const openSlots = await db.property_viewing_slots.findMany({
+        where: {
+          is_booked: false,
+          available_date: { gte: startOfTodayUTC() },
+          properties: {
+            agent_id: session.user.id,
+            ...(excludePropertyId ? { id: { not: excludePropertyId } } : {})
+          }
+        },
+        select: {
+          available_date: true,
+          time_slot: true,
+          properties: { select: { title: true } }
+        },
+        orderBy: [{ available_date: "asc" }, { time_slot: "asc" }]
+      });
+
+      // รอบไหนมีนัดจริงอยู่แล้ว ไม่ต้องส่งซ้ำมาในชุดนี้ (ให้ busySlots ซึ่งสำคัญกว่าเป็นตัวแสดงผล)
+      const busyKeys = new Set(formatted.map((b) => `${b.date}|${b.timeSlot}`));
+      const openFormatted = openSlots
+        .map((s) => ({
+          date: toDateKey(s.available_date),
+          timeSlot: s.time_slot,
+          propertyTitle: s.properties?.title || "บ้านหลังอื่นของคุณ"
+        }))
+        .filter((s) => !busyKeys.has(`${s.date}|${s.timeSlot}`));
+
+      return NextResponse.json({ success: true, busySlots: formatted, otherOpenSlots: openFormatted });
     }
 
     if (!propertyId) {

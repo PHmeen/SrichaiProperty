@@ -4,8 +4,8 @@ import { authOptions } from "@/lib/authOptions"; // ค่าคอนฟิก 
 import { db } from "@/lib/db"; // ไคลเอนต์ Prisma สำหรับจัดการนัดหมายและสล็อตวันว่าง
 import { notifyUser } from "@/lib/notify"; // ส่งการแจ้งเตือนเมื่อมีการนัด/ยืนยัน/ยกเลิกนัดหมาย
 import { hasAgentBookingConflict } from "@/lib/services/viewingSlotService"; // เช็คว่านายหน้ามีนัดจริงกับบ้านหลังอื่นชนเวลานี้อยู่แล้วหรือไม่
-import { autoCompleteOverdueAppointments, appointmentNeedsResult, isCustomerBlockedByNoShow } from "@/lib/services/noShowService"; // auto-complete + เช็คนัดรอผล + เช็คลูกค้าถูกบล็อกจากประวัติเบี้ยวนัด
-import { NO_SHOW_LIMIT } from "@/lib/constants"; // ใช้แจ้งเตือนลูกค้าว่าเหลือโควตาก่อนถูกจำกัดการจองกี่ครั้ง
+import { autoCompleteOverdueAppointments, autoCancelExpiredRescheduleOffers, appointmentNeedsResult, isCustomerBlockedByNoShow } from "@/lib/services/noShowService"; // auto-complete/auto-cancel + เช็คนัดรอผล + เช็คลูกค้าถูกบล็อก
+import { NO_SHOW_LIMIT, APPOINTMENT_STATUS } from "@/lib/constants"; // โควตาเบี้ยวนัด + ค่าคงที่สถานะนัดหมาย
 
 /**
  * ==============================================================================
@@ -52,6 +52,8 @@ export async function GET(request: Request) {
     // ถ้าเลยกำหนด VISIT_CONFIRM_GRACE_DAYS แล้วนายหน้ายังไม่ยืนยัน ค่อย auto-complete ให้เอง
     // (กันนัดค้างสถานะ "รอผล" ตลอดไปถ้านายหน้าลืมกด — ดู lib/services/noShowService.ts)
     await autoCompleteOverdueAppointments();
+    // ยกเลิกนัดที่นายหน้าขอเลื่อนไว้แต่ลูกค้าไม่เคยกดรับ จนวันที่เสนอผ่านไปแล้ว (คืนรอบว่างให้ด้วย)
+    await autoCancelExpiredRescheduleOffers();
 
     // 1.4 ดึงข้อมูลนัดหมายจากฐานข้อมูล PostgreSQL ผ่าน Prisma ORM
     // - ถ้าเป็นนายหน้า: ค้นหาแถวที่ agent_id === user.id
@@ -302,13 +304,92 @@ export async function PATCH(request: Request) {
     // --------------------------------------------------------------------------
     // (ก) กรณีฝั่งนายหน้าจัดการ: ยืนยัน (confirm), ปฏิเสธ (reject), หรือ ปิดงาน (complete)
     // --------------------------------------------------------------------------
-    if (["confirm", "reject", "complete", "no_show"].includes(action)) {
+    if (["confirm", "reject", "complete", "no_show", "agent_reschedule"].includes(action)) {
       // ตรวจสอบสิทธิ์: ต้องเป็นนายหน้าเจ้าของคิวงานนี้เท่านั้น
       if (user.role_id !== "agent" || appointment.agent_id !== user.id) {
         return NextResponse.json({ error: "คุณไม่มีสิทธิ์จัดการนัดหมายนี้" }, { status: 403 });
       }
 
       // นายหน้ากดปิดงานเมื่อพาลูกค้าชมสถานที่จริงเรียบร้อยแล้ว (status -> completed)
+      // 🔑 KEYWORD: นายหน้าขอเลื่อนวันนัด
+      // เดิมพอยืนยันนัดไปแล้ว (approved) นายหน้าทำอะไรกับนัดนั้นไม่ได้เลย ถ้าติดธุระไปไม่ได้จริง
+      // เหลือทางเลือกแค่โกหกว่า "ลูกค้ามาแล้ว" หรือใส่ร้ายว่า "ลูกค้าไม่มา" (ซึ่งไปนับโควตาแบนลูกค้า)
+      // ให้เลื่อนวันได้แทน แล้วส่งให้ลูกค้าเป็นคนตัดสินว่ารับวันใหม่ไหม (awaiting_customer)
+      if (action === "agent_reschedule") {
+        if (![APPOINTMENT_STATUS.PENDING, APPOINTMENT_STATUS.APPROVED].includes(appointment.status as never)) {
+          return NextResponse.json({ error: "เลื่อนได้เฉพาะนัดที่ยังไม่ปิดงานเท่านั้น" }, { status: 400 });
+        }
+        if (!date || !timeSlot) {
+          return NextResponse.json({ error: "กรุณาระบุวันและรอบเวลาใหม่" }, { status: 400 });
+        }
+        if (!appointment.property_id) {
+          return NextResponse.json({ error: "ไม่พบข้อมูลอสังหาริมทรัพย์ของนัดนี้" }, { status: 400 });
+        }
+
+        // เช็คว่าวันใหม่ที่จะเลื่อนไป ตัวนายหน้าเองไม่ได้ติดนัดบ้านหลังอื่นอยู่แล้ว
+        // (กฎเดียวกับตอนลูกค้าจอง/ลูกค้าเลื่อน — นายหน้าไปนำชมได้ทีละที่)
+        if (await hasAgentBookingConflict(user.id, appointment.property_id, new Date(date), timeSlot)) {
+          return NextResponse.json({ error: "คุณติดนัดชมบ้านหลังอื่นในช่วงเวลานี้แล้ว กรุณาเลือกวันหรือเวลาอื่น" }, { status: 400 });
+        }
+
+        // เก็บวัน+รอบ "ครั้งแรกสุด" ไว้โชว์ขีดฆ่า เขียนครั้งเดียวไม่ทับของเดิม (กฎเดียวกับตอนลูกค้าเลื่อนเอง)
+        const shouldKeepOriginal = appointment.original_date === null;
+
+        const updated = await db.appointments.update({
+          where: { id },
+          data: {
+            appointment_date: new Date(date),
+            time_slot: timeSlot,
+            status: APPOINTMENT_STATUS.AWAITING_CUSTOMER,
+            ...(shouldKeepOriginal
+              ? { original_date: appointment.appointment_date, original_time_slot: appointment.time_slot }
+              : {})
+          }
+        });
+
+        // ปลดล็อกรอบเดิมคืนระบบ ให้ลูกค้าคนอื่นจองแทนได้
+        await db.property_viewing_slots.updateMany({
+          where: { property_id: appointment.property_id, available_date: appointment.appointment_date, time_slot: appointment.time_slot ?? undefined },
+          data: { is_booked: false }
+        });
+
+        // 🔑 KEYWORD: เปิดรอบวันว่างอัตโนมัติตอนนายหน้าเลื่อนนัด
+        // นายหน้าเป็นเจ้าของบ้าน มีสิทธิ์เปิดรอบอยู่แล้ว — ถ้าวันใหม่ยังไม่เคยเปิดไว้ก็สร้างให้เลย
+        // ไม่งั้นต้องไปเปิดรอบที่หน้าแก้ไขประกาศก่อนแล้วค่อยกลับมาเลื่อน (2 ขั้นตอน เสียเวลา)
+        await db.property_viewing_slots.upsert({
+          where: {
+            property_id_available_date_time_slot: {
+              property_id: appointment.property_id,
+              available_date: new Date(date),
+              time_slot: timeSlot
+            }
+          },
+          create: {
+            property_id: appointment.property_id,
+            available_date: new Date(date),
+            time_slot: timeSlot,
+            is_booked: true
+          },
+          update: { is_booked: true }
+        });
+
+        // แจ้งลูกค้าทันทีว่านายหน้าขอเลื่อน พร้อมบอกวันเก่า -> วันใหม่ ให้เห็นชัดว่าเปลี่ยนไปเป็นอะไร
+        if (appointment.customer_id) {
+          const prop = await db.properties.findUnique({ where: { id: appointment.property_id }, select: { title: true } });
+          const oldLabel = `${toDateKey(appointment.appointment_date)} (${appointment.time_slot === "afternoon" ? "ช่วงบ่าย" : "ช่วงเช้า"})`;
+          const newLabel = `${date} (${timeSlot === "afternoon" ? "ช่วงบ่าย" : "ช่วงเช้า"})`;
+          sendNotification(
+            appointment.customer_id,
+            "นายหน้าขอเลื่อนวันนัดหมาย",
+            `นายหน้าขอเลื่อนนัดเข้าชม "${prop?.title || "อสังหาริมทรัพย์"}" จากวันที่ ${oldLabel} เป็นวันที่ ${newLabel} กรุณาเข้าไปกดยืนยันวันใหม่ หรือยกเลิกนัดหากไม่สะดวก`,
+            "appointment",
+            "/appointments"
+          );
+        }
+
+        return NextResponse.json({ success: true, data: updated });
+      }
+
       if (action === "complete") {
         if (appointment.status !== "approved") return NextResponse.json({ error: "ปิดงานได้เฉพาะนัดหมายที่ยืนยันแล้วเท่านั้น" }, { status: 400 });
         
@@ -400,6 +481,37 @@ export async function PATCH(request: Request) {
           ? `รายการนัดหมายเข้าชม "${propertyTitle}" ได้รับการยืนยันจากนายหน้าเรียบร้อยแล้ว`
           : `รายการนัดหมายเข้าชม "${propertyTitle}" ถูกปฏิเสธโดยนายหน้า (เหตุผล: ${rejectReason}) รอบเวลานี้เปิดให้จองใหม่แล้ว หรือเลือกช่วงเวลาอื่นได้`;
         sendNotification(appointment.customer_id, notiTitle, notiContent, "appointment", "/appointments");
+      }
+
+      return NextResponse.json({ success: true, data: updated });
+    }
+
+    // 🔑 KEYWORD: ลูกค้ายืนยันวันใหม่ที่นายหน้าขอเลื่อน
+    // คู่กับ agent_reschedule — ลูกค้าเป็นคนตัดสินใจเอง ไม่ใช่นายหน้ายืนยันข้อเสนอตัวเอง
+    // (ถ้าไม่สะดวกก็กดยกเลิกนัดได้ตามปกติ ใช้ปุ่มยกเลิกเดิม)
+    if (action === "customer_accept") {
+      if (appointment.customer_id !== user.id) {
+        return NextResponse.json({ error: "คุณไม่มีสิทธิ์จัดการนัดหมายนี้" }, { status: 403 });
+      }
+      if (appointment.status !== APPOINTMENT_STATUS.AWAITING_CUSTOMER) {
+        return NextResponse.json({ error: "นัดหมายนี้ไม่ได้อยู่ระหว่างรอยืนยันวันใหม่" }, { status: 400 });
+      }
+
+      const updated = await db.appointments.update({
+        where: { id },
+        data: { status: APPOINTMENT_STATUS.APPROVED }
+      });
+
+      if (appointment.agent_id) {
+        const prop = appointment.property_id ? await db.properties.findUnique({ where: { id: appointment.property_id }, select: { title: true } }) : null;
+        const customerName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "ลูกค้า";
+        sendNotification(
+          appointment.agent_id,
+          "ลูกค้ายืนยันวันนัดใหม่แล้ว",
+          `คุณ ${customerName} ยืนยันวันนัดใหม่สำหรับ "${prop?.title || "อสังหาริมทรัพย์"}" วันที่ ${toDateKey(appointment.appointment_date)} เรียบร้อยแล้ว`,
+          "appointment",
+          "/agent/appointments"
+        );
       }
 
       return NextResponse.json({ success: true, data: updated });

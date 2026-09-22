@@ -76,10 +76,14 @@ interface AppointmentItem {
   date: string;
   timeSlot: string;
   timeSlotText: string;
-  status: 'pending' | 'approved' | 'rejected' | 'completed' | 'cancelled' | 'no_show' | string;
+  status: 'pending' | 'approved' | 'awaiting_customer' | 'rejected' | 'completed' | 'cancelled' | 'no_show' | string;
   note: string;
   cancelReason?: string;
   noShowNote?: string;
+  // 🔑 KEYWORD: วันนัดเดิมก่อนถูกเลื่อน (API ส่งมาให้อยู่แล้ว แต่หน้านี้ไม่เคยเอามาแสดง)
+  originalDate?: string | null;
+  originalTimeSlot?: string | null;
+  wasEdited?: boolean;
   agentName: string;
   agentPhone: string;
   agentImage?: string;
@@ -103,6 +107,8 @@ const getStatusDetails = (status: string) => {
       return { text: "ยกเลิกแล้ว", bg: "bg-red-50 border-red-200", color: "text-red-700" };
     case 'rejected':
       return { text: "ปฏิเสธแล้ว", bg: "bg-rose-50 border-rose-200", color: "text-rose-700" };
+    case 'awaiting_customer':
+      return { text: "นายหน้าขอเลื่อนวัน", bg: "bg-purple-50 border-purple-200", color: "text-purple-700" };
     case 'no_show':
       return { text: "ไม่มาตามนัด", bg: "bg-red-50 border-red-200", color: "text-red-700" };
     default:
@@ -152,6 +158,30 @@ export default function AppointmentsPage() {
   const [cancelReasonOption, setCancelReasonOption] = useState<string>('ติดภารกิจด่วน / การเดินทางไม่สะดวก');
   const [customReasonText, setCustomReasonText] = useState<string>('');
   const [submittingCancel, setSubmittingCancel] = useState(false);
+
+  // 🔑 KEYWORD: ลูกค้ากดตกลงวันใหม่ที่นายหน้าขอเลื่อน
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
+
+  const acceptNewDate = async (apt: AppointmentItem) => {
+    setAcceptingId(String(apt.id));
+    try {
+      const res = await fetch('/api/appointments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: apt.id, action: 'customer_accept' })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        await loadAppointments();
+      } else {
+        alert(data.error || 'ยืนยันวันใหม่ไม่สำเร็จ');
+      }
+    } catch {
+      alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+    } finally {
+      setAcceptingId(null);
+    }
+  };
 
   const openCancelModal = (apt: AppointmentItem) => {
     setCancelingApt(apt);
@@ -374,6 +404,21 @@ export default function AppointmentsPage() {
                     </span>
                     <h3 className="font-extrabold text-slate-900 text-sm line-clamp-1">{apt.propertyName}</h3>
                     <div className="text-blue-700 font-extrabold text-xs">{apt.propertyPrice}</div>
+
+                    {/* 🔑 KEYWORD: โชว์วันนัดเดิมขีดฆ่าเมื่อนัดถูกเลื่อน */}
+                    {/* ข้อมูลนี้ API ส่งมาให้ตั้งแต่แรกแล้ว แต่หน้าลูกค้าไม่เคยเอามาแสดง
+                        ทั้งที่ลูกค้าคือฝ่ายที่ต้องรู้มากที่สุดว่านัดถูกย้ายจากวันไหนมาวันไหน */}
+                    {apt.wasEdited && apt.originalDate && (() => {
+                      const od = new Date(apt.originalDate);
+                      const odLabel = isNaN(od.getTime())
+                        ? apt.originalDate
+                        : `${od.getDate()} ${MONTH_NAMES_TH[od.getMonth()]} ${od.getFullYear() + 543}`;
+                      return (
+                        <p className="text-[11px] font-bold text-slate-400 line-through">
+                          เดิม: {odLabel} ({apt.originalTimeSlot === 'afternoon' ? 'ช่วงบ่าย' : 'ช่วงเช้า'})
+                        </p>
+                      );
+                    })()}
                     <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
                       <span>นายหน้า: {apt.agentName} ({apt.agentPhone})</span>
                     </div>
@@ -476,8 +521,20 @@ export default function AppointmentsPage() {
                       </Link>
                     )}
 
+                    {/* 🔑 KEYWORD: ปุ่มลูกค้ายืนยันวันใหม่ที่นายหน้าขอเลื่อน */}
+                    {/* ลูกค้าเป็นคนตัดสินใจเอง ไม่ใช่นายหน้ายืนยันข้อเสนอตัวเอง */}
+                    {apt.status === 'awaiting_customer' && (
+                      <button
+                        onClick={() => acceptNewDate(apt)}
+                        disabled={acceptingId === String(apt.id)}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-black text-xs transition cursor-pointer active:scale-95 disabled:opacity-60"
+                      >
+                        {acceptingId === String(apt.id) ? 'กำลังบันทึก...' : '✓ ตกลงวันใหม่'}
+                      </button>
+                    )}
+
                     {/* ปุ่มยกเลิกนัด: แสดงเฉพาะนัดที่ยังไม่ถึงวันนัดหมายเท่านั้น */}
-                    {!pastThisApt && !cancelledThisApt && (apt.status === 'approved' || apt.status === 'pending') && (
+                    {!pastThisApt && !cancelledThisApt && (apt.status === 'approved' || apt.status === 'pending' || apt.status === 'awaiting_customer') && (
                       <button
                         onClick={() => openCancelModal(apt)}
                         className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg font-bold text-xs transition cursor-pointer active:scale-95"

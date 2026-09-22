@@ -24,7 +24,7 @@ import {
 
 interface AgentAppointment {
   id: string;
-  status: 'pending' | 'approved' | 'rejected' | 'completed' | 'cancelled' | 'no_show';
+  status: 'pending' | 'approved' | 'awaiting_customer' | 'rejected' | 'completed' | 'cancelled' | 'no_show';
   date: string; // YYYY-MM-DD
   timeSlot: 'morning' | 'afternoon';
   note: string;
@@ -59,6 +59,13 @@ function formatDateTH(dateStr: string): string {
   return `วัน${days[d.getDay()]}ที่ ${d.getDate()} ${MONTH_NAMES_TH[d.getMonth()]} ${d.getFullYear() + 543}`;
 }
 
+// แปลง Date เป็นคีย์ "YYYY-MM-DD" ตามวันที่ของเครื่องผู้ใช้
+// ห้ามใช้ toISOString() เพราะมันคืนวันตามโซน UTC ทำให้ช่วงเที่ยงคืน-7 โมงเช้าของไทย
+// ได้วันที่ย้อนหลังไป 1 วัน (ปฏิทินจะไฮไลต์ "วันนี้" ผิดวัน และกรองนัดผิดช่วง)
+function toDateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function timeSlotLabel(slot: string): string {
   return slot === 'afternoon' ? 'ช่วงบ่าย (13:00 น.)' : 'ช่วงเช้า (10:00 น.)';
 }
@@ -85,7 +92,7 @@ export default function AgentAppointmentsPage() {
   const [calMonth, setCalMonth] = useState(today.getMonth());
   const [selectedCalDate, setSelectedCalDate] = useState<string | null>(null);
 
-  const todayKey = today.toISOString().split('T')[0];
+  const todayKey = toDateKey(today);
 
   const loadAppointments = useCallback(async () => {
     setLoading(true);
@@ -214,6 +221,115 @@ export default function AgentAppointmentsPage() {
     await handleAction(targetId, 'reject', finalReason);
   };
 
+  // 🔑 KEYWORD: นายหน้ายกเลิกนัดที่ยืนยันไปแล้ว
+  // API (DELETE /api/appointments) รองรับให้นายหน้ายกเลิกได้อยู่แล้ว แต่หน้าเว็บไม่เคยมีปุ่มให้กด
+  // ทำให้พอยืนยันนัดไปแล้วนายหน้าถอยไม่ได้เลย ถ้าติดธุระจริงต้องไปโกหกสถานะแทน
+  const CANCEL_REASONS = [
+    'ติดธุระด่วน ไม่สามารถไปตามนัดได้',
+    'เจ้าของบ้านยกเลิกการให้เข้าชมกะทันหัน',
+    'ทรัพย์นี้ปิดการขาย/มีผู้จองแล้ว',
+    'อื่นๆ'
+  ];
+
+  const [cancelingApt, setCancelingApt] = useState<AgentAppointment | null>(null);
+  const [cancelReasonOption, setCancelReasonOption] = useState<string>(CANCEL_REASONS[0]);
+  const [customCancelReason, setCustomCancelReason] = useState('');
+
+  const openCancelModal = (apt: AgentAppointment) => {
+    setCancelingApt(apt);
+    setCancelReasonOption(CANCEL_REASONS[0]);
+    setCustomCancelReason('');
+  };
+
+  const closeCancelModal = () => {
+    setCancelingApt(null);
+    setCustomCancelReason('');
+  };
+
+  const confirmCancel = async () => {
+    if (!cancelingApt) return;
+    const finalReason = cancelReasonOption === 'อื่นๆ' ? customCancelReason.trim() : cancelReasonOption;
+    if (cancelReasonOption === 'อื่นๆ' && !finalReason) {
+      setToast({ kind: 'error', text: 'กรุณาระบุเหตุผลในการยกเลิก' });
+      return;
+    }
+
+    const targetId = cancelingApt.id;
+    closeCancelModal();
+    setBusyId(targetId);
+    try {
+      const res = await fetch(`/api/appointments?id=${encodeURIComponent(targetId)}&reason=${encodeURIComponent(finalReason)}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        await loadAppointments();
+        setToast({ kind: 'success', text: '✓ ยกเลิกนัดหมายเรียบร้อยแล้ว — แจ้งเตือนลูกค้าให้แล้ว' });
+      } else {
+        setToast({ kind: 'error', text: data.error || 'ยกเลิกนัดหมายไม่สำเร็จ' });
+      }
+    } catch {
+      setToast({ kind: 'error', text: 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์' });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  // 🔑 KEYWORD: นายหน้าขอเลื่อนวันนัด
+  // ติดธุระไปตามนัดไม่ได้ ให้เสนอวันใหม่แทนการยกเลิกทิ้ง — ลูกค้าเป็นคนกดรับวันใหม่เอง
+  const [reschedulingApt, setReschedulingApt] = useState<AgentAppointment | null>(null);
+  const [newDate, setNewDate] = useState('');
+  const [newTimeSlot, setNewTimeSlot] = useState<'morning' | 'afternoon'>('morning');
+  // เดือน/ปีที่ปฏิทินในโมดัลกำลังเปิดดูอยู่ (แยกจากปฏิทินหน้าหลักฝั่งซ้าย)
+  const [rsYear, setRsYear] = useState(today.getFullYear());
+  const [rsMonth, setRsMonth] = useState(today.getMonth());
+
+  const openRescheduleModal = (apt: AgentAppointment) => {
+    setReschedulingApt(apt);
+    setNewDate('');
+    setNewTimeSlot(apt.timeSlot);
+    // เปิดปฏิทินค้างไว้ที่เดือนของวันนัดเดิม เพื่อให้นายหน้าเลือกวันใกล้เคียงได้ทันที
+    // แต่ถ้าวันนัดเดิมผ่านไปแล้วให้เด้งกลับมาเดือนปัจจุบัน (เลือกวันในอดีตไม่ได้อยู่แล้ว)
+    const base = apt.date >= todayKey ? new Date(apt.date + 'T00:00:00') : today;
+    setRsYear(base.getFullYear());
+    setRsMonth(base.getMonth());
+  };
+
+  const closeRescheduleModal = () => {
+    setReschedulingApt(null);
+    setNewDate('');
+  };
+
+  const confirmReschedule = async () => {
+    if (!reschedulingApt) return;
+    if (!newDate) {
+      setToast({ kind: 'error', text: 'กรุณาเลือกวันใหม่ก่อน' });
+      return;
+    }
+
+    const targetId = reschedulingApt.id;
+    closeRescheduleModal();
+    setBusyId(targetId);
+    try {
+      const res = await fetch('/api/appointments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: targetId, action: 'agent_reschedule', date: newDate, timeSlot: newTimeSlot })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        await loadAppointments();
+        setToast({ kind: 'success', text: '✓ ส่งคำขอเลื่อนวันแล้ว — รอลูกค้ากดยืนยันวันใหม่' });
+      } else {
+        setToast({ kind: 'error', text: data.error || 'เลื่อนวันนัดไม่สำเร็จ' });
+      }
+    } catch {
+      setToast({ kind: 'error', text: 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์' });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   // === โมดัล "ยืนยันผลว่าลูกค้าไม่มาตามนัด" (No-show) — mirror โมดัลปฏิเสธด้านบน ===
   // เหตุผลจะถูกส่งไปเก็บใน no_show_note (คนละคอลัมน์กับ cancel_reason)
   const NO_SHOW_REASONS = [
@@ -266,7 +382,11 @@ export default function AgentAppointmentsPage() {
   
   // เดิมทั้งคู่ใช้ status === 'approved' ปนกัน (นัดที่ผ่านวันไปแล้วก็ยังอยู่ในนี้) ตอนนี้แยกด้วย
   // needsResult: upcoming = ยังไม่ถึงวันนัด, needsResultList = ถึงวันแล้วรอนายหน้ายืนยันผล
-  const upcoming = useMemo(() => appointments.filter(a => a.status === 'approved' && !a.needsResult), [appointments]);
+  // awaiting_customer (เราขอเลื่อนวัน รอลูกค้ากดรับ) ก็ถือเป็นนัดที่กำลังจะมาถึงเหมือนกัน
+  const upcoming = useMemo(
+    () => appointments.filter(a => (a.status === 'approved' || a.status === 'awaiting_customer') && !a.needsResult),
+    [appointments]
+  );
   const needsResultList = useMemo(() => appointments.filter(a => a.needsResult), [appointments]);
   const doneOrCancelled = useMemo(
     () => appointments.filter(a => a.status === 'completed' || a.status === 'rejected' || a.status === 'cancelled' || a.status === 'no_show'),
@@ -289,7 +409,7 @@ export default function AgentAppointmentsPage() {
   const upcomingWithin7Days = useMemo(() => {
     const in7 = new Date();
     in7.setDate(in7.getDate() + 7);
-    const in7Key = in7.toISOString().split('T')[0];
+    const in7Key = toDateKey(in7);
     return upcoming.filter(a => a.date >= todayKey && a.date <= in7Key).length;
   }, [upcoming, todayKey]);
 
@@ -304,6 +424,19 @@ export default function AgentAppointmentsPage() {
   const datesWithAppointments = useMemo(() => new Set(appointments.map(a => a.date)), [appointments]);
 
   const getAppointmentsForDate = (dateStr: string) => appointments.filter(a => a.date === dateStr);
+
+  // รอบที่นายหน้ามีนัดที่ยัง "จองอยู่จริง" อยู่แล้ว — ใช้โชว์จุดเตือนบนปฏิทินในโมดัลขอเลื่อนวัน
+  // API มี hasAgentBookingConflict คอยกันชนอยู่แล้ว แต่เดิมนายหน้าจะรู้ว่าชนก็ต่อเมื่อกดส่งแล้วโดนตีกลับ
+  // ไม่นับใบที่กำลังเลื่อนเอง เพราะย้ายรอบเวลาภายในวันเดิมเป็นเรื่องปกติ
+  //
+  // เก็บเป็นคีย์ "วันที่|รอบเวลา" ไม่ใช่แค่วันที่ เพราะการกันชนจริงของระบบดูถึงระดับรอบ
+  // (ติดนัดรอบเช้า ยังเลื่อนมารอบบ่ายวันเดียวกันได้ตามปกติ) ถ้าเตือนเหมาทั้งวันจะเข้มเกินจริง
+  // และผิดหลักที่ตกลงไว้ว่าล็อกเฉพาะรอบที่ชนกันจริง
+  const busySlotKeysForReschedule = useMemo(() => new Set(
+    appointments
+      .filter(a => a.id !== reschedulingApt?.id && ['pending', 'approved', 'awaiting_customer'].includes(a.status))
+      .map(a => `${a.date}|${a.timeSlot}`)
+  ), [appointments, reschedulingApt]);
 
   return (
     <div className="font-sans text-slate-800 text-xs antialiased flex flex-col min-h-screen bg-[#f8fafc]">
@@ -331,13 +464,6 @@ export default function AgentAppointmentsPage() {
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Appointments Manager</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setToast({ text: 'ฟีเจอร์สร้างนัดหมายด้วยตนเองจะเปิดให้ใช้งานเร็วๆ นี้', kind: 'success' })}
-            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs shrink-0 transition cursor-pointer"
-          >
-            + สร้างนัดหมายด้วยตนเอง
-          </button>
         </div>
       </div>
 
@@ -531,11 +657,12 @@ export default function AgentAppointmentsPage() {
                       <span className={`ml-auto text-[9px] font-black px-2 py-1 rounded-full border ${
                         apt.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' :
                         apt.needsResult ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                        apt.status === 'awaiting_customer' ? 'bg-purple-50 text-purple-700 border-purple-200' :
                         apt.status === 'approved' ? 'bg-blue-50 text-blue-700 border-blue-200' :
                         apt.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                         'bg-red-50 text-red-600 border-red-200'
                       }`}>
-                        {apt.needsResult ? 'รอยืนยันผล' : apt.status === 'pending' ? 'รอยืนยัน' : apt.status === 'approved' ? 'ยืนยันแล้ว' : apt.status === 'completed' ? 'เสร็จสิ้น' : apt.status === 'cancelled' ? 'ลูกค้ายกเลิกแล้ว' : apt.status === 'no_show' ? 'ไม่มาตามนัด' : 'ปฏิเสธแล้ว'}
+                        {apt.needsResult ? 'รอยืนยันผล' : apt.status === 'pending' ? 'รอยืนยัน' : apt.status === 'awaiting_customer' ? 'รอลูกค้ายืนยันวันใหม่' : apt.status === 'approved' ? 'ยืนยันแล้ว' : apt.status === 'completed' ? 'เสร็จสิ้น' : apt.status === 'cancelled' ? 'ลูกค้ายกเลิกแล้ว' : apt.status === 'no_show' ? 'ไม่มาตามนัด' : 'ปฏิเสธแล้ว'}
                       </span>
                     </div>
 
@@ -675,7 +802,46 @@ export default function AgentAppointmentsPage() {
                         </button>
                       )}
 
-                                            {apt.needsResult && (
+                      {/* 🔑 KEYWORD: ปุ่มขอเลื่อนวันนัด — ติดธุระแต่ยังอยากนำชม เสนอวันใหม่แทนยกเลิกทิ้ง */}
+                      {apt.status === 'approved' && !apt.needsResult && (
+                        <button
+                          disabled={busyId === apt.id}
+                          onClick={() => openRescheduleModal(apt)}
+                          className="w-full px-3 py-2 bg-amber-50 hover:bg-amber-500 hover:text-white text-amber-700 border border-amber-300 hover:border-amber-500 font-bold rounded-lg text-[10px] transition-all duration-150 active:scale-95 cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+                        >
+                          ขอเลื่อนวัน
+                        </button>
+                      )}
+
+                      {/* 🔑 KEYWORD: ปุ่มยกเลิกนัดฝั่งนายหน้า — นัดที่ยืนยันแล้วแต่ไปไม่ได้จริง */}
+                      {apt.status === 'approved' && !apt.needsResult && (
+                        <button
+                          disabled={busyId === apt.id}
+                          onClick={() => openCancelModal(apt)}
+                          className="w-full px-3 py-2 bg-red-50 hover:bg-red-500 hover:text-white text-red-600 border border-red-200 hover:border-red-500 font-bold rounded-lg text-[10px] transition-all duration-150 active:scale-95 cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+                        >
+                          ยกเลิกนัด
+                        </button>
+                      )}
+
+                      {/* นัดที่เราขอเลื่อนวันไปแล้ว รอลูกค้ากดรับ — ยกเลิกทิ้งได้ถ้าเปลี่ยนใจ */}
+                      {apt.status === 'awaiting_customer' && (
+                        <>
+                          <p className="w-full text-[10px] text-purple-700 font-bold text-center bg-purple-50 border border-purple-200 rounded-lg py-1.5">
+                            รอลูกค้ายืนยันวันใหม่
+                          </p>
+                          <button
+                            disabled={busyId === apt.id}
+                            onClick={() => openCancelModal(apt)}
+                            className="w-full px-3 py-2 bg-red-50 hover:bg-red-500 hover:text-white text-red-600 border border-red-200 hover:border-red-500 font-bold rounded-lg text-[10px] transition-all duration-150 active:scale-95 cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+                          >
+                            ยกเลิกนัด
+                          </button>
+                        </>
+                      )}
+
+                      {/* 🔑 KEYWORD: ปุ่มยืนยันผลการนัดหมาย (No-show) — วันนัดผ่านไปแล้ว รอผลจริง */}
+                      {apt.needsResult && (
                         <>
                           <button
                             disabled={busyId === apt.id}
@@ -817,7 +983,239 @@ export default function AgentAppointmentsPage() {
         </div>
       )}
 
-            {noShowApt && (
+      {/* 🔑 KEYWORD: โมดัลขอเลื่อนวันนัด */}
+      {reschedulingApt && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl space-y-4 border border-slate-100">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="font-extrabold text-amber-600 text-base flex items-center gap-1.5">
+                <span>📅</span> ขอเลื่อนวันนัดหมาย
+              </h3>
+              <button onClick={closeRescheduleModal} className="text-slate-400 hover:text-slate-600 font-bold text-lg cursor-pointer">✕</button>
+            </div>
+
+            <div>
+              <p className="text-xs font-bold text-slate-500">นัดหมายของ:</p>
+              <p className="text-sm font-extrabold text-slate-900">{reschedulingApt.customerName}</p>
+              <p className="text-xs font-medium text-slate-500 mt-0.5 line-clamp-1">{reschedulingApt.propertyTitle}</p>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+              <p className="text-[10px] font-black text-slate-400 uppercase mb-1">วันนัดเดิม</p>
+              <p className="text-[11px] font-bold text-slate-700">
+                {formatDateTH(reschedulingApt.date)}, {timeSlotLabel(reschedulingApt.timeSlot)}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-extrabold text-slate-700">เลือกวันใหม่ที่คุณสะดวก:</label>
+
+              {/* ปฏิทินไทยแบบย่อ — ยกแบบมาจากปฏิทินฝั่งซ้ายของหน้านี้ ให้ทั้งเว็บใช้ปฏิทินหน้าตาเดียวกัน
+                  (ของเดิมเป็น <input type="date"> ซึ่งเด้งปฏิทินของเบราว์เซอร์ขึ้นมาเป็น ค.ศ.) */}
+              <div className="border border-slate-200 rounded-xl p-3">
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <button
+                    type="button"
+                    onClick={() => { const d = new Date(rsYear, rsMonth - 1, 1); setRsYear(d.getFullYear()); setRsMonth(d.getMonth()); }}
+                    className="text-slate-400 hover:text-slate-600 font-bold text-xs px-1 cursor-pointer"
+                  >
+                    &lt;
+                  </button>
+                  <span className="text-[11px] font-black text-slate-800">{MONTH_NAMES_TH[rsMonth]} {rsYear + 543}</span>
+                  <button
+                    type="button"
+                    onClick={() => { const d = new Date(rsYear, rsMonth + 1, 1); setRsYear(d.getFullYear()); setRsMonth(d.getMonth()); }}
+                    className="text-slate-400 hover:text-slate-600 font-bold text-xs px-1 cursor-pointer"
+                  >
+                    &gt;
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-7 gap-1 text-center text-[9px] font-black pb-1.5 mb-1.5 border-b border-slate-100">
+                  <span className="text-red-500">อา</span>
+                  <span className="text-slate-400">จ</span>
+                  <span className="text-slate-400">อ</span>
+                  <span className="text-slate-400">พ</span>
+                  <span className="text-slate-400">พฤ</span>
+                  <span className="text-slate-400">ศ</span>
+                  <span className="text-blue-500">ส</span>
+                </div>
+
+                <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold">
+                  {Array.from({ length: new Date(rsYear, rsMonth, 1).getDay() }).map((_, idx) => (
+                    <div key={`rs-empty-${idx}`} className="w-7 h-7" />
+                  ))}
+
+                  {Array.from({ length: new Date(rsYear, rsMonth + 1, 0).getDate() }).map((_, i) => {
+                    const dayNum = i + 1;
+                    const dateStr = `${rsYear}-${String(rsMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                    const isSelected = newDate === dateStr;
+                    const isToday = dateStr === todayKey;
+                    const isPast = dateStr < todayKey;      // วันที่ผ่านไปแล้ว เลื่อนนัดไปหาไม่ได้
+                    // เตือนเฉพาะรอบเวลาที่นายหน้าเลือกอยู่ตอนนี้ — สลับเช้า/บ่ายแล้วจุดเตือนขยับตาม
+                    const isBusy = !isPast && busySlotKeysForReschedule.has(`${dateStr}|${newTimeSlot}`);
+
+                    let dayClass = 'relative w-7 h-7 flex items-center justify-center mx-auto rounded-full transition-all ';
+                    if (isSelected) dayClass += 'bg-amber-500 text-white shadow-md cursor-pointer';
+                    else if (isPast) dayClass += 'text-slate-200 cursor-not-allowed';
+                    else if (isToday) dayClass += 'border-2 border-blue-500 text-blue-700 font-black cursor-pointer hover:bg-blue-50';
+                    else dayClass += 'text-slate-600 hover:bg-amber-50 cursor-pointer';
+
+                    return (
+                      <button
+                        key={dayNum}
+                        type="button"
+                        disabled={isPast}
+                        onClick={() => setNewDate(dateStr)}
+                        className={dayClass}
+                      >
+                        {dayNum}
+                        {isBusy && (
+                          <span className={`absolute bottom-0.5 w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-amber-500'}`} />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 mt-2.5 pt-2 border-t border-slate-100 text-[9px] font-bold text-slate-400">
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full border-2 border-blue-500 inline-block" /> วันนี้</span>
+                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" /> รอบนี้มีนัดแล้ว</span>
+                </div>
+              </div>
+
+              {newDate && (
+                <div className="text-[10px] font-bold bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 space-y-1">
+                  <p className="text-amber-700">เลือกไว้: {formatDateTH(newDate)}</p>
+                  {busySlotKeysForReschedule.has(`${newDate}|${newTimeSlot}`) && (
+                    <p className="text-amber-900 leading-relaxed">
+                      คุณมีนัดอื่นในวันและรอบเวลานี้อยู่แล้ว — เลื่อนมารอบนี้ไม่ได้ ลองสลับเป็นอีกรอบหรือเลือกวันอื่น
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-extrabold text-slate-700">เลือกรอบเวลา:</label>
+              <div className="grid grid-cols-2 gap-2">
+                {(['morning', 'afternoon'] as const).map(slot => (
+                  <button
+                    key={slot}
+                    type="button"
+                    onClick={() => setNewTimeSlot(slot)}
+                    className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                      newTimeSlot === slot ? 'border-amber-400 bg-amber-50' : 'border-slate-200 hover:border-amber-300'
+                    }`}
+                  >
+                    <p className="text-[11px] font-black text-slate-800">{slot === 'morning' ? 'รอบเช้า' : 'รอบบ่าย'}</p>
+                    <p className="text-[9px] text-slate-500 font-bold">{slot === 'morning' ? '10:00 - 12:00' : '13:00 - 15:00'}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <p className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 leading-relaxed">
+              ℹ️ ลูกค้าจะได้รับแจ้งเตือนวันใหม่ และต้องกดยืนยันเองก่อนนัดจะกลับมาเป็น &quot;ยืนยันแล้ว&quot;
+              — ถ้าวันใหม่ยังไม่เคยเปิดรอบไว้ ระบบจะเปิดให้อัตโนมัติ
+            </p>
+
+            <div className="flex items-center justify-end gap-2 border-t pt-3">
+              <button
+                type="button"
+                onClick={closeRescheduleModal}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs cursor-pointer"
+              >
+                ย้อนกลับ
+              </button>
+              <button
+                type="button"
+                onClick={confirmReschedule}
+                disabled={busyId === reschedulingApt.id}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs cursor-pointer shadow disabled:opacity-50"
+              >
+                {busyId === reschedulingApt.id ? 'กำลังส่ง...' : 'ส่งคำขอเลื่อนวัน'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🔑 KEYWORD: โมดัลยกเลิกนัดฝั่งนายหน้า */}
+      {cancelingApt && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 border border-slate-100">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="font-extrabold text-red-600 text-base flex items-center gap-1.5">
+                <span>⚠️</span> ยกเลิกนัดหมายที่ยืนยันแล้ว
+              </h3>
+              <button onClick={closeCancelModal} className="text-slate-400 hover:text-slate-600 font-bold text-lg cursor-pointer">✕</button>
+            </div>
+
+            <div>
+              <p className="text-xs font-bold text-slate-500">นัดหมายของ:</p>
+              <p className="text-sm font-extrabold text-slate-900">{cancelingApt.customerName}</p>
+              <p className="text-xs font-medium text-slate-500 mt-0.5 line-clamp-1">{cancelingApt.propertyTitle}</p>
+              <p className="text-[11px] font-bold text-slate-600 mt-1">
+                📅 {formatDateTH(cancelingApt.date)}, {timeSlotLabel(cancelingApt.timeSlot)}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-extrabold text-slate-700">กรุณาเลือกเหตุผลในการยกเลิก:</label>
+              {CANCEL_REASONS.map((reasonOpt, idx) => (
+                <label key={idx} className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white transition cursor-pointer text-xs font-bold text-slate-700">
+                  <input
+                    type="radio"
+                    name="agentCancelReason"
+                    value={reasonOpt}
+                    checked={cancelReasonOption === reasonOpt}
+                    onChange={(e) => setCancelReasonOption(e.target.value)}
+                    className="accent-red-600"
+                  />
+                  <span>{reasonOpt}</span>
+                </label>
+              ))}
+
+              {cancelReasonOption === 'อื่นๆ' && (
+                <textarea
+                  rows={2}
+                  placeholder="พิมพ์ระบุเหตุผลเพิ่มเติม..."
+                  value={customCancelReason}
+                  onChange={(e) => setCustomCancelReason(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-red-500 mt-2"
+                />
+              )}
+            </div>
+
+            <p className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 leading-relaxed">
+              ℹ️ ลูกค้าจะได้รับแจ้งเตือนพร้อมเหตุผลนี้ และรอบเวลานี้จะกลับมาเปิดให้จองใหม่ทันที
+              — ถ้าแค่ติดธุระและอยากเลื่อนวันแทน ให้กดปุ่ม &quot;ขอเลื่อนวัน&quot; จะดีกว่า
+            </p>
+
+            <div className="flex items-center justify-end gap-2 border-t pt-3">
+              <button
+                type="button"
+                onClick={closeCancelModal}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs cursor-pointer"
+              >
+                ย้อนกลับ
+              </button>
+              <button
+                type="button"
+                onClick={confirmCancel}
+                disabled={busyId === cancelingApt.id}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs cursor-pointer shadow disabled:opacity-50"
+              >
+                {busyId === cancelingApt.id ? 'กำลังยกเลิก...' : 'ยืนยันยกเลิกนัด'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🔑 KEYWORD: โมดัลยืนยันผลว่าลูกค้าไม่มาตามนัด (No-show) */}
+      {noShowApt && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 border border-slate-100">
             <div className="flex items-center justify-between border-b pb-3">

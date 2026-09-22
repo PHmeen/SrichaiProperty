@@ -94,7 +94,8 @@ export default function AgentAddPropertyPage() {
   const [calMonth, setCalMonth] = useState(today.getMonth()); // 0-11
   const [viewingSlots, setViewingSlots] = useState<ViewingSlot[]>([]);
   const [selectedCalDate, setSelectedCalDate] = useState<string | null>(null);
-  const [agentBusySlots, setAgentBusySlots] = useState<AgentBusySlot[]>([]); // รอบที่บ้านหลังอื่นของเราเปิดไว้แล้ว
+  const [agentBusySlots, setAgentBusySlots] = useState<AgentBusySlot[]>([]);   // รอบที่บ้านหลังอื่น "มีลูกค้าจองจริง"
+  const [otherOpenSlots, setOtherOpenSlots] = useState<AgentBusySlot[]>([]);   // รอบที่บ้านหลังอื่น "เปิดวันว่างไว้เฉยๆ" ยังไม่มีใครจอง
 
   // ----------------------------------------------------------------------------
   // [4] Effect: ดึงรายชื่อจังหวัดทั้งหมดจาก API เมื่อเริ่มต้นหน้าเพจ
@@ -104,14 +105,18 @@ export default function AgentAddPropertyPage() {
   }, []);
 
   // ----------------------------------------------------------------------------
-  // [4.1] Effect: ดึงรอบเวลาที่บ้านหลังอื่นของเราเปิดไว้แล้ว มากันไม่ให้เลือกซ้อน
-  // (นายหน้าไปนำชมได้ทีละที่ ถ้าเปิดวัน+รอบเดียวกันไว้ 2 หลัง ลูกค้าจะจองชนกันเอง)
+  // [4.1] Effect: ดึงรอบเวลาของบ้านหลังอื่นมาแสดงเป็นป้ายเตือน (ไม่บล็อกการเลือก)
+  // แยก 2 ระดับ: มีลูกค้าจองจริง (สำคัญ) กับ เปิดวันว่างทับกันไว้เฉยๆ (แค่บอกให้รู้)
   // ----------------------------------------------------------------------------
   useEffect(() => {
     fetch('/api/properties/viewing-slots?agentBusy=1')
       .then(r => r.json())
-      .then(d => { if (d.success && Array.isArray(d.busySlots)) setAgentBusySlots(d.busySlots); })
-      .catch(() => {}); // โหลดไม่ได้ก็ปล่อยผ่าน หลังบ้านยังกันซ้อนให้อยู่ดี
+      .then(d => {
+        if (!d.success) return;
+        if (Array.isArray(d.busySlots)) setAgentBusySlots(d.busySlots);
+        if (Array.isArray(d.otherOpenSlots)) setOtherOpenSlots(d.otherOpenSlots);
+      })
+      .catch(() => {}); // โหลดไม่ได้ก็ปล่อยผ่าน เป็นแค่ป้ายเตือน ไม่ใช่กฎธุรกิจ
   }, []);
 
   // ----------------------------------------------------------------------------
@@ -153,15 +158,23 @@ export default function AgentAddPropertyPage() {
   const getBusySlot = (dateStr: string, timeSlot: 'morning' | 'afternoon') =>
     agentBusySlots.find(s => s.date === dateStr && s.timeSlot === timeSlot);
 
-  // นับว่าวันนี้ถูกบ้านหลังอื่นจองไปกี่รอบแล้ว (2 = เต็มทั้งเช้าและบ่าย → กดวันนี้ไม่ได้เลย)
+  // คืนค่าข้อมูลบ้านหลังอื่นที่ "เปิดวันว่างไว้เฉยๆ" ในรอบนี้ (ยังไม่มีใครจอง)
+  const getOtherOpenSlot = (dateStr: string, timeSlot: 'morning' | 'afternoon') =>
+    otherOpenSlots.find(s => s.date === dateStr && s.timeSlot === timeSlot);
+
+  // นับว่าวันนี้ไปทับกับบ้านหลังอื่นกี่รอบ (นับทั้งที่มีคนจองและที่แค่เปิดไว้) ใช้ทำเส้นประบนปฏิทิน
   const countBusyOnDate = (dateStr: string) =>
-    agentBusySlots.filter(s => s.date === dateStr).length;
+    agentBusySlots.filter(s => s.date === dateStr).length +
+    otherOpenSlots.filter(s => s.date === dateStr).length;
+
+  // วันนี้มี "นัดที่ลูกค้าจองจริง" กับบ้านหลังอื่นไหม — ใช้แยกสีเหลือง (สำคัญ) ออกจากสีเทา (แค่เปิดทับ)
+  const hasRealBookingOnDate = (dateStr: string) =>
+    agentBusySlots.some(s => s.date === dateStr);
 
   // สลับการเลือก / ยกเลิกช่วงเวลา (รอบเช้า/รอบบ่าย) ของวันที่เลือก
+  // ไม่บล็อกรอบที่ชนกับบ้านหลังอื่น — นายหน้าเปิดวันเดียวกันได้หลายบ้าน (ดู e07d2ba)
+  // ระบบล็อกจริงทำงานตอนลูกค้ากดจองเท่านั้น (hasAgentBookingConflict ใน api/appointments)
   const toggleViewingSlot = (dateStr: string, timeSlot: 'morning' | 'afternoon') => {
-    // กันไว้อีกชั้น: ถ้ารอบนี้ชนกับบ้านหลังอื่น ห้ามเลือก (ปุ่มถูก disabled อยู่แล้ว แต่กันพลาด)
-    if (getBusySlot(dateStr, timeSlot)) return;
-
     setViewingSlots(prev => {
       const exists = prev.some(s => s.date === dateStr && s.timeSlot === timeSlot);
       if (exists) return prev.filter(s => !(s.date === dateStr && s.timeSlot === timeSlot));
@@ -561,7 +574,8 @@ export default function AgentAddPropertyPage() {
                   if (isPast) dayClass += "text-slate-200 cursor-not-allowed";
                   else if (isSelected) dayClass += "bg-blue-600 text-white shadow-md active:scale-95 cursor-pointer";
                   else if (hasSlots) dayClass += "border border-emerald-400 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 cursor-pointer";
-                  else if (isBusy) dayClass += "border border-dashed border-slate-400 text-slate-500 bg-slate-50 hover:bg-slate-100 cursor-pointer";
+                  else if (isBusy && hasRealBookingOnDate(dateStr)) dayClass += "border border-dashed border-amber-400 text-amber-700 bg-amber-50 hover:bg-amber-100 cursor-pointer";
+                  else if (isBusy) dayClass += "border border-dashed border-slate-300 text-slate-500 hover:bg-slate-50 cursor-pointer";
                   else dayClass += "text-slate-500 hover:bg-slate-50 cursor-pointer";
 
                   return (
@@ -569,7 +583,9 @@ export default function AgentAddPropertyPage() {
                       key={dayNum}
                       type="button"
                       disabled={isPast}
-                      title={isBusy ? 'คุณมีนัดชมบ้านหลังอื่นในวันนี้แล้ว เลือกได้ตามปกติ' : undefined}
+                      title={!isBusy ? undefined : hasRealBookingOnDate(dateStr)
+                        ? 'วันนี้คุณมีนัดชมบ้านหลังอื่นที่ลูกค้าจองไว้แล้ว เลือกได้ตามปกติ'
+                        : 'วันนี้คุณเปิดวันว่างให้บ้านหลังอื่นไว้ด้วย เลือกได้ตามปกติ'}
                       onClick={() => setSelectedCalDate(dateStr)}
                       className={dayClass}
                     >
@@ -587,7 +603,8 @@ export default function AgentAddPropertyPage() {
                       const active = getSlotsForDate(selectedCalDate).some(s => s.timeSlot === slot);
 
                       // แค่เตือนว่าไปชนกับบ้านหลังไหน ไม่ได้ปิดไม่ให้กด — เปิดซ้อนกันได้ตามปกติ
-                      const busy = getBusySlot(selectedCalDate, slot);
+                      const busy = getBusySlot(selectedCalDate, slot);            // มีลูกค้าจองจริง
+                      const otherOpen = !busy && getOtherOpenSlot(selectedCalDate, slot); // แค่เปิดทับกันไว้
 
                       return (
                         <button
@@ -598,27 +615,36 @@ export default function AgentAddPropertyPage() {
                             active
                               ? 'border-emerald-400 bg-emerald-50'
                               : busy
-                                ? 'border-dashed border-slate-300 bg-slate-50 hover:border-blue-400'
+                                ? 'border-dashed border-amber-300 bg-amber-50/60 hover:border-amber-500'
                                 : 'border-slate-200 hover:border-blue-400'
                           }`}
                         >
                           <p className="text-[11px] font-black text-slate-800">{slot === 'morning' ? 'รอบเช้า' : 'รอบบ่าย'}</p>
                           <p className="text-[9px] text-slate-500 font-bold">{slot === 'morning' ? '09:00 - 12:00' : '13:00 - 17:00'}</p>
-                          {busy ? (
+                          {/* สถานะการเลือกต้องขึ้นเสมอ แม้รอบนี้จะชนกับบ้านหลังอื่น
+                              (ของเดิมโชว์ได้อย่างเดียว พอชนแล้วเลือกไว้ก็ไม่รู้ว่าเลือกติดหรือยัง) */}
+                          <p className={`text-[9px] font-black mt-1 flex items-center gap-1 ${active ? 'text-emerald-600' : 'text-slate-400'}`}>
+                            {active && (
+                              <svg className="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                            <span>{active ? 'เลือกไว้แล้ว' : 'ยังไม่ได้เลือก'}</span>
+                          </p>
+                          {busy && (
                             <p className="text-[9px] font-black mt-1 text-amber-600 leading-tight flex items-center gap-1">
                               <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
                               <span>ติดนัดที่ &quot;{busy.propertyTitle}&quot; แล้ว</span>
                             </p>
-                          ) : (
-                            <p className={`text-[9px] font-black mt-1 flex items-center gap-1 ${active ? 'text-emerald-600' : 'text-slate-400'}`}>
-                              {active && (
-                                <svg className="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                                </svg>
-                              )}
-                              <span>{active ? 'เลือกไว้แล้ว' : 'ยังไม่ได้เลือก'}</span>
+                          )}
+                          {otherOpen && (
+                            <p className="text-[9px] font-bold mt-1 text-slate-400 leading-tight flex items-center gap-1">
+                              <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span>เปิดวันว่างให้ &quot;{otherOpen.propertyTitle}&quot; ไว้ด้วย</span>
                             </p>
                           )}
                         </button>
@@ -632,7 +658,8 @@ export default function AgentAddPropertyPage() {
               <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 mt-4 pt-3 border-t border-slate-100 text-[9px] font-bold text-slate-400">
                 <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-emerald-400" /> เปิดว่างไว้</span>
                 <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-600" /> เลือกอยู่</span>
-                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-dashed border-slate-400" /> ติดนัดบ้านหลังอื่น (เลือกซ้อนได้ปกติ)</span>
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-dashed border-amber-400 bg-amber-50" /> ติดนัดบ้านหลังอื่นแล้ว</span>
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-dashed border-slate-400" /> เปิดวันว่างทับกันไว้</span>
               </div>
             </div>
 
@@ -651,8 +678,10 @@ export default function AgentAddPropertyPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span>
-                  วันที่เป็นเส้นประ คือวันที่คุณมีนัดชม<strong>บ้านหลังอื่น</strong>อยู่แล้วจริงๆ (มีลูกค้าจองไว้)
-                  ยังเปิดวันนี้ให้บ้านหลังนี้ได้ตามปกติ ระบบจะกันชนให้เองตอนมีลูกค้ากดจองรอบที่ชนกันจริง
+                  วันที่เป็นเส้นประ คือวันที่ไปทับกับ<strong>บ้านหลังอื่นของคุณ</strong> ซึ่งมีได้ 2 แบบ:
+                  <strong className="text-amber-700">ติดนัดแล้ว</strong> (มีลูกค้าจองไว้จริง ไปนำชมที่นี่ไม่ได้)
+                  หรือ <strong>เปิดวันว่างทับกันไว้</strong> (ยังไม่มีใครจอง)
+                  ทั้งสองแบบยังเปิดวันนี้ให้บ้านหลังนี้ได้ตามปกติ ระบบจะกันชนให้เองตอนมีลูกค้ากดจองรอบที่ชนกันจริง
                 </span>
               </div>
             )}

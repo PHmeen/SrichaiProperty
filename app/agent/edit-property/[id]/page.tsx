@@ -74,7 +74,8 @@ export default function AgentEditPropertyPage() {
   const [calMonth, setCalMonth] = useState(today.getMonth()); // 0-11
   const [viewingSlots, setViewingSlots] = useState<ViewingSlot[]>([]);
   const [selectedCalDate, setSelectedCalDate] = useState<string | null>(null);
-  const [agentBusySlots, setAgentBusySlots] = useState<AgentBusySlot[]>([]); // รอบที่บ้านหลังอื่นของเราเปิดไว้แล้ว
+  const [agentBusySlots, setAgentBusySlots] = useState<AgentBusySlot[]>([]);   // รอบที่บ้านหลังอื่น "มีลูกค้าจองจริง"
+  const [otherOpenSlots, setOtherOpenSlots] = useState<AgentBusySlot[]>([]);   // รอบที่บ้านหลังอื่น "เปิดวันว่างไว้เฉยๆ" ยังไม่มีใครจอง
 
   // โหลดรายชื่อจังหวัดทั้งหมด
   useEffect(() => {
@@ -89,8 +90,12 @@ export default function AgentEditPropertyPage() {
     if (!propertyId) return;
     fetch(`/api/properties/viewing-slots?agentBusy=1&excludePropertyId=${propertyId}`)
       .then(r => r.json())
-      .then(d => { if (d.success && Array.isArray(d.busySlots)) setAgentBusySlots(d.busySlots); })
-      .catch(() => {}); // โหลดไม่ได้ก็ปล่อยผ่าน หลังบ้านยังกันซ้อนให้อยู่ดี
+      .then(d => {
+        if (!d.success) return;
+        if (Array.isArray(d.busySlots)) setAgentBusySlots(d.busySlots);
+        if (Array.isArray(d.otherOpenSlots)) setOtherOpenSlots(d.otherOpenSlots);
+      })
+      .catch(() => {}); // โหลดไม่ได้ก็ปล่อยผ่าน เป็นแค่ป้ายเตือน ไม่ใช่กฎธุรกิจ
   }, [propertyId]);
 
   // โหลดข้อมูลบ้านหลังนี้ + วันว่างเดิม
@@ -205,9 +210,18 @@ export default function AgentEditPropertyPage() {
   const getBusySlot = (dateStr: string, timeSlot: 'morning' | 'afternoon') =>
     agentBusySlots.find(s => s.date === dateStr && s.timeSlot === timeSlot);
 
+  // คืนค่าข้อมูลบ้านหลังอื่นที่ "เปิดวันว่างไว้เฉยๆ" ในรอบนี้ (ยังไม่มีใครจอง)
+  const getOtherOpenSlot = (dateStr: string, timeSlot: 'morning' | 'afternoon') =>
+    otherOpenSlots.find(s => s.date === dateStr && s.timeSlot === timeSlot);
+
   // นับว่าวันนี้ถูกบ้านหลังอื่นจองไปกี่รอบแล้ว (2 = เต็มทั้งเช้าและบ่าย → กดวันนี้ไม่ได้เลย)
   const countBusyOnDate = (dateStr: string) =>
-    agentBusySlots.filter(s => s.date === dateStr).length;
+    agentBusySlots.filter(s => s.date === dateStr).length +
+    otherOpenSlots.filter(s => s.date === dateStr).length;
+
+  // วันนี้มี "นัดที่ลูกค้าจองจริง" กับบ้านหลังอื่นไหม — ใช้แยกสีเหลือง (สำคัญ) ออกจากสีเทา (แค่เปิดทับ)
+  const hasRealBookingOnDate = (dateStr: string) =>
+    agentBusySlots.some(s => s.date === dateStr);
 
   const toggleViewingSlot = (dateStr: string, timeSlot: 'morning' | 'afternoon') => {
     const target = viewingSlots.find(s => s.date === dateStr && s.timeSlot === timeSlot);
@@ -581,7 +595,8 @@ export default function AgentEditPropertyPage() {
                   else if (isSelected) dayClass += "bg-blue-600 text-white shadow-md active:scale-95 cursor-pointer";
                   else if (hasBooked) dayClass += "border border-amber-400 text-amber-700 bg-amber-50 hover:bg-amber-100 cursor-pointer";
                   else if (hasSlots) dayClass += "border border-emerald-400 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 cursor-pointer";
-                  else if (isBusy) dayClass += "border border-dashed border-slate-400 text-slate-500 bg-slate-50 hover:bg-slate-100 cursor-pointer";
+                  else if (isBusy && hasRealBookingOnDate(dateStr)) dayClass += "border border-dashed border-amber-400 text-amber-700 bg-amber-50 hover:bg-amber-100 cursor-pointer";
+                  else if (isBusy) dayClass += "border border-dashed border-slate-300 text-slate-500 hover:bg-slate-50 cursor-pointer";
                   else dayClass += "text-slate-500 hover:bg-slate-50 cursor-pointer";
 
                   return (
@@ -610,7 +625,8 @@ export default function AgentEditPropertyPage() {
 
                       // แค่เตือนว่าไปชนกับบ้านหลังไหน ไม่ได้ปิดไม่ให้กด — เปิดซ้อนกันได้ตามปกติ
                       // (ไม่นับรอบที่บ้านหลังนี้เปิดไว้อยู่แล้ว เพราะ API กรอง excludePropertyId ให้ตั้งแต่ตอนดึงข้อมูล)
-                      const busy = active ? undefined : getBusySlot(selectedCalDate, slot);
+                      const busy = active ? undefined : getBusySlot(selectedCalDate, slot);            // มีลูกค้าจองจริง
+                      const otherOpen = active || busy ? undefined : getOtherOpenSlot(selectedCalDate, slot); // แค่เปิดทับกันไว้
 
                       return (
                         <button
@@ -623,7 +639,7 @@ export default function AgentEditPropertyPage() {
                               : active
                                 ? 'border-emerald-400 bg-emerald-50'
                                 : busy
-                                  ? 'border-dashed border-slate-300 bg-slate-50 hover:border-blue-400'
+                                  ? 'border-dashed border-amber-300 bg-amber-50/60 hover:border-amber-500'
                                   : 'border-slate-200 hover:border-blue-400'
                           }`}
                         >
@@ -632,6 +648,10 @@ export default function AgentEditPropertyPage() {
                           {busy ? (
                             <p className="text-[9px] font-black mt-1 text-amber-600 leading-tight">
                               ติดนัดที่ &quot;{busy.propertyTitle}&quot; แล้ว
+                            </p>
+                          ) : otherOpen ? (
+                            <p className="text-[9px] font-bold mt-1 text-slate-400 leading-tight">
+                              เปิดวันว่างให้ &quot;{otherOpen.propertyTitle}&quot; ไว้ด้วย
                             </p>
                           ) : (
                             <p className={`text-[9px] font-black mt-1 flex items-center gap-1 ${booked ? 'text-amber-600' : active ? 'text-emerald-600' : 'text-slate-400'}`}>
@@ -660,7 +680,8 @@ export default function AgentEditPropertyPage() {
                 <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-emerald-400 bg-emerald-100" /> เปิดรับจองอยู่</span>
                 <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-amber-400 bg-amber-100" /> มีลูกค้าจองแล้ว</span>
                 <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-600" /> เลือกอยู่</span>
-                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-dashed border-slate-400" /> ติดนัดบ้านหลังอื่น (เลือกซ้อนได้ปกติ)</span>
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-dashed border-amber-400 bg-amber-50" /> ติดนัดบ้านหลังอื่นแล้ว</span>
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full border border-dashed border-slate-400" /> เปิดวันว่างทับกันไว้</span>
               </div>
             </div>
 
@@ -675,10 +696,12 @@ export default function AgentEditPropertyPage() {
               </span>
             </div>
 
-            {agentBusySlots.length > 0 && (
+            {(agentBusySlots.length > 0 || otherOpenSlots.length > 0) && (
               <p className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 leading-relaxed">
-                วันที่เป็นเส้นประ คือวันที่คุณมีนัดชม<strong>บ้านหลังอื่น</strong>อยู่แล้วจริงๆ (มีลูกค้าจองไว้)
-                ยังเปิดวันนี้ให้บ้านหลังนี้ได้ตามปกติ ระบบจะช่วยจัดการเวลาให้ตอนมีลูกค้ากดยืนยันรอบที่ชนกัน
+                วันที่เป็นเส้นประ คือวันที่ไปทับกับ<strong>บ้านหลังอื่นของคุณ</strong> ซึ่งมีได้ 2 แบบ:
+                <strong className="text-amber-700">ติดนัดแล้ว</strong> (มีลูกค้าจองไว้จริง ไปนำชมที่นี่ไม่ได้)
+                หรือ <strong>เปิดวันว่างทับกันไว้</strong> (ยังไม่มีใครจอง)
+                ทั้งสองแบบยังเปิดวันนี้ให้บ้านหลังนี้ได้ตามปกติ ระบบจะกันชนให้เองตอนมีลูกค้ากดจองรอบที่ชนกันจริง
               </p>
             )}
           </div>

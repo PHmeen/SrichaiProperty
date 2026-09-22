@@ -336,7 +336,10 @@ model appointments {
   property_id        String?   @db.Uuid // FK 3: รหัสบ้านที่นัดหมายเข้าชม (properties)
   appointment_date   DateTime  @db.Date // วันที่นัดเข้าชม
   time_slot          String?   @db.VarChar(20) // ช่วงเวลานัด (เช่น "10:00 - 11:00")
-  status             String?   @default("pending") @db.VarChar(20) // สถานะนัด ("pending", "approved", "rejected", "completed", "cancelled", "no_show")
+  // สถานะนัด: "pending" (ลูกค้าจองมา รอนายหน้ายืนยัน) / "approved" (ยืนยันแล้ว) /
+  // "awaiting_customer" (นายหน้าขอเลื่อนวัน รอลูกค้ายืนยันวันใหม่) / "rejected" / "completed" /
+  // "cancelled" / "no_show" — ไม่มี CHECK constraint ใน DB เก็บเป็น VarChar ธรรมดา
+  status             String?   @default("pending") @db.VarChar(20)
   note               String? // ข้อความหมายเหตุเพิ่มเติมจากลูกค้า
   original_date      DateTime? @db.Date // วันเดิมที่ลูกค้าเลือก (สำหรับแสดงขีดฆ่าถ้านายหน้าขอเลื่อนวัน)
   original_time_slot String?   @db.VarChar(20) // รอบเวลาเดิมที่ลูกค้าเลือก
