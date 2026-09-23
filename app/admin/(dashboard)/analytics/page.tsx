@@ -39,11 +39,32 @@ interface AnalyticsData {
   usersChart: UserBucket[];
   topPropertiesChart: TopProperty[];
   summary: {
-    totalAppointments: number;
+    /** ตัวเลขของช่วงที่เลือก (ขยับตามตัวกรอง) */
+    appointmentsInRange: number;
+    appointmentsChangePercent: number | null;
+    viewsInRange: number;
+    viewsChangePercent: number | null;
+    newUsersInRange: number;
+    newUsersChangePercent: number | null;
+    /** ตัวเลขสะสมทั้งระบบ (ไม่ขยับตามตัวกรอง) */
     totalUsers: number;
     agentsCount: number;
     proAgentsCount: number;
-    totalViews: number;
+  };
+  /** อัตราสุขภาพของ core flow ในช่วงที่เลือก */
+  appointmentHealth?: {
+    total: number;
+    completed: number; completedPercent: number;
+    noShow: number; noShowPercent: number;
+    rejected: number; rejectedPercent: number;
+    cancelled: number; cancelledPercent: number;
+  };
+  /** สรุปผล SLA การตรวจประกาศย้อนหลัง (นับเฉพาะใบที่มีบันทึกเวลาตรวจ) */
+  moderationSla?: {
+    reviewedCount: number;
+    averageLabel: string;
+    withinSlaCount: number;
+    withinSlaPercent: number;
   };
 }
 
@@ -120,6 +141,28 @@ export default function AdminAnalyticsPage() {
     return () => { ignore = true; };
   }, [range]);
 
+  // คำอธิบายช่วงเวลาที่กำลังดู ใช้ต่อท้ายการ์ด KPI ให้รู้ว่าตัวเลขนับจากช่วงไหน
+  const rangeText = range === 'day' ? '7 วันล่าสุด' : range === 'month' ? '6 เดือนล่าสุด' : '3 ปีล่าสุด';
+
+  /**
+   * ป้ายเปรียบเทียบกับช่วงก่อนหน้าที่ยาวเท่ากัน
+   * ตัวเลขเดี่ยวๆ ตีความไม่ได้ว่าดีหรือแย่ ต้องมีฐานเทียบ
+   * null = ช่วงก่อนหน้าไม่มีข้อมูล จึงเทียบไม่ได้ (ไม่โชว์ +100% จากฐาน 0 ให้เข้าใจผิด)
+   */
+  const ChangeBadge = ({ percent }: { percent: number | null | undefined }) => {
+    if (percent === null || percent === undefined) {
+      return <span className="text-[10px] font-bold text-slate-300">ไม่มีข้อมูลช่วงก่อนหน้า</span>;
+    }
+    const up = percent > 0;
+    const flat = percent === 0;
+    return (
+      <span className={`text-[10px] font-black ${flat ? 'text-slate-400' : up ? 'text-emerald-600' : 'text-red-500'}`}>
+        {flat ? 'เท่าเดิม' : `${up ? '▲' : '▼'} ${Math.abs(percent)}%`}
+        <span className="text-slate-400 font-bold ml-1.5">เทียบช่วงก่อนหน้า</span>
+      </span>
+    );
+  };
+
   return (
     <>
       <header className="min-h-16 py-3 bg-white border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 shrink-0 relative z-0">
@@ -162,44 +205,119 @@ export default function AdminAnalyticsPage() {
           </div>
         ) : (
           <>
-            {/* 4 การ์ดสรุปตัวเลขรวม */}
+            {/* 🔑 KEYWORD: แถบสรุปผล SLA การตรวจประกาศ
+                ตอบคำถาม "ทีมตรวจทันกำหนดจริงไหม" ด้วยตัวเลขจากข้อมูลจริง
+                ซ่อนไว้ถ้ายังไม่มีประกาศที่บันทึกเวลาตรวจ จะได้ไม่โชว์ 0% ให้เข้าใจผิด */}
+            {data?.moderationSla && data.moderationSla.reviewedCount > 0 && (
+              <section className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 flex flex-wrap items-center gap-x-10 gap-y-3">
+                <div>
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">คุณภาพการตรวจประกาศ</span>
+                  <strong className="text-sm font-black text-slate-700 block mt-1">กรอบเวลาที่ตั้งไว้ 24 ชม.</strong>
+                </div>
+                <div>
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">ตรวจแล้วทั้งหมด</span>
+                  <strong className="text-2xl font-black text-slate-900 block">{data.moderationSla.reviewedCount} ประกาศ</strong>
+                </div>
+                <div>
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">เวลาเฉลี่ยที่ใช้ตรวจ</span>
+                  <strong className="text-2xl font-black text-blue-600 block">{data.moderationSla.averageLabel}</strong>
+                </div>
+                <div>
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">ตรวจทันกำหนด</span>
+                  <strong className={`text-2xl font-black block ${
+                    data.moderationSla.withinSlaPercent >= 90 ? 'text-emerald-600'
+                      : data.moderationSla.withinSlaPercent >= 70 ? 'text-amber-600' : 'text-red-600'
+                  }`}>
+                    {data.moderationSla.withinSlaPercent}%
+                    <span className="text-xs font-bold text-slate-400 ml-1.5">({data.moderationSla.withinSlaCount}/{data.moderationSla.reviewedCount})</span>
+                  </strong>
+                </div>
+              </section>
+            )}
+
+            {/* การ์ดสรุป 4 ใบ — 3 ใบแรกเป็นตัวเลขของช่วงที่เลือก ใบสุดท้ายเป็นยอดสะสม
+                เดิมทั้ง 4 ใบเป็นยอดสะสมตลอดกาล ไม่ขยับตามตัวกรอง ทำให้อ่านผิดว่าเป็นตัวเลขของช่วงนั้น */}
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white rounded-2xl p-4 border-l-4 border-blue-500 border-y border-r border-slate-200/80 shadow-sm space-y-1.5">
-                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">นัดหมายทั้งหมด</span>
-                <strong className="text-2xl font-black text-slate-900 block">{(data?.summary.totalAppointments ?? 0).toLocaleString()}</strong>
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">นัดหมายใหม่</span>
+                <strong className="text-2xl font-black text-slate-900 block">{(data?.summary.appointmentsInRange ?? 0).toLocaleString()}</strong>
+                <ChangeBadge percent={data?.summary.appointmentsChangePercent} />
                 <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
                   <Calendar className="w-3 h-3 text-slate-400" />
-                  <span>สะสมทั้งระบบ</span>
+                  <span>{rangeText}</span>
                 </span>
               </div>
 
               <div className="bg-white rounded-2xl p-4 border-l-4 border-indigo-500 border-y border-r border-slate-200/80 shadow-sm space-y-1.5">
-                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">ยอดเข้าชมรวม</span>
-                <strong className="text-2xl font-black text-slate-900 block">{(data?.summary.totalViews ?? 0).toLocaleString()}</strong>
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">ยอดเข้าชมบ้าน</span>
+                <strong className="text-2xl font-black text-slate-900 block">{(data?.summary.viewsInRange ?? 0).toLocaleString()}</strong>
+                <ChangeBadge percent={data?.summary.viewsChangePercent} />
                 <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
                   <Eye className="w-3 h-3 text-slate-400" />
-                  <span>ทุกประกาศรวมกัน</span>
+                  <span>{rangeText}</span>
                 </span>
               </div>
 
-              <div className="bg-white rounded-2xl p-4 border-l-4 border-slate-500 border-y border-r border-slate-200/80 shadow-sm space-y-1.5">
-                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">ผู้ใช้งานทั้งหมด</span>
-                <strong className="text-2xl font-black text-slate-900 block">{(data?.summary.totalUsers ?? 0).toLocaleString()}</strong>
+              <div className="bg-white rounded-2xl p-4 border-l-4 border-violet-500 border-y border-r border-slate-200/80 shadow-sm space-y-1.5">
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">สมาชิกใหม่</span>
+                <strong className="text-2xl font-black text-slate-900 block">{(data?.summary.newUsersInRange ?? 0).toLocaleString()}</strong>
+                <ChangeBadge percent={data?.summary.newUsersChangePercent} />
                 <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
                   <Users className="w-3 h-3 text-slate-400" />
-                  <span>ลูกค้า + นายหน้า</span>
+                  <span>{rangeText}</span>
                 </span>
               </div>
 
-              <div className="bg-white rounded-2xl p-4 border-l-4 border-emerald-500 border-y border-r border-slate-200/80 shadow-sm space-y-1.5">
-                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">นายหน้า PRO</span>
-                <strong className="text-2xl font-black text-slate-900 block">{data?.summary.proAgentsCount ?? 0} / {data?.summary.agentsCount ?? 0}</strong>
+              <div className="bg-white rounded-2xl p-4 border-l-4 border-slate-400 border-y border-r border-slate-200/80 shadow-sm space-y-1.5">
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">ผู้ใช้งานในระบบ</span>
+                <strong className="text-2xl font-black text-slate-900 block">{(data?.summary.totalUsers ?? 0).toLocaleString()}</strong>
+                <span className="text-[10px] font-black text-slate-500">นายหน้า {data?.summary.agentsCount ?? 0} คน</span>
                 <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                  <span>สมาชิก Verified PRO</span>
+                  <Users className="w-3 h-3 text-slate-400" />
+                  <span>สะสมทั้งระบบ</span>
                 </span>
               </div>
             </section>
+
+            {/* 🔑 KEYWORD: อัตราสุขภาพของ core flow
+                การ์ดด้านบนตอบว่า "มีกิจกรรมเท่าไหร่" แถบนี้ตอบว่า "ผลลัพธ์เป็นยังไง"
+                ซึ่งเป็นสิ่งที่ผู้ดูแลแพลตฟอร์มต้องเฝ้าจริงๆ ใช้ข้อมูลจากระบบติดตามผลนัดหมาย
+                ซ่อนไว้ถ้าช่วงนั้นไม่มีนัดเลย ไม่งั้นจะขึ้น 0% ทุกช่องให้เข้าใจผิด */}
+            {data?.appointmentHealth && data.appointmentHealth.total > 0 && (
+              <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+                <div className="border-b border-slate-100 pb-3">
+                  <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4 text-blue-600" />
+                    ผลลัพธ์ของนัดหมาย
+                  </h3>
+                  <p className="text-[10px] text-slate-400 font-bold mt-0.5">
+                    จากนัดหมายทั้งหมด {data.appointmentHealth.total} รายการใน {rangeText}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[
+                    { label: 'เข้าชมสำเร็จ', n: data.appointmentHealth.completed, p: data.appointmentHealth.completedPercent, tone: 'text-emerald-600', note: 'ลูกค้าไปดูบ้านจริง' },
+                    { label: 'ไม่มาตามนัด', n: data.appointmentHealth.noShow, p: data.appointmentHealth.noShowPercent, tone: 'text-red-600', note: 'ยิ่งต่ำยิ่งดี' },
+                    { label: 'ถูกปฏิเสธ', n: data.appointmentHealth.rejected, p: data.appointmentHealth.rejectedPercent, tone: 'text-amber-600', note: 'นายหน้าไม่รับนัด' },
+                    { label: 'ถูกยกเลิก', n: data.appointmentHealth.cancelled, p: data.appointmentHealth.cancelledPercent, tone: 'text-slate-500', note: 'ยกเลิกก่อนถึงวันนัด' },
+                  ].map(item => (
+                    <div key={item.label} className="space-y-1.5">
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">{item.label}</span>
+                      <strong className={`text-2xl font-black block ${item.tone}`}>
+                        {item.p}%
+                        <span className="text-xs font-bold text-slate-400 ml-1.5">({item.n} รายการ)</span>
+                      </strong>
+                      {/* แถบสัดส่วนช่วยให้เทียบขนาดได้เร็วกว่าอ่านตัวเลขอย่างเดียว */}
+                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${item.tone.replace('text-', 'bg-')}`} style={{ width: `${item.p}%` }} />
+                      </div>
+                      <span className="text-[9px] text-slate-400 font-bold block">{item.note}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* กราฟนัดหมาย แยกตามสถานะ */}
             <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
@@ -266,7 +384,7 @@ export default function AdminAnalyticsPage() {
                     <Trophy className="w-4 h-4 text-amber-500" />
                     <span>Top 5 บ้านที่มีคนเข้าชมมากที่สุด</span>
                   </h3>
-                  <p className="text-[10px] text-slate-400 font-semibold mt-0.5">อันดับยอดเข้าชมสะสมตลอดกาลของแต่ละประกาศ</p>
+                  <p className="text-[10px] text-slate-400 font-semibold mt-0.5">ประกาศที่มีคนเปิดดูมากที่สุดใน {rangeText}</p>
                 </div>
 
                 {!data || data.topPropertiesChart.length === 0 ? (

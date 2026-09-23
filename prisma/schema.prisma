@@ -91,6 +91,8 @@ model users {
   sale_transactions_sale_transactions_agent_idTousers sale_transactions[]     @relation("sale_transactions_agent_idTousers")
   sale_transactions_sale_transactions_buyer_idTousers sale_transactions[]     @relation("sale_transactions_buyer_idTousers")
   saved_properties                                    saved_properties[]
+  appointment_waitlist                                appointment_waitlist[]
+  properties_reviewed                                 properties[]            @relation("properties_reviewed_by")
 }
 
 /// Agent general availability schedule
@@ -135,31 +137,36 @@ model property_types {
 /// - Foreign Keys: agent_id, type_id, province_id, amphure_id, district_id
 /// - Performance Optimization: มีการสร้าง @@index หลายตัวเพื่อเร่งการค้นหาประกาศผ่าน Filter
 model properties {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // PK: รหัสประกาศ (UUID)
-  title          String   @db.VarChar(150) // หัวข้อประกาศ
-  price          Decimal  @db.Decimal(12, 2) // ราคาขาย/เช่า (Decimal ความแม่นยำ 12 หลัก ทศนิยม 2 ตำแหน่ง)
-  listing_type   String   @default("sale") @db.VarChar(10) // ประเภทการลง: "sale" (ขาย) หรือ "rent" (เช่า)
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // PK: รหัสประกาศ (UUID)
+  title          String    @db.VarChar(150) // หัวข้อประกาศ
+  price          Decimal   @db.Decimal(12, 2) // ราคาขาย/เช่า (Decimal ความแม่นยำ 12 หลัก ทศนิยม 2 ตำแหน่ง)
+  listing_type   String    @default("sale") @db.VarChar(10) // ประเภทการลง: "sale" (ขาย) หรือ "rent" (เช่า)
   type_id        Int? // FK: อ้างอิงประเภทอสังหาริมทรัพย์ (property_types)
   location       String // ข้อความที่อยู่ทำเลตั้ง
-  latitude       Decimal? @db.Decimal(10, 8) // พิกัดละติจูด (ความแม่นยำสูงระดับพิกัดบนแผนที่)
-  longitude      Decimal? @db.Decimal(11, 8) // พิกัดลองจิจูด
+  latitude       Decimal?  @db.Decimal(10, 8) // พิกัดละติจูด (ความแม่นยำสูงระดับพิกัดบนแผนที่)
+  longitude      Decimal?  @db.Decimal(11, 8) // พิกัดลองจิจูด
   description    String? // รายละเอียดอสังหาฯ
-  bedrooms       Int?     @default(0) // จำนวนห้องนอน
-  bathrooms      Int?     @default(0) // จำนวนห้องน้ำ
-  area_sqm       Decimal? @db.Decimal(8, 2) // ขนาดพื้นที่ (ตารางเมตร)
+  bedrooms       Int?      @default(0) // จำนวนห้องนอน
+  bathrooms      Int?      @default(0) // จำนวนห้องน้ำ
+  area_sqm       Decimal?  @db.Decimal(8, 2) // ขนาดพื้นที่ (ตารางเมตร)
   // เดิมฟอร์ม add-property เก็บ 4 ค่านี้ + ตรวจ validation ด้วย แต่ไม่มีคอลัมน์ให้บันทึก ข้อมูลเลยหายทุกครั้งที่ลงประกาศ
-  common_fee     Decimal? @db.Decimal(10, 2) // ค่าส่วนกลางรายเดือน (บาท) — null = ไม่ได้ระบุ/ไม่มีค่าส่วนกลาง
+  common_fee     Decimal?  @db.Decimal(10, 2) // ค่าส่วนกลางรายเดือน (บาท) — null = ไม่ได้ระบุ/ไม่มีค่าส่วนกลาง
   parking_spaces Int? // จำนวนที่จอดรถ
   floors         Int? // จำนวนชั้นของตัวบ้าน
-  ownership_type String?  @db.VarChar(50) // ลักษณะกรรมสิทธิ์ เช่น "ขายขาด (Freehold)", "เช่าระยะยาว (Leasehold)"
-  status         String?  @default("pending") @db.VarChar(20) // สถานะประกาศ ("pending", "approved", "rejected", "sold")
-  reject_reason  String?  @db.VarChar(255) // เหตุผลที่ไม่อนุมัติประกาศ (ถ้ามี)
-  views_count    Int      @default(0) // จำนวนครั้งที่เข้าชมหน้านี้
-  agent_id       String?  @db.Uuid // FK: รหัสนายหน้าผู้ดูแลประกาศ (users)
+  ownership_type String?   @db.VarChar(50) // ลักษณะกรรมสิทธิ์ เช่น "ขายขาด (Freehold)", "เช่าระยะยาว (Leasehold)"
+  status         String?   @default("pending") @db.VarChar(20) // สถานะประกาศ ("pending", "approved", "rejected", "sold")
+  reject_reason  String?   @db.VarChar(255) // เหตุผลที่ไม่อนุมัติประกาศ (ถ้ามี)
+  // ร่องรอยการตรวจสอบ: ใครเป็นคนอนุมัติ/ตีกลับ และตอนไหน
+  // เดิมเก็บแค่ status กับ reject_reason จึงตอบไม่ได้ว่าใครตรวจ ใช้เวลานานแค่ไหน
+  // และวัดผล SLA ย้อนหลังไม่ได้เลย (ดู lib/services/slaService.ts)
+  reviewed_by    String?   @db.Uuid // FK: แอดมินที่กดอนุมัติหรือตีกลับ (users)
+  reviewed_at    DateTime? @db.Timestamptz(6) // เวลาที่กดตรวจเสร็จ ใช้คู่กับ created_at คำนวณเวลาที่ใช้จริง
+  views_count    Int       @default(0) // จำนวนครั้งที่เข้าชมหน้านี้
+  agent_id       String?   @db.Uuid // FK: รหัสนายหน้าผู้ดูแลประกาศ (users)
   province_id    Int? // FK: อ้างอิงจังหวัด (provinces)
   amphure_id     Int? // FK: อ้างอิงอำเภอ/เขต (amphures)
   district_id    Int? // FK: อ้างอิงตำบล/แขวง (districts)
-  created_at     DateTime @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  created_at     DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
 
   // ความสัมพันธ์ (Relations)
   appointments           appointments[]
@@ -177,7 +184,9 @@ model properties {
   property_views         property_views[]
   reports                reports[]
   sale_transactions      sale_transactions[]
+  reviewer               users?                   @relation("properties_reviewed_by", fields: [reviewed_by], references: [id], onDelete: SetNull, onUpdate: NoAction)
   saved_properties       saved_properties[]
+  appointment_waitlist   appointment_waitlist[]
   property_viewing_slots property_viewing_slots[]
 
   // การสร้าง Index (Search Optimization) ช่วยให้ค้นหา/กรองข้อมูลตามนายหน้า, สถานะ, จังหวัด ได้เร็วยิ่งขึ้น
@@ -571,4 +580,27 @@ model property_viewing_slots {
   @@index([property_id], map: "idx_property_viewing_slots_property")
   // ⚡ Composite Index สำหรับตรวจสอบรอบว่างและป้องกัน Double Booking
   @@index([property_id, available_date, is_booked], map: "idx_property_viewing_slots_lookup")
+}
+
+/// คิวรอรอบเข้าชม (Waitlist)
+/// - ลูกค้าที่เจอว่ารอบที่อยากได้ถูกจองไปแล้ว มาลงชื่อรอไว้ พอรอบนั้นว่างขึ้นมาระบบแจ้งเตือนให้
+/// - Foreign Keys: customer_id (users), property_id (properties)
+model appointment_waitlist {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid // PK: รหัสรายการคิวรอ
+  customer_id    String    @db.Uuid // FK 1: ลูกค้าที่ลงชื่อรอ (users)
+  property_id    String    @db.Uuid // FK 2: บ้านที่รออยู่ (properties)
+  available_date DateTime  @db.Date // วันที่ของรอบที่รอ
+  time_slot      String    @db.VarChar(20) // รอบเวลาที่รอ ("morning" / "afternoon")
+  // เวลาที่ระบบแจ้งเตือนไปว่ารอบว่างแล้ว — null = ยังไม่เคยแจ้ง
+  // เก็บไว้กันแจ้งซ้ำเวลารอบถูกปล่อย/จอง/ปล่อยอีกรอบในวันเดียวกัน
+  notified_at    DateTime? @db.Timestamptz(6)
+  created_at     DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6) // ใช้เรียงลำดับคิว
+
+  // ความสัมพันธ์
+  users      users      @relation(fields: [customer_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  properties properties @relation(fields: [property_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([customer_id, property_id, available_date, time_slot]) // 1 คน ลงคิวรอบเดิมซ้ำไม่ได้
+  @@index([property_id, available_date, time_slot], map: "idx_waitlist_slot") // ใช้ตอนรอบว่างแล้วหาว่าใครรออยู่
+  @@index([customer_id], map: "idx_waitlist_customer")
 }

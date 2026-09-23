@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db'; // ไคลเอนต์ Prisma สำหรับดึงประกาศตามสถานะการตรวจสอบ
 import { getServerSession } from 'next-auth/next'; // ดึงเซสชันเพื่อยืนยันสิทธิ์ admin
 import { authOptions } from '@/lib/authOptions'; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
-import { calculateModerationSla } from '@/lib/services/slaService'; // สูตรคำนวณ SLA ใช้ร่วมกับหน้า dashboard
+import { calculateModerationSla, calculateReviewDuration, summarizeReviewSla } from '@/lib/services/slaService'; // SLA นับถอยหลัง + วัดผลย้อนหลัง
 
 interface AdminSession {
   user?: {
@@ -38,6 +38,8 @@ export async function GET(req: Request) {
           }
         },
         property_types: true,
+        // แอดมินที่เป็นคนตรวจใบนี้ (null ถ้ายังไม่ตรวจ หรือเป็นประกาศเก่าก่อนมีฟีเจอร์นี้)
+        reviewer: { select: { first_name: true, last_name: true } },
         property_images: {
           orderBy: {
             order_index: "asc"
@@ -55,6 +57,8 @@ export async function GET(req: Request) {
       const allImages = p.property_images.map((img) => img.image_url);
       const mainImage = allImages[0] || null;
       const slaInfo = calculateModerationSla(p.created_at);
+      // ใบที่ตรวจแล้วจะมี reviewed_at ใช้บอกว่าใช้เวลาไปเท่าไหร่และทันกำหนดไหม
+      const reviewDuration = calculateReviewDuration(p.created_at, p.reviewed_at);
 
       return {
         id: p.id,
@@ -76,11 +80,19 @@ export async function GET(req: Request) {
         imageCount: allImages.length,
         slaLabel: slaInfo.label,
         slaLevel: slaInfo.level,
-        slaMinutesLeft: slaInfo.minutesLeft
+        slaMinutesLeft: slaInfo.minutesLeft,
+        // ร่องรอยการตรวจสอบ — null ทั้งหมดถ้ายังไม่ถูกตรวจ
+        reviewedAt: p.reviewed_at,
+        reviewerName: p.reviewer ? `${p.reviewer.first_name} ${p.reviewer.last_name}` : null,
+        reviewDurationLabel: reviewDuration?.label ?? null,
+        reviewWithinSla: reviewDuration?.withinSla ?? null
       };
     });
 
-    return NextResponse.json({ success: true, properties: formattedProperties });
+    // สรุปผล SLA ของชุดที่ดึงมา ใช้โชว์เป็นการ์ดสรุปด้านบนหน้า moderation
+    const slaSummary = summarizeReviewSla(properties.map((p) => ({ created_at: p.created_at, reviewed_at: p.reviewed_at })));
+
+    return NextResponse.json({ success: true, properties: formattedProperties, slaSummary });
   } catch (error) {
     console.error("Error fetching admin properties:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

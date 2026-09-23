@@ -460,6 +460,15 @@ export default function AgentDashboardPage() {
                           }`}>
                             {p.status === 'approved' ? 'อนุมัติแล้ว' : p.status === 'rejected' ? 'ถูกตีกลับ' : 'รอตรวจสอบ'}
                           </span>
+                          {/* 🔑 KEYWORD: บอกนายหน้าว่าแอดมินตรวจประกาศนี้เมื่อไหร่
+                              เดิมรู้แค่ผลลัพธ์ ไม่รู้ว่าตรวจตอนไหน ประกาศเก่าจะไม่มีข้อมูลจึงเช็ค null */}
+                          {p.reviewedAt && (
+                            <p className="text-[9px] text-slate-400 font-bold mt-1">
+                              ตรวจเมื่อ {new Date(p.reviewedAt).toLocaleString('th-TH', { day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          )}
+                          <span className="hidden">
+                          </span>
                           {p.status === 'rejected' && p.rejectReason && (
                             <p className="text-[9px] text-red-500 font-bold mt-1 line-clamp-2 max-w-[140px] mx-auto" title={p.rejectReason}>
                               {p.rejectReason}

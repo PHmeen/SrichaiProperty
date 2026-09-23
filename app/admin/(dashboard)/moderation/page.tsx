@@ -40,6 +40,20 @@ interface PropertyData {
   slaLabel: string;              // ข้อความแสดงเวลา SLA (เช่น เหลือ 45 นาที)
   slaLevel: 'normal' | 'warning' | 'urgent' | 'overdue'; // ระดับความด่วนของ SLA
   slaMinutesLeft: number;        // จำนวนนาทีที่เหลือตาม SLA
+  // ร่องรอยการตรวจสอบ — เป็น null ทั้งหมดถ้ายังไม่ถูกตรวจ
+  // หรือเป็นประกาศเก่าที่ตรวจไปก่อนจะมีฟีเจอร์นี้
+  reviewedAt: string | null;           // เวลาที่แอดมินกดตรวจเสร็จ
+  reviewerName: string | null;         // ชื่อแอดมินที่ตรวจ
+  reviewDurationLabel: string | null;  // ใช้เวลาไปเท่าไหร่ เช่น "3 ชม. 12 นาที"
+  reviewWithinSla: boolean | null;     // ทันกำหนด 24 ชม. หรือไม่
+}
+
+/** สรุปผล SLA ของชุดประกาศที่กำลังดูอยู่ */
+interface SlaSummary {
+  reviewedCount: number;
+  averageLabel: string;
+  withinSlaCount: number;
+  withinSlaPercent: number;
 }
 
 // รายการเหตุผลตีกลับประกาศ
@@ -63,6 +77,7 @@ export default function AdminModerationPage() {
   
   // สภาวะเก็บรายการประกาศที่ดึงมาจาก API หลังบ้าน
   const [properties, setProperties] = useState<PropertyData[]>([]);
+  const [slaSummary, setSlaSummary] = useState<SlaSummary | null>(null);
   // สภาวะสถานะกำลังโหลดข้อมูล (Spinner)
   const [loading, setLoading] = useState(true);
   // สภาวะแท็บสถานะประกาศที่เลือกอยู่ ('pending' = รอตรวจสอบ, 'approved' = อนุมัติแล้ว, 'rejected' = ถูกปฏิเสธ)
@@ -87,6 +102,7 @@ export default function AdminModerationPage() {
       .then(data => {
         if (data.success) {
           setProperties(data.properties);
+          setSlaSummary(data.slaSummary ?? null);
         }
         setLoading(false);
       })
@@ -235,6 +251,32 @@ export default function AdminModerationPage() {
             </div>
           </div>
 
+          {/* 🔑 KEYWORD: การ์ดสรุปผล SLA ย้อนหลัง
+              ตอบคำถาม "ทีมตรวจทันกำหนดจริงไหม" ด้วยตัวเลขจากข้อมูลจริง
+              ไม่ใช่แค่บอกว่ามีระบบ SLA — โชว์เฉพาะแท็บที่ตรวจแล้วและมีข้อมูลพอ */}
+          {activeTab !== 'pending' && slaSummary && slaSummary.reviewedCount > 0 && (
+            <div className="mb-5 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-wrap items-center gap-x-8 gap-y-3">
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">ตรวจแล้วในชุดนี้</p>
+                <p className="text-xl font-black text-slate-900">{slaSummary.reviewedCount} ประกาศ</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">เวลาเฉลี่ยที่ใช้ตรวจ</p>
+                <p className="text-xl font-black text-blue-600">{slaSummary.averageLabel}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">ตรวจทันกำหนด</p>
+                <p className={`text-xl font-black ${slaSummary.withinSlaPercent >= 90 ? 'text-emerald-600' : slaSummary.withinSlaPercent >= 70 ? 'text-amber-600' : 'text-red-600'}`}>
+                  {slaSummary.withinSlaPercent}%
+                  <span className="text-xs font-bold text-slate-400 ml-1.5">({slaSummary.withinSlaCount}/{slaSummary.reviewedCount})</span>
+                </p>
+              </div>
+              <p className="text-[10px] font-bold text-slate-400 ml-auto max-w-xs leading-relaxed">
+                นับเฉพาะประกาศที่มีบันทึกเวลาตรวจ ประกาศเก่าก่อนเริ่มเก็บข้อมูลจะไม่ถูกนำมาเฉลี่ย
+              </p>
+            </div>
+          )}
+
           {/* ส่วนที่ 2: แสดงผลรายการประกาศตามสถานะ */}
           {loading ? (
              // แสดงไอคอนกำลังหมุนเมื่อดึงข้อมูล
@@ -319,6 +361,25 @@ export default function AdminModerationPage() {
                                <span className={`text-[10px] font-black px-2 py-1 rounded-md border flex items-center gap-1 ${slaBadgeClass(property.slaLevel)}`}>
                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                  SLA: {property.slaLabel}
+                               </span>
+                             )}
+
+                             {/* 🔑 KEYWORD: ร่องรอยการตรวจสอบ — ใครตรวจ ใช้เวลาเท่าไหร่ ทันกำหนดไหม
+                                 โชว์เฉพาะแท็บที่ตรวจแล้ว ประกาศเก่าก่อนมีฟีเจอร์นี้จะไม่มีข้อมูล จึงต้องเช็ค null */}
+                             {activeTab !== 'pending' && property.reviewDurationLabel && (
+                               <span className={`text-[10px] font-black px-2 py-1 rounded-md border flex items-center gap-1 ${
+                                 property.reviewWithinSla
+                                   ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                   : 'bg-red-50 text-red-600 border-red-100'
+                               }`}>
+                                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                 ใช้เวลา {property.reviewDurationLabel}
+                                 {property.reviewWithinSla ? ' · ทันกำหนด' : ' · เกินกำหนด'}
+                               </span>
+                             )}
+                             {activeTab !== 'pending' && property.reviewerName && property.reviewedAt && (
+                               <span className="text-[10px] font-bold text-slate-400">
+                                 ตรวจโดย {property.reviewerName} · {new Date(property.reviewedAt).toLocaleString('th-TH', { day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
                                </span>
                              )}
                           </div>

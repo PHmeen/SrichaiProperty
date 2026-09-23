@@ -4,8 +4,11 @@ import { authOptions } from "@/lib/authOptions"; // ค่าคอนฟิก 
 import { db } from "@/lib/db"; // ไคลเอนต์ Prisma สำหรับจัดการนัดหมายและสล็อตวันว่าง
 import { notifyUser } from "@/lib/notify"; // ส่งการแจ้งเตือนเมื่อมีการนัด/ยืนยัน/ยกเลิกนัดหมาย
 import { hasAgentBookingConflict } from "@/lib/services/viewingSlotService"; // เช็คว่านายหน้ามีนัดจริงกับบ้านหลังอื่นชนเวลานี้อยู่แล้วหรือไม่
-import { autoCompleteOverdueAppointments, autoCancelExpiredRescheduleOffers, appointmentNeedsResult, isCustomerBlockedByNoShow } from "@/lib/services/noShowService"; // auto-complete/auto-cancel + เช็คนัดรอผล + เช็คลูกค้าถูกบล็อก
+import { autoCompleteOverdueAppointments, autoCancelExpiredRescheduleOffers, appointmentNeedsResult, isCustomerBlockedByNoShow, getCustomerReliability } from "@/lib/services/noShowService"; // auto-complete/auto-cancel + เช็คนัดรอผล + เช็คลูกค้าถูกบล็อก
 import { NO_SHOW_LIMIT, APPOINTMENT_STATUS } from "@/lib/constants"; // โควตาเบี้ยวนัด + ค่าคงที่สถานะนัดหมาย
+import { findUpcomingAppointments, findRecentlyRemindedAppointmentIds, buildReminderMessage, REMINDER_TYPE } from "@/lib/services/appointmentReminderService"; // เตือนล่วงหน้าก่อนถึงวันนัด
+import { collectWaitlistToNotify, buildWaitlistAlert, removeFromWaitlist, purgeExpiredWaitlist } from "@/lib/services/waitlistService"; // คิวรอรอบเข้าชม
+import { notifyUsers } from "@/lib/notify"; // ส่งแจ้งเตือนหลายคนพร้อมกัน
 
 /**
  * ==============================================================================
@@ -37,6 +40,27 @@ const sendNotification = (userId: string, title: string, content: string, type =
 // ==============================================================================
 // 1. GET: ดึงรายการนัดหมาย (รองรับมุมมองลูกค้า และ มุมมองนายหน้า)
 // ==============================================================================
+/**
+ * 🔑 KEYWORD: รอบว่างขึ้นมาแล้ว -> เรียกคิวรอ
+ *
+ * เรียกทุกจุดที่ปล่อย is_booked กลับเป็น false เพื่อเปลี่ยนรอบที่ถูกปล่อยคืน
+ * ให้กลายเป็นโอกาสจองใหม่ แทนที่จะค้างว่างทิ้งไว้เฉยๆ
+ *
+ * ยิงแล้วปล่อย ไม่ await เพราะเป็นงานเสริม ไม่ควรถ่วงหรือทำให้การยกเลิก/ปฏิเสธล้มเหลว
+ * หมายเหตุ: ไม่ต้องเรียกใน autoCancelExpiredRescheduleOffers เพราะรอบที่ปล่อยตรงนั้น
+ * เลยวันไปแล้วทั้งหมด ไม่มีใครรออยู่ (คิวที่เลยวันถูก purge ทิ้งอยู่แล้ว)
+ */
+function notifyWaitlistForFreedSlot(propertyId: string | null, availableDate: Date | null, timeSlot: string | null) {
+  if (!propertyId || !availableDate || !timeSlot) return;
+  collectWaitlistToNotify(propertyId, availableDate, timeSlot)
+    .then((res) => {
+      if (res.customerIds.length === 0) return;
+      const msg = buildWaitlistAlert(propertyId, res.propertyTitle, res.dateKey, res.timeSlot);
+      return notifyUsers(res.customerIds, { title: msg.title, content: msg.content, type: msg.type, linkUrl: msg.linkUrl });
+    })
+    .catch((e) => console.error("แจ้งเตือนคิวรอไม่สำเร็จ:", e));
+}
+
 export async function GET(request: Request) {
   try {
     // 1.1 ตรวจสอบว่าผู้ใช้งานเข้าสู่ระบบแล้วหรือยัง
@@ -54,6 +78,25 @@ export async function GET(request: Request) {
     await autoCompleteOverdueAppointments();
     // ยกเลิกนัดที่นายหน้าขอเลื่อนไว้แต่ลูกค้าไม่เคยกดรับ จนวันที่เสนอผ่านไปแล้ว (คืนรอบว่างให้ด้วย)
     await autoCancelExpiredRescheduleOffers();
+    // เก็บกวาดคิวรอที่เลยวันไปแล้ว (โปรเจกต์นี้ไม่มี cron จึงทำตอนมีคนเปิดหน้าเหมือนจุดอื่น)
+    await purgeExpiredWaitlist();
+
+    // 🔑 KEYWORD: เตือนล่วงหน้าก่อนถึงวันนัด (ลดการไม่มาตามนัด)
+    // เช็คตอนเปิดหน้ารายการนัด เพราะโปรเจกต์นี้ไม่มี cron (เหมือน auto-complete ด้านบน
+    // และเหมือนการเตือนวันว่างใกล้หมดในหน้าแรกนายหน้า) ทั้งสองฝั่งใช้ API ตัวนี้อยู่แล้ว
+    // จุดเดียวจึงครอบคลุมทั้งลูกค้าและนายหน้า
+    const [upcoming, alreadyReminded] = await Promise.all([
+      findUpcomingAppointments(user.id, isAgent),
+      findRecentlyRemindedAppointmentIds(user.id)
+    ]);
+
+    for (const apt of upcoming) {
+      if (alreadyReminded.has(apt.appointmentId)) continue;
+      const msg = buildReminderMessage(apt, isAgent);
+      // ไม่ await เพื่อไม่ให้การส่งแจ้งเตือนถ่วงการโหลดรายการนัด (ยิงแล้วปล่อย เหมือนจุดอื่นในไฟล์นี้)
+      notifyUser({ userId: user.id, title: msg.title, content: msg.content, type: REMINDER_TYPE, linkUrl: msg.linkUrl })
+        .catch((e) => console.error("ส่งการเตือนก่อนถึงวันนัดไม่สำเร็จ:", e));
+    }
 
     // 1.4 ดึงข้อมูลนัดหมายจากฐานข้อมูล PostgreSQL ผ่าน Prisma ORM
     // - ถ้าเป็นนายหน้า: ค้นหาแถวที่ agent_id === user.id
@@ -79,6 +122,13 @@ export async function GET(request: Request) {
     });
 
     // 1.4 จัดฟอร์แมตออบเจกต์ข้อมูล (Response Mapping) เพื่อส่งให้ React Component หน้าบ้านนำไปใช้ได้ทันที
+    // ฝั่งนายหน้าเท่านั้น: ดึงประวัติการมาตามนัดของลูกค้าทุกคนในหน้านี้ด้วย groupBy ครั้งเดียว
+    // เพื่อให้นายหน้าเห็นก่อนกดยืนยันว่าลูกค้าคนนี้เคยเบี้ยวนัดหรือไม่ (ฝั่งลูกค้าไม่ต้องเห็นของตัวเอง
+    // เพราะมีแถบเตือนโควตาเบี้ยวนัดอยู่แล้ว และไม่ควรเห็นประวัติคนอื่น)
+    const reliabilityByCustomer = isAgent
+      ? await getCustomerReliability(appointments.map((a) => a.customer_id).filter((id): id is string => Boolean(id)))
+      : null;
+
     const formatted = appointments.map((apt) => {
       const p = apt.properties;
       const cust = apt.users_appointments_customer_idTousers;
@@ -134,11 +184,18 @@ export async function GET(request: Request) {
         customerAvatar: cust?.profile_image,
         agentName,
         agentPhone: agentUser?.phone || "-",
+        // ประวัติการมาตามนัดของลูกค้ารายนี้ (null เมื่อเป็นมุมมองลูกค้า)
+        customerReliability: reliabilityByCustomer && apt.customer_id
+          ? reliabilityByCustomer.get(apt.customer_id) ?? { noShow: 0, completed: 0 }
+          : null,
         createdAt: apt.created_at
       };
     });
 
-    return NextResponse.json({ success: true, appointments: formatted });
+    // ส่งรายการนัดที่ใกล้ถึงกลับไปด้วย ให้หน้าเว็บเอาไปทำแถบเตือนบนจอได้เลย
+    // (กระดิ่งอย่างเดียวไม่พอ ผู้ใช้หลายคนไม่กดดู) ใช้ชุดเดียวกับที่ส่งแจ้งเตือนไป
+    // จึงไม่ต้อง query ซ้ำ และข้อมูลสองที่ไม่มีทางขัดกันเอง
+    return NextResponse.json({ success: true, appointments: formatted, upcomingReminders: upcoming });
   } catch (error) {
     return NextResponse.json({ error: "ดึงข้อมูลนัดหมายล้มเหลว: " + (error as Error).message }, { status: 500 });
   }
@@ -248,6 +305,10 @@ export async function POST(request: Request) {
       return created;
     });
 
+    // จองรอบนี้ได้แล้ว ไม่ต้องรอคิวรอบนี้อีก (ถ้าเคยลงคิวไว้)
+    removeFromWaitlist(user.id, property.id, new Date(date), dbTimeSlot)
+      .catch((e) => console.error("ลบคิวรอหลังจองสำเร็จไม่สำเร็จ:", e));
+
     // 2.8 ส่งการแจ้งเตือนไปยังนายหน้าผู้ดูแลและลูกค้าที่ทำรายการ
     const customerName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "ลูกค้า";
     const timeLabel = dbTimeSlot === "morning" ? "ช่วงเช้า (10:00 - 12:00 น.)" : "ช่วงบ่าย (14:00 - 16:00 น.)";
@@ -352,6 +413,7 @@ export async function PATCH(request: Request) {
           where: { property_id: appointment.property_id, available_date: appointment.appointment_date, time_slot: appointment.time_slot ?? undefined },
           data: { is_booked: false }
         });
+        notifyWaitlistForFreedSlot(appointment.property_id, appointment.appointment_date, appointment.time_slot);
 
         // 🔑 KEYWORD: เปิดรอบวันว่างอัตโนมัติตอนนายหน้าเลื่อนนัด
         // นายหน้าเป็นเจ้าของบ้าน มีสิทธิ์เปิดรอบอยู่แล้ว — ถ้าวันใหม่ยังไม่เคยเปิดไว้ก็สร้างให้เลย
@@ -469,6 +531,7 @@ export async function PATCH(request: Request) {
           where: { property_id: appointment.property_id, available_date: appointment.appointment_date, time_slot: appointment.time_slot ?? undefined },
           data: { is_booked: false }
         });
+        notifyWaitlistForFreedSlot(appointment.property_id, appointment.appointment_date, appointment.time_slot);
       }
 
       // ส่งแจ้งเตือนผลการตอบรับไปยังลูกค้า
@@ -542,6 +605,8 @@ export async function PATCH(request: Request) {
 
       // ⚡ สลับการล็อกรอบเวลาแบบ Transaction ป้องกันการแย่งจองรอบใหม่ในเสี้ยววินาทีเดียวกัน
       const shouldKeepOriginal = !isSameSlot && appointment.original_date === null;
+      // ตั้งธงไว้ในทรานแซกชัน แล้วค่อยแจ้งคิวรอหลังจบ ถ้าทรานแซกชันย้อนกลับจะได้ไม่แจ้งหลอก
+      let freedSlotFromCustomerEdit = false;
 
       const updated = await db.$transaction(async (tx) => {
         if (!isSameSlot) {
@@ -568,6 +633,8 @@ export async function PATCH(request: Request) {
             },
             data: { is_booked: false }
           });
+          // แจ้งคิวรอหลังจบ transaction เท่านั้น ถ้า transaction ย้อนกลับจะได้ไม่แจ้งหลอก
+          freedSlotFromCustomerEdit = true;
         }
 
         return tx.appointments.update({
@@ -585,7 +652,7 @@ export async function PATCH(request: Request) {
       // แจ้งเตือนไปยังนายหน้าผู้ดูแลเมื่อลูกค้าขอเปลี่ยนวันเวลา
       if (appointment.agent_id) {
         const prop = await db.properties.findUnique({ where: { id: appointment.property_id }, select: { title: true } });
-        const customerName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "ลูกค้า";
+        const customerName = `${user.first_name || ""}`.trim() + (user.last_name ? ` ${user.last_name}` : "") || "ลูกค้า";
         const timeLabel = timeSlot === "morning" ? "ช่วงเช้า (10:00 - 12:00 น.)" : timeSlot === "afternoon" ? "ช่วงบ่าย (14:00 - 16:00 น.)" : timeSlot;
         sendNotification(
           appointment.agent_id,
@@ -595,6 +662,13 @@ export async function PATCH(request: Request) {
           "/agent/appointments"
         );
       }
+
+      if (freedSlotFromCustomerEdit) {
+        notifyWaitlistForFreedSlot(appointment.property_id, appointment.appointment_date, appointment.time_slot);
+      }
+      // ลูกค้าจองรอบใหม่ได้แล้ว ไม่ต้องรอคิวรอบนั้นอีก
+      removeFromWaitlist(user.id, appointment.property_id!, new Date(date), timeSlot)
+        .catch((e) => console.error("ลบคิวรอหลังจองสำเร็จไม่สำเร็จ:", e));
 
       return NextResponse.json({ success: true, data: updated });
     }
@@ -647,6 +721,7 @@ export async function DELETE(request: Request) {
         where: { property_id: appointment.property_id, available_date: appointment.appointment_date, time_slot: appointment.time_slot ?? undefined },
         data: { is_booked: false }
       });
+      notifyWaitlistForFreedSlot(appointment.property_id, appointment.appointment_date, appointment.time_slot);
     }
 
     // 4.7 อัปเดตสถานะเป็น 'cancelled' และบันทึกเหตุผล cancel_reason ลงตาราง appointments ในฐานข้อมูลจริง

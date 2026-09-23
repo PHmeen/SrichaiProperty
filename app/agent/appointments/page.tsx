@@ -21,6 +21,7 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
+import { NO_SHOW_LIMIT } from '@/lib/constants';
 
 interface AgentAppointment {
   id: string;
@@ -30,6 +31,8 @@ interface AgentAppointment {
   note: string;
   customerName: string;
   customerPhone: string | null;
+  /** ประวัติการมาตามนัดของลูกค้ารายนี้ (API ส่งมาเฉพาะมุมมองนายหน้า) */
+  customerReliability: { noShow: number; completed: number } | null;
   propertyId: string;
   propertyTitle: string;
   propertyImage: string;
@@ -91,6 +94,8 @@ export default function AgentAppointmentsPage() {
   const [calYear, setCalYear] = useState(today.getFullYear());
   const [calMonth, setCalMonth] = useState(today.getMonth());
   const [selectedCalDate, setSelectedCalDate] = useState<string | null>(null);
+  // นัดที่จะถึงภายในวันนี้/พรุ่งนี้ — API คำนวณมาให้พร้อมกับตอนส่งแจ้งเตือน
+  const [upcomingReminders, setUpcomingReminders] = useState<{ appointmentId: string; date: string; timeSlot: string; propertyTitle: string; counterpartName: string; isToday: boolean }[]>([]);
 
   const todayKey = toDateKey(today);
 
@@ -101,6 +106,7 @@ export default function AgentAppointmentsPage() {
       const data = await res.json();
       if (data.success && Array.isArray(data.appointments)) {
         setAppointments(data.appointments);
+        setUpcomingReminders(Array.isArray(data.upcomingReminders) ? data.upcomingReminders : []);
       } else if (Array.isArray(data)) {
         setAppointments(data);
       }
@@ -121,6 +127,7 @@ export default function AgentAppointmentsPage() {
             if (isSubscribed) {
               if (data.success && Array.isArray(data.appointments)) {
                 setAppointments(data.appointments);
+                setUpcomingReminders(Array.isArray(data.upcomingReminders) ? data.upcomingReminders : []);
               } else if (Array.isArray(data)) {
                 setAppointments(data);
               }
@@ -467,6 +474,30 @@ export default function AgentAppointmentsPage() {
         </div>
       </div>
 
+      {/* 🔑 KEYWORD: แถบเตือนคิวงานที่ต้องไปพาชมวันนี้/พรุ่งนี้ */}
+      {upcomingReminders.length > 0 && (
+        <div className="max-w-6xl w-full mx-auto px-4 sm:px-6 md:px-8 pt-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 space-y-2">
+            <p className="text-xs font-black text-blue-800">
+              คิวพาชมที่ต้องเตรียมตัว {upcomingReminders.length} รายการ
+            </p>
+            <ul className="space-y-1">
+              {upcomingReminders.map(r => (
+                <li key={r.appointmentId} className="text-[11px] font-bold text-blue-700 leading-relaxed">
+                  <span className={`inline-block px-1.5 py-0.5 rounded mr-1.5 text-[9px] font-black ${r.isToday ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700'}`}>
+                    {r.isToday ? 'วันนี้' : 'พรุ่งนี้'}
+                  </span>
+                  {r.timeSlot === 'afternoon' ? '13:00 น.' : '10:00 น.'} — คุณ {r.counterpartName} ที่ {r.propertyTitle}
+                </li>
+              ))}
+            </ul>
+            <p className="text-[10px] font-bold text-blue-600/80">
+              ไปไม่ได้จริงๆ ให้กด &quot;ขอเลื่อนวัน&quot; ไว้ก่อน อย่ารอจนเลยวันนัดแล้วค่อยกดว่าลูกค้าไม่มา
+            </p>
+          </div>
+        </div>
+      )}
+
       <main className="max-w-6xl w-full mx-auto p-4 sm:p-6 md:p-8 grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 flex-1">
 
         {/* ===== Left Column: ปฏิทิน + สรุปคิวงาน ===== */}
@@ -653,6 +684,23 @@ export default function AgentAppointmentsPage() {
                         <p className="text-[9px] text-slate-400 font-bold">
                           เบอร์โทร: {apt.customerPhone || 'ไม่ระบุ'}
                         </p>
+                        {/* 🔑 KEYWORD: ประวัติการมาตามนัดของลูกค้า — ให้ตัดสินใจก่อนกดยืนยัน ไม่ใช่รู้ตอนสาย */}
+                        {apt.customerReliability && (() => {
+                          const { noShow, completed } = apt.customerReliability;
+                          const finished = noShow + completed;
+                          if (finished === 0) {
+                            return <p className="text-[9px] font-black text-slate-400 mt-0.5">ลูกค้าใหม่ ยังไม่มีประวัติเข้าชม</p>;
+                          }
+                          if (noShow === 0) {
+                            return <p className="text-[9px] font-black text-emerald-600 mt-0.5">มาตามนัดครบทั้ง {completed} ครั้ง</p>;
+                          }
+                          return (
+                            <p className={`text-[9px] font-black mt-0.5 ${noShow >= NO_SHOW_LIMIT ? 'text-red-600' : 'text-amber-600'}`}>
+                              เคยไม่มาตามนัด {noShow} จาก {finished} ครั้ง
+                              {noShow >= NO_SHOW_LIMIT && ' (ถูกจำกัดการจองแล้ว)'}
+                            </p>
+                          );
+                        })()}
                       </div>
                       <span className={`ml-auto text-[9px] font-black px-2 py-1 rounded-full border ${
                         apt.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' :

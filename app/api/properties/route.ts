@@ -310,12 +310,22 @@ export async function PATCH(request: Request) {
     const isApproved = status === "approved";
     const isRejected = status === "rejected";
 
+    // 🔑 KEYWORD: บันทึกร่องรอยการตรวจสอบประกาศ (ใครตรวจ ตอนไหน)
+    // หาแอดมินจากอีเมลในเซสชัน เพราะ session ไม่ได้การันตีว่ามี id ของแถวจริงใน DB
+    const reviewer = session.user?.email
+      ? await db.users.findUnique({ where: { email: session.user.email }, select: { id: true } })
+      : null;
+
     // 3.3 อัปเดตสถานะในตาราง properties
     const updatedProperty = await db.properties.update({
       where: { id },
       data: {
         status,
-        reject_reason: isRejected ? (reason || null) : isApproved ? null : undefined
+        reject_reason: isRejected ? (reason || null) : isApproved ? null : undefined,
+        // บันทึกเฉพาะตอนตรวจจริง (อนุมัติ/ตีกลับ) สถานะอื่นเช่น sold ไม่ใช่การตรวจ
+        ...(isApproved || isRejected
+          ? { reviewed_by: reviewer?.id ?? null, reviewed_at: new Date() }
+          : {})
       }
     });
 

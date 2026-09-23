@@ -105,6 +105,47 @@ export async function countNoShows(customerId: string): Promise<number> {
   });
 }
 
+/** สรุปประวัติการมาตามนัดของลูกค้าหนึ่งคน (นับเฉพาะนัดที่ปิดเคสแล้ว) */
+export interface CustomerReliability {
+  /** จำนวนครั้งที่นายหน้ายืนยันว่าไม่มาตามนัด */
+  noShow: number;
+  /** จำนวนครั้งที่เข้าชมจริง */
+  completed: number;
+}
+
+/**
+ * ดึงประวัติการมาตามนัดของลูกค้าหลายคนพร้อมกัน
+ *
+ * ใช้ตอนนายหน้าเปิดหน้าคิวนัดหมาย เพื่อให้เห็นก่อนกดยืนยันว่าลูกค้าคนนี้เคยเบี้ยวนัดไหม
+ * ข้อมูลนี้มีอยู่แล้วจากระบบ No-show แต่เดิมถูกใช้แค่ตอนบล็อกการจอง (ครบ 3 ครั้ง)
+ * ทั้งที่นายหน้าควรเห็นตั้งแต่ตอนตัดสินใจรับนัด ไม่ใช่รู้ตอนสายไปแล้ว
+ *
+ * ใช้ groupBy ครั้งเดียวสำหรับลูกค้าทุกคนในหน้า ไม่ยิง query ต่อการ์ด (กัน N+1)
+ */
+export async function getCustomerReliability(
+  customerIds: string[]
+): Promise<Map<string, CustomerReliability>> {
+  const ids = [...new Set(customerIds.filter(Boolean))];
+  const result = new Map<string, CustomerReliability>();
+  if (ids.length === 0) return result;
+
+  const rows = await db.appointments.groupBy({
+    by: ['customer_id', 'status'],
+    where: { customer_id: { in: ids }, status: { in: ['no_show', 'completed'] } },
+    _count: { _all: true }
+  });
+
+  for (const id of ids) result.set(id, { noShow: 0, completed: 0 });
+  for (const r of rows) {
+    if (!r.customer_id) continue;
+    const entry = result.get(r.customer_id);
+    if (!entry) continue;
+    if (r.status === 'no_show') entry.noShow = r._count._all;
+    else if (r.status === 'completed') entry.completed = r._count._all;
+  }
+  return result;
+}
+
 /** ลูกค้าคนนี้เบี้ยวนัดครบ NO_SHOW_LIMIT แล้วหรือยัง (ครบแล้ว = จองนัดใหม่ไม่ได้) */
 export async function isCustomerBlockedByNoShow(customerId: string): Promise<boolean> {
   const count = await countNoShows(customerId);

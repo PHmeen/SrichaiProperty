@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next"; // ดึงเซสชันเพื่อยืนยันว่าเป็นนายหน้าเจ้าของประกาศ
 import { authOptions } from "@/lib/authOptions"; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
 import { db } from "@/lib/db"; // ไคลเอนต์ Prisma สำหรับดึง/แก้ไข/ลบข้อมูลอสังหาริมทรัพย์
+import { notifyUsers } from "@/lib/notify"; // ส่งแจ้งเตือนหลายคนพร้อมกัน
+import { findUsersToAlertForNewSlots, buildSavedPropertyAlert } from "@/lib/services/savedPropertyAlertService"; // แจ้งลูกค้าที่บันทึกบ้านไว้เมื่อมีรอบเข้าชมเพิ่ม
 
 /**
  * ==============================================================================
@@ -233,6 +235,16 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
           })),
           skipDuplicates: true
         });
+
+        // 🔑 KEYWORD: แจ้งลูกค้าที่บันทึกบ้านหลังนี้ไว้ว่ามีรอบเข้าชมเพิ่มแล้ว
+        // ยิงแล้วปล่อย ไม่ await เพื่อไม่ให้การแจ้งเตือนถ่วงการบันทึกประกาศ
+        findUsersToAlertForNewSlots(id)
+          .then((userIds) => {
+            if (userIds.length === 0) return;
+            const msg = buildSavedPropertyAlert(id, updated.title, toCreate.length);
+            return notifyUsers(userIds, { title: msg.title, content: msg.content, type: msg.type, linkUrl: msg.linkUrl });
+          })
+          .catch((e) => console.error('แจ้งเตือนลูกค้าที่บันทึกบ้านไว้ไม่สำเร็จ:', e));
       }
     }
 

@@ -59,7 +59,7 @@ function ScheduleContent() {
 
   const [properties, setProperties] = useState<PropertyItem[]>([]);
   const [slots, setSlots] = useState<SlotItem[]>([]);
-  const [stats, setStats] = useState({ totalProperties: 0, lowSlotCount: 0, availableCount: 0, bookedCount: 0 });
+  const [stats, setStats] = useState({ totalProperties: 0, lowSlotCount: 0, availableCount: 0, bookedCount: 0, lowSlotThreshold: 0, lookaheadDays: 0 });
   const [loading, setLoading] = useState(false);
   const [selectedPropId, setSelectedPropId] = useState<string>(initPropId);
 
@@ -94,7 +94,7 @@ function ScheduleContent() {
       if (json.success && json.data) {
         setProperties(json.data.properties || []);
         setSlots(json.data.slots || []);
-        setStats(json.data.stats || { totalProperties: 0, lowSlotCount: 0, availableCount: 0, bookedCount: 0 });
+        setStats(json.data.stats || { totalProperties: 0, lowSlotCount: 0, availableCount: 0, bookedCount: 0, lowSlotThreshold: 0, lookaheadDays: 0 });
       }
     } catch (err) {
       console.error('Error fetching schedule:', err);
@@ -112,7 +112,7 @@ function ScheduleContent() {
         if (json.success && json.data) {
           setProperties(json.data.properties || []);
           setSlots(json.data.slots || []);
-          setStats(json.data.stats || { totalProperties: 0, lowSlotCount: 0, availableCount: 0, bookedCount: 0 });
+          setStats(json.data.stats || { totalProperties: 0, lowSlotCount: 0, availableCount: 0, bookedCount: 0, lowSlotThreshold: 0, lookaheadDays: 0 });
         }
       })
       .catch((err) => console.error('Schedule fetch error:', err));
@@ -236,7 +236,9 @@ function ScheduleContent() {
             </div>
             <span className="text-xl font-bold block mt-1">{stats.lowSlotCount} รายการ</span>
             <span className="text-[11px] font-medium mt-0.5 block text-slate-500">
-              {stats.lowSlotCount > 0 ? 'เหลือน้อยกว่า 3 รอบใน 30 วัน' : 'มีรอบว่างเพียงพอ'}
+              {stats.lowSlotCount > 0
+                ? `เหลือน้อยกว่า ${stats.lowSlotThreshold} รอบใน ${stats.lookaheadDays} วัน`
+                : 'มีรอบว่างเพียงพอ'}
             </span>
           </div>
 

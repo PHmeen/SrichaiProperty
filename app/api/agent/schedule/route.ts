@@ -125,7 +125,12 @@ export async function GET() {
           totalProperties: properties.length,
           lowSlotCount: propertyList.filter((p) => p.isLow).length,
           availableCount: propertyList.reduce((sum, p) => sum + p.remainingSlots, 0),
-          bookedCount: propertyList.reduce((sum, p) => sum + p.bookedCount, 0)
+          bookedCount: propertyList.reduce((sum, p) => sum + p.bookedCount, 0),
+          // ส่งเกณฑ์ที่ใช้ตัดสินมาด้วย ให้หน้าเว็บเอาไปเขียนคำอธิบายได้ตรงกับที่คำนวณจริง
+          // (หน้านั้นเป็น client component จะ import จาก slotAvailabilityService ตรงๆ ไม่ได้
+          //  เพราะไฟล์นั้นดึง Prisma เข้ามาด้วย จะหลุดไปอยู่ในบันเดิลฝั่งเบราว์เซอร์)
+          lowSlotThreshold: LOW_SLOT_THRESHOLD,
+          lookaheadDays: SLOT_LOOKAHEAD_DAYS
         }
       }
     });

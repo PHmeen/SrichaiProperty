@@ -46,6 +46,9 @@ function BookAppointmentForm() {
   const [submitting, setSubmitting] = useState(false);                          // สถานะกำลังส่งข้อมูล (ป้องกันการกดซ้ำ)
   const [holidays, setHolidays] = useState<string[]>([]);                       // รายการวันหยุดประจำปี
   const [viewingSlots, setViewingSlots] = useState<{ date: string; timeSlot: string; isBooked: boolean; agentBusyElsewhere: boolean }[]>([]); // รอบเวลาที่เปิดว่างจริง
+  // รอบที่ลูกค้าคนนี้ลงคิวรอไว้แล้ว เก็บเป็นคีย์ "วันที่|รอบเวลา" ให้เช็คเร็วตอนเรนเดอร์
+  const [waitlistKeys, setWaitlistKeys] = useState<string[]>([]);
+  const [waitlistBusy, setWaitlistBusy] = useState<string | null>(null);
   const [slotsLoading, setSlotsLoading] = useState(true);                       // สถานะกำลังดึงข้อมูลรอบเวลา
 
   // ----------------------------------------------------------------------------
@@ -77,6 +80,39 @@ function BookAppointmentForm() {
 
     return () => { active = false; };
   }, [property?.id]);
+
+  // 4.1.1 โหลดรอบที่ตัวเองลงคิวรอไว้กับบ้านหลังนี้ (ใช้ตัดสินว่าปุ่มควรขึ้นว่า "รออยู่แล้ว")
+  useEffect(() => {
+    if (!property?.id) return;
+    let active = true;
+    fetch(`/api/appointments/waitlist?propertyId=${property.id}`)
+      .then((res) => res.json())
+      .then((data) => { if (active && data.success) setWaitlistKeys(data.waitlistKeys || []); })
+      .catch(() => {}); // โหลดไม่ได้ก็แค่ไม่โชว์สถานะคิว ไม่ต้องขัดจังหวะการจอง
+    return () => { active = false; };
+  }, [property?.id]);
+
+  // 🔑 KEYWORD: ลงคิวรอ / ยกเลิกคิวรอ รอบที่จองไม่ได้
+  const toggleWaitlist = async (dateStr: string, timeSlot: string) => {
+    const key = `${dateStr}|${timeSlot}`;
+    const joined = waitlistKeys.includes(key);
+    setWaitlistBusy(key);
+    try {
+      const res = await fetch('/api/appointments/waitlist', {
+        method: joined ? 'DELETE' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ propertyId: property?.id, date: dateStr, timeSlot })
+      });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.error || 'ทำรายการไม่สำเร็จ'); return; }
+      setWaitlistKeys((prev) => (joined ? prev.filter((k) => k !== key) : [...prev, key]));
+      toast.success(joined ? 'ยกเลิกคิวรอแล้ว' : 'ลงคิวรอแล้ว จะแจ้งเตือนทันทีที่รอบนี้ว่าง');
+    } catch {
+      toast.error('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ');
+    } finally {
+      setWaitlistBusy(null);
+    }
+  };
 
   // 4.2 โหลดข้อมูลวันหยุดนักขัตฤกษ์ประจำปี
   useEffect(() => {
@@ -275,9 +311,16 @@ function BookAppointmentForm() {
                     // ชนวัน+เวลานี้อยู่แล้ว ต้องปิดไม่ให้ลูกค้ากดจองซ้ำ (server กันซ้ำอยู่แล้ว แต่บอกไว้ก่อนดีกว่า)
                     const isDisabled = !slot || slot.isBooked || slot.agentBusyElsewhere;
 
+                    // รอบที่ "มีคนจองแล้ว" หรือ "นายหน้าติดนัดบ้านหลังอื่น" ยังมีโอกาสว่างได้
+                    // ถ้าฝั่งนั้นยกเลิก/ถูกปฏิเสธ/ขอเลื่อนวัน จึงให้ลงคิวรอไว้ได้
+                    // ส่วนรอบที่นายหน้าไม่ได้เปิดเลย (ไม่มี slot) ไม่มีอะไรให้รอ
+                    const canWait = Boolean(slot) && (slot!.isBooked || slot!.agentBusyElsewhere);
+                    const waitKey = `${selectedDateStr}|${key}`;
+                    const isWaiting = waitlistKeys.includes(waitKey);
+
                     return (
+                      <div key={key} className="space-y-1.5">
                       <button
-                        key={key}
                         type="button"
                         disabled={isDisabled}
                         onClick={() => setSelectedTimeSlot((prev) => (prev.includes(title) ? '' : fullText))}
@@ -310,6 +353,27 @@ function BookAppointmentForm() {
                           <span className="bg-slate-100 text-slate-400 px-2 py-0.5 rounded text-[8px] font-bold">ไม่เปิดว่าง</span>
                         )}
                       </button>
+
+                      {/* 🔑 KEYWORD: ปุ่มลงคิวรอรอบที่จองไม่ได้ */}
+                      {canWait && (
+                        <button
+                          type="button"
+                          disabled={waitlistBusy === waitKey}
+                          onClick={() => toggleWaitlist(selectedDateStr, key)}
+                          className={`w-full px-3 py-2 rounded-xl border text-[10px] font-extrabold transition cursor-pointer disabled:opacity-60 disabled:cursor-wait ${
+                            isWaiting
+                              ? 'border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100'
+                              : 'border-slate-200 bg-white text-slate-600 hover:border-blue-400 hover:text-blue-600'
+                          }`}
+                        >
+                          {waitlistBusy === waitKey
+                            ? 'กำลังบันทึก...'
+                            : isWaiting
+                              ? '✓ รออยู่ — กดอีกครั้งเพื่อยกเลิกคิว'
+                              : '🔔 แจ้งเตือนฉันถ้ารอบนี้ว่าง'}
+                        </button>
+                      )}
+                      </div>
                     );
                   })}
                 </div>

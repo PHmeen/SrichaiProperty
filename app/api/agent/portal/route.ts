@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next'; // ดึงเซสชันเพื่อระบุตัวนายหน้าที่ล็อกอินอยู่
 import { authOptions } from '@/lib/authOptions'; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
 import { db } from '@/lib/db'; // ไคลเอนต์ Prisma สำหรับดึงข้อมูลของนายหน้าในหน้าพอร์ทัล
-import { findPropertiesWithLowSlots, findRecentlyAlertedPropertyIds, SLOT_ALERT_TYPE } from '@/lib/services/slotAvailabilityService'; // หาบ้านที่วันว่างใกล้หมด ไว้เตือนนายหน้า
+import { findPropertiesWithLowSlots, findRecentlyAlertedPropertyIds, SLOT_ALERT_TYPE, SLOT_LOOKAHEAD_DAYS } from '@/lib/services/slotAvailabilityService'; // หาบ้านที่วันว่างใกล้หมด ไว้เตือนนายหน้า
 import { notifyUser } from '@/lib/notify'; // สร้างการแจ้งเตือน + ยิง Pusher ให้เห็นทันที
 
 /**
@@ -188,9 +188,13 @@ export async function GET(request: Request) {
       for (const p of lowSlotProperties) {
         if (alreadyAlertedIds.has(p.propertyId)) continue;
 
-        const detail = p.remainingSlots === 0
-          ? 'ไม่เหลือรอบว่างให้ลูกค้าจองแล้ว'
-          : `เหลือรอบว่างให้จองอีกเพียง ${p.remainingSlots} รอบ (ถึงวันที่ ${p.lastAvailableDate})`;
+        // แยก 2 กรณีที่ remainingSlots = 0 ให้ชัด ไม่งั้นนายหน้าที่เพิ่งเปิดวันว่างไว้ไกลๆ
+        // จะได้แจ้งเตือนว่า "ไม่เหลือรอบแล้ว" ทั้งที่เพิ่งเปิดไป (ดู nextAvailableDate)
+        const detail = p.remainingSlots > 0
+          ? `เหลือรอบว่างให้จองอีกเพียง ${p.remainingSlots} รอบ (ถึงวันที่ ${p.lastAvailableDate})`
+          : p.nextAvailableDate
+            ? `ไม่มีรอบให้ลูกค้าจองใน ${SLOT_LOOKAHEAD_DAYS} วันข้างหน้า รอบถัดไปคือวันที่ ${p.nextAvailableDate}`
+            : 'ยังไม่มีรอบว่างให้ลูกค้าจองเลย';
 
         await notifyUser({
           userId: agent.id,
@@ -335,6 +339,7 @@ export async function GET(request: Request) {
           listingType: p.listing_type || 'sale',
           status: p.status, // สถานะอนุมัติ: approved, pending, rejected
           rejectReason: p.reject_reason || null, // เหตุผลที่โดนปฏิเสธ (ถ้ามี)
+          reviewedAt: p.reviewed_at || null, // เวลาที่แอดมินตรวจเสร็จ (null = ยังไม่ตรวจ หรือประกาศเก่า)
           location: p.location,
           bedrooms: p.bedrooms || 0,
           bathrooms: p.bathrooms || 0,

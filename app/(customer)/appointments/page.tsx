@@ -22,7 +22,7 @@ import Link from 'next/link';
 import ReviewModal from '@/components/customer/ReviewModal';
 import { NO_SHOW_LIMIT } from '@/lib/constants';
 import { toast } from '@/components/ui/toast';
-import { Calendar, MessageSquare, Star, AlertTriangle, X } from 'lucide-react';
+import { Calendar, CalendarDays, MessageSquare, Star, AlertTriangle, X } from 'lucide-react';
 
 function CalendarIcon({ className }: { className?: string }) {
   return (
@@ -119,6 +119,8 @@ const getStatusDetails = (status: string) => {
 export default function AppointmentsPage() {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'cancelled'>('upcoming');
   const [appointments, setAppointments] = useState<AppointmentItem[]>([]);
+  // นัดที่จะถึงภายในวันนี้/พรุ่งนี้ — API คำนวณมาให้พร้อมกับตอนส่งแจ้งเตือน
+  const [upcomingReminders, setUpcomingReminders] = useState<{ appointmentId: string; date: string; timeSlot: string; propertyTitle: string; counterpartName: string; isToday: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
 
   // ----------------------------------------------------------------------------
@@ -130,6 +132,7 @@ export default function AppointmentsPage() {
       const data = await res.json();
       if (data.success && Array.isArray(data.appointments)) {
         setAppointments(data.appointments);
+        setUpcomingReminders(Array.isArray(data.upcomingReminders) ? data.upcomingReminders : []);
       }
     } catch (err) {
       console.error('Error fetching appointments:', err);
@@ -145,6 +148,7 @@ export default function AppointmentsPage() {
       .then(data => {
         if (data.success && Array.isArray(data.appointments)) {
           setAppointments(data.appointments);
+          setUpcomingReminders(Array.isArray(data.upcomingReminders) ? data.upcomingReminders : []);
         }
       })
       .catch(console.error)
@@ -332,6 +336,32 @@ export default function AppointmentsPage() {
             )}
           </button>
         </div>
+
+        {/* 🔑 KEYWORD: แถบเตือนก่อนถึงวันนัด — กระดิ่งอย่างเดียวหลายคนไม่กดดู */}
+        {upcomingReminders.length > 0 && (
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 space-y-2">
+            <div className="flex items-center gap-2 text-xs font-black text-blue-800">
+              <CalendarDays className="w-4 h-4 shrink-0" />
+              <span>
+                {upcomingReminders.some(r => r.isToday) ? 'คุณมีนัดเข้าชมบ้านวันนี้' : 'คุณมีนัดเข้าชมบ้านพรุ่งนี้'}
+                {upcomingReminders.length > 1 && ` (${upcomingReminders.length} รายการ)`}
+              </span>
+            </div>
+            <ul className="space-y-1">
+              {upcomingReminders.map(r => (
+                <li key={r.appointmentId} className="text-[11px] font-bold text-blue-700 leading-relaxed">
+                  <span className={`inline-block px-1.5 py-0.5 rounded mr-1.5 text-[9px] font-black ${r.isToday ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700'}`}>
+                    {r.isToday ? 'วันนี้' : 'พรุ่งนี้'}
+                  </span>
+                  {r.timeSlot === 'afternoon' ? '13:00 น.' : '10:00 น.'} — {r.propertyTitle} (นายหน้า: {r.counterpartName})
+                </li>
+              ))}
+            </ul>
+            <p className="text-[10px] font-bold text-blue-600/80">
+              ถ้าไม่สะดวกไปตามนัด กรุณากดยกเลิกล่วงหน้า จะได้ไม่ถูกบันทึกว่าไม่มาตามนัด
+            </p>
+          </div>
+        )}
 
                 {noShowCount > 0 && noShowCount < NO_SHOW_LIMIT && (
           <div className="mb-6 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs font-bold text-amber-800">

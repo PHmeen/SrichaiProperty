@@ -51,6 +51,8 @@ export interface PropertyData {
   listingType?: string;
   status: 'approved' | 'pending' | 'rejected';
   rejectReason?: string | null;
+  /** เวลาที่แอดมินตรวจประกาศนี้เสร็จ (null = ยังไม่ตรวจ หรือเป็นประกาศเก่าก่อนเริ่มเก็บข้อมูล) */
+  reviewedAt?: string | null;
   image: string;
   location?: string;
   bedrooms?: number;
