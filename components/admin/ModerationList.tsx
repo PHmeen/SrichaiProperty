@@ -1,105 +1,133 @@
-/**
- * ==============================================================================
- * คอมโพเนนต์รายการประกาศอสังหาริมทรัพย์ที่รอการอนุมัติ (Moderation List Component)
- * /components/admin/ModerationList.tsx
- * ==============================================================================
- * วัตถุประสงค์:
- * 1. แสดงรายการประกาศบ้าน/คอนโดที่นายหน้าเพิ่งส่งเข้ามาใหม่ และรอแอดมินอนุมัติ
- * 2. แสดงข้อมูลสรุป เช่น รหัสประกาศ, รูปตัวอย่าง, ชื่อประกาศ, ราคาขาย/เช่า, ชื่อผู้ลงประกาศ และแพ็กเกจ
- * 3. มีปุ่มกดอนุมัติ (Approve) และปฏิเสธ (Reject) พร้อมฟังก์ชัน Callback ส่งกลับหน้าหลัก
- * ==============================================================================
- */
+'use client';
 
 import React from 'react';
-import Image from 'next/image'; // ใช้แสดงรูปตัวอย่างประกาศแต่ละรายการที่รอตรวจสอบ
+import Image from 'next/image';
+import Link from 'next/link';
 
-/** โครงสร้างรายการประกาศสำหรับแอดมินตรวจสอบ */
-interface ModerationItem {
-  id: string;          // รหัสประกาศ (ID ในฐานข้อมูล)
-  title: string;       // ชื่อหัวข้อประกาศ
-  code: string;        // รหัสย่อประกาศ (เช่น PROP-001)
-  price: string;       // ราคาแสดงผล (เช่น 3,500,000 บาท)
-  seller: string;      // ชื่อผู้ลงประกาศ / นายหน้า
-  plan: string;        // แพ็กเกจที่ใช้ลงประกาศ (เช่น Standard, PRO)
-  isVerified?: boolean;// สถานะยืนยันแล้วหรือไม่
-  sla: string;         // ระยะเวลา SLA คงเหลือที่ต้องตรวจ
-  slaUrgent?: boolean; // ธงเตือนเร่งด่วนตาม SLA
-  image?: string;      // URL รูปภาพหน้าปกประกาศ
+export interface ModerationItem {
+  id: string;
+  title: string;
+  code: string;
+  price: string;
+  seller: string;
+  sellerPhone?: string;
+  plan: string;
+  isVerified?: boolean;
+  sla: string;
+  slaUrgent?: boolean;
+  image?: string;
+  createdTimeAgo?: string;
 }
 
-/** Props สำหรับ ModerationList Component */
 interface Props {
-  items: ModerationItem[];                         // รายชื่อประกาศที่รอตรวจสอบ
-  onApprove: (id: string, title: string) => void;  // ฟังก์ชัน Callback เมื่อแอดมินกดอนุมัติประกาศ
-  onReject: (id: string, title: string) => void;   // ฟังก์ชัน Callback เมื่อแอดมินกดปฏิเสธประกาศ
+  items: ModerationItem[];
+  onApprove: (id: string, title: string) => void;
+  onReject: (id: string, title: string) => void;
 }
 
 export default function ModerationList({ items, onApprove, onReject }: Props) {
   if (items.length === 0) {
     return (
-      <div className="text-center py-8 text-slate-500 font-medium text-sm">
-        ไม่มีรายการที่รอการตรวจสอบ
+      <div className="text-center py-10 px-4 text-slate-500 text-xs">
+        <p className="font-semibold text-slate-700">ไม่มีประกาศที่รอการตรวจสอบ</p>
+        <p className="text-slate-400 mt-0.5">คิวตรวจสอบประกาศว่าง</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="divide-y divide-slate-100">
       {items.map(item => (
-        <div key={item.id} className="flex flex-col sm:flex-row items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors gap-4">
-          <div className="flex items-center gap-4 w-full sm:w-auto">
+        <div
+          key={item.id}
+          className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 hover:bg-slate-50/60 transition-colors gap-3"
+        >
+          {/* Main Info */}
+          <div className="flex items-start sm:items-center gap-3 w-full sm:w-auto min-w-0">
             {item.image ? (
-              <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0">
-                 <Image src={item.image} alt={item.title} width={64} height={64} className="w-full h-full object-cover" unoptimized />
+              <div className="w-14 h-14 rounded-lg overflow-hidden shrink-0 border border-slate-200 bg-slate-100">
+                <Image
+                  src={item.image}
+                  alt={item.title}
+                  width={56}
+                  height={56}
+                  className="w-full h-full object-cover"
+                  unoptimized
+                />
               </div>
             ) : (
-              <div className="w-16 h-16 rounded-lg bg-slate-200 shrink-0 flex items-center justify-center text-slate-400">
-                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                </svg>
+              <div className="w-14 h-14 rounded-lg bg-slate-100 shrink-0 flex items-center justify-center text-slate-400 text-xs font-mono border border-slate-200">
+                IMG
               </div>
             )}
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] font-black text-slate-500 bg-slate-200 px-2 py-0.5 rounded uppercase tracking-wider">{item.code}</span>
-                {item.slaUrgent && (
-                  <span className="text-[10px] font-black text-amber-600 bg-amber-100 px-2 py-0.5 rounded uppercase tracking-wider animate-pulse flex items-center gap-1">
-                    <svg className="w-3 h-3 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>SLA: {item.sla}</span>
+
+            <div className="min-w-0 space-y-0.5">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                  {item.code}
+                </span>
+
+                {item.slaUrgent ? (
+                  <span className="text-[10px] font-medium text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                    SLA: {item.sla}
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-slate-500">
+                    SLA: {item.sla}
+                  </span>
+                )}
+
+                {item.createdTimeAgo && (
+                  <span className="text-[10px] text-slate-400">
+                    · {item.createdTimeAgo}
                   </span>
                 )}
               </div>
-              <h4 className="font-extrabold text-slate-800 text-sm leading-tight">{item.title}</h4>
-              <div className="flex items-center gap-3 mt-1.5 text-xs font-medium text-slate-500">
-                <span className="text-amber-600 font-bold">{item.price}</span>
-                <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                <span className="flex items-center gap-1">
-                  <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  <span>{item.seller}</span>
-                  {item.isVerified && <svg className="w-3.5 h-3.5 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path></svg>}
+
+              <h4 className="font-semibold text-slate-900 text-xs leading-snug truncate hover:text-blue-600">
+                <Link href="/admin/moderation">
+                  {item.title}
+                </Link>
+              </h4>
+
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <span className="font-bold text-slate-900">{item.price}</span>
+                <span className="text-slate-300">·</span>
+                <span>{item.seller}</span>
+                {item.isVerified && (
+                  <span className="text-[10px] text-blue-600 font-medium">(ยืนยันตัวตนแล้ว)</span>
+                )}
+                <span className="text-slate-300">·</span>
+                <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded">
+                  {item.plan}
                 </span>
-                <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                <span className="text-[10px] bg-slate-200 px-1.5 py-0.5 rounded font-bold">{item.plan}</span>
               </div>
             </div>
           </div>
-          
-          <div className="flex gap-2 w-full sm:w-auto">
-            <button 
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 justify-end">
+            <Link
+              href="/admin/moderation"
+              className="px-2.5 py-1 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+            >
+              ดูรายละเอียด
+            </Link>
+
+            <button
+              type="button"
               onClick={() => onApprove(item.id, item.title)}
-              className="flex-1 sm:flex-none px-4 py-2 bg-[#0d1527] hover:bg-[#16223d] text-white text-xs font-bold rounded-lg transition shadow-sm"
+              className="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded transition-colors"
             >
-              Approve (เผยแพร่)
+              อนุมัติ
             </button>
-            <button 
+
+            <button
+              type="button"
               onClick={() => onReject(item.id, item.title)}
-              className="flex-1 sm:flex-none px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-bold rounded-lg transition"
+              className="px-3 py-1 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded transition-colors"
             >
-              Reject (ตีกลับ)
+              ไม่อนุมัติ
             </button>
           </div>
         </div>
