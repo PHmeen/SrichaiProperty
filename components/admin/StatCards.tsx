@@ -27,9 +27,10 @@ export default function StatCards({
       title: 'ประกาศรอตรวจสอบ',
       count: pendingCount,
       unit: 'รายการ',
-      subtitle: pendingCount > 0 ? 'ต้องตรวจสอบก่อนขึ้นเว็บ' : 'ไม่มีงานค้าง',
+      subtitle: pendingCount > 0 ? 'จำเป็นต้องตรวจก่อนขึ้นเว็บ' : 'ไม่มีประกาศค้างตรวจ',
       href: '/admin/moderation',
-      isUrgent: pendingCount > 0
+      topBorderColor: pendingCount > 0 ? 'border-t-amber-500' : 'border-t-slate-200',
+      badge: pendingCount > 0 ? { text: 'ต้องตรวจ', className: 'text-amber-800 bg-amber-50 border border-amber-200' } : null
     },
     {
       title: 'ยืนยันตัวตน KYC',
@@ -37,7 +38,8 @@ export default function StatCards({
       unit: 'ราย',
       subtitle: `นายหน้าทั้งหมด ${agentsCount} คน`,
       href: '/admin/kyc',
-      isUrgent: kycCount > 0
+      topBorderColor: kycCount > 0 ? 'border-t-indigo-500' : 'border-t-slate-200',
+      badge: kycCount > 0 ? { text: 'รออนุมัติ', className: 'text-indigo-800 bg-indigo-50 border border-indigo-200' } : null
     },
     {
       title: 'สลิปชำระเงินรอตรวจ',
@@ -45,7 +47,8 @@ export default function StatCards({
       unit: 'รายการ',
       subtitle: `สมาชิก PRO ${proAgentsCount} คน`,
       href: '/admin/payments',
-      isUrgent: paymentsCount > 0
+      topBorderColor: paymentsCount > 0 ? 'border-t-emerald-500' : 'border-t-slate-200',
+      badge: paymentsCount > 0 ? { text: 'รอตรวจสอบ', className: 'text-emerald-800 bg-emerald-50 border border-emerald-200' } : null
     },
     {
       title: 'นัดหมายชมบ้าน',
@@ -53,7 +56,8 @@ export default function StatCards({
       unit: 'นัด',
       subtitle: 'คิวนัดหมายที่รอดำเนินการ',
       href: '/admin/dashboard#appointments',
-      isUrgent: false
+      topBorderColor: pendingAppointmentsCount > 0 ? 'border-t-sky-500' : 'border-t-slate-200',
+      badge: pendingAppointmentsCount > 0 ? { text: 'มีคิวใหม่', className: 'text-sky-800 bg-sky-50 border border-sky-200' } : null
     },
     {
       title: 'ประกาศออนไลน์',
@@ -61,7 +65,8 @@ export default function StatCards({
       unit: 'ประกาศ',
       subtitle: 'แสดงผลบนหน้าเว็บไซต์',
       href: '/admin/moderation',
-      isUrgent: false
+      topBorderColor: 'border-t-slate-400',
+      badge: { text: 'Active', className: 'text-emerald-700 bg-emerald-50 border border-emerald-200' }
     }
   ];
 
@@ -71,14 +76,14 @@ export default function StatCards({
         <Link
           key={idx}
           href={item.href}
-          className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 hover:border-slate-300 hover:shadow-xs transition-all flex flex-col justify-between"
+          className={`bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 ${item.topBorderColor} border-t-3 hover:border-slate-300 hover:shadow-xs transition-all flex flex-col justify-between`}
         >
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-semibold text-slate-600">{item.title}</span>
-              {item.isUrgent && (
-                <span className="text-xs font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full">
-                  รอดำเนินการ
+              {item.badge && (
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${item.badge.className}`}>
+                  {item.badge.text}
                 </span>
               )}
             </div>
@@ -91,7 +96,7 @@ export default function StatCards({
             </div>
           </div>
 
-          <p className="text-xs text-slate-500 mt-3 font-medium truncate pt-2 border-t border-slate-100">
+          <p className="text-xs text-slate-500 mt-3 font-medium truncate pt-2.5 border-t border-slate-100">
             {item.subtitle}
           </p>
         </Link>
