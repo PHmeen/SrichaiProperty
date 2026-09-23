@@ -25,7 +25,7 @@ export default async function AdminLayout({
 
   return (
     // โครงหน้าหลัก: จัดเรียงแนวนอน (sidebar ซ้าย, เนื้อหาขวา) สูงอย่างน้อยเต็มจอ
-    <div className="flex min-h-screen bg-slate-50 font-sans text-xs antialiased">
+    <div className="flex min-h-screen bg-slate-50 font-sans text-sm text-slate-800 antialiased">
       {/* Sidebar Navigation แสดงตลอดทุกหน้า */}
       <AdminSidebar />
 

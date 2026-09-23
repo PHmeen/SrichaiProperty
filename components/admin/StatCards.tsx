@@ -27,7 +27,7 @@ export default function StatCards({
       title: 'ประกาศรอตรวจสอบ',
       count: pendingCount,
       unit: 'รายการ',
-      subtitle: pendingCount > 0 ? 'ต้องตรวจสอบก่อนขึ้นเว็บ' : 'ไม่มีค้าง',
+      subtitle: pendingCount > 0 ? 'ต้องตรวจสอบก่อนขึ้นเว็บ' : 'ไม่มีงานค้าง',
       href: '/admin/moderation',
       isUrgent: pendingCount > 0
     },
@@ -66,32 +66,32 @@ export default function StatCards({
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5 sm:gap-5">
       {stats.map((item, idx) => (
         <Link
           key={idx}
           href={item.href}
-          className="bg-white rounded-xl p-4 border border-slate-200 hover:border-slate-300 hover:bg-slate-50/50 transition-all flex flex-col justify-between"
+          className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 hover:border-slate-300 hover:shadow-xs transition-all flex flex-col justify-between"
         >
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs text-slate-500 font-medium">{item.title}</span>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-slate-600">{item.title}</span>
               {item.isUrgent && (
-                <span className="text-[10px] font-semibold text-amber-800 bg-amber-100/70 px-1.5 py-0.5 rounded">
+                <span className="text-xs font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full">
                   รอดำเนินการ
                 </span>
               )}
             </div>
 
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold text-slate-900 tracking-tight">
+            <div className="flex items-baseline gap-1.5 mt-1">
+              <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
                 {item.count.toLocaleString()}
               </span>
-              <span className="text-xs text-slate-400">{item.unit}</span>
+              <span className="text-sm text-slate-500 font-medium">{item.unit}</span>
             </div>
           </div>
 
-          <p className="text-[11px] text-slate-400 mt-2 truncate">
+          <p className="text-xs text-slate-500 mt-3 font-medium truncate pt-2 border-t border-slate-100">
             {item.subtitle}
           </p>
         </Link>
