@@ -20,8 +20,10 @@ import {
   ChevronRight,
   Download,
   RefreshCw,
-  Mail
+  Mail,
+  Eye
 } from 'lucide-react';
+import UserProfileModal from '@/components/admin/UserProfileModal';
 
 interface UserData {
   id: string;
@@ -53,6 +55,7 @@ export default function AdminUsersPage() {
   const [roleFilter, setRoleFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedProfileUserId, setSelectedProfileUserId] = useState<string | null>(null);
 
   const fetchUsers = async () => {
     try {
@@ -405,6 +408,14 @@ export default function AdminUsersPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => setSelectedProfileUserId(user.id)}
+                            className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                            title="ดูโปรไฟล์และประวัติการใช้งานแบบละเอียด"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>โปรไฟล์</span>
+                          </button>
                           {user.status !== 'approved' && (
                             <button
                               onClick={() => handleStatusChange(user.id, 'approved')}
@@ -471,6 +482,13 @@ export default function AdminUsersPage() {
           </div>
         </div>
       </div>
+
+      <UserProfileModal
+        key={selectedProfileUserId || 'none'}
+        userId={selectedProfileUserId}
+        isOpen={Boolean(selectedProfileUserId)}
+        onClose={() => setSelectedProfileUserId(null)}
+      />
     </>
   );
 }

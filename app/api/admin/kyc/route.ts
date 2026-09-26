@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db'; // ไคลเอนต์ Prisma สำหรับดึงข้อมูลผู้ใช้ที่ยื่น KYC เป็นตัวแทน
 import { getServerSession } from 'next-auth/next'; // ดึงเซสชันเพื่อยืนยันสิทธิ์ admin
 import { authOptions } from '@/lib/authOptions'; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
+import { notifyUser } from '@/lib/notify'; // ส่งการแจ้งเตือนผลการตรวจ KYC แก่นายหน้า
 
 interface AdminSession {
   user?: {
@@ -63,7 +64,7 @@ export async function PATCH(req: Request) {
     }
 
     const body = await req.json();
-    const { userId, status } = body;
+    const { userId, status, reason, note } = body;
 
     if (!userId || !status) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -76,6 +77,26 @@ export async function PATCH(req: Request) {
       where: { id: userId },
       data: { status: dbStatus }
     });
+
+    // ส่ง In-app Notification แจ้งเตือนผลตรวจไปยังนายหน้า
+    if (status === 'rejected') {
+      const reasonDetail = reason ? ` (สาเหตุ: ${reason}${note ? ` - คำแนะนำเพิ่มเติม: ${note}` : ''})` : '';
+      await notifyUser({
+        userId,
+        title: "แจ้งผลการตรวจสอบเอกสารยืนยันตัวตน (KYC)",
+        content: `การยื่นเอกสารยืนยันตัวตนเป็นนายหน้าไม่ผ่านการอนุมัติ${reasonDetail} กรุณาตรวจสอบและอัปโหลดเอกสารใหม่ให้ถูกต้อง`,
+        type: "kyc",
+        linkUrl: "/agent/profile"
+      }).catch(() => {});
+    } else if (status === 'approved') {
+      await notifyUser({
+        userId,
+        title: "ยินดีด้วย! บัญชีนายหน้าของคุณได้รับการอนุมัติแล้ว",
+        content: "การยืนยันตัวตน KYC ของคุณผ่านการอนุมัติเรียบร้อยแล้ว ตอนนี้คุณสามารถลงประกาศและรับงานนำชมบ้านได้ทันที",
+        type: "kyc",
+        linkUrl: "/agent/dashboard"
+      }).catch(() => {});
+    }
 
     return NextResponse.json({ success: true, user: updatedUser });
   } catch (error) {
