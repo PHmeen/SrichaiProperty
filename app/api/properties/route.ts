@@ -301,14 +301,15 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "อนุญาตเฉพาะผู้ดูแลระบบเท่านั้น" }, { status: 401 });
     }
 
-    // 3.2 อ่านค่ารหัสอสังหาฯ และสถานะใหม่ที่ส่งมา
-    const { id, status, reason } = await request.json();
-    if (!id || !status) {
-      return NextResponse.json({ error: "กรุณาระบุรหัสอสังหาฯ และสถานะที่ต้องการเปลี่ยน" }, { status: 400 });
-    }
-
+    // 3.2 อ่านค่ารหัสอสังหาฯ และสถานะใหม่ที่ส่งมา (รองรับทั้ง id เดี่ยว และ ids หลายรายการสำหรับ Batch Approve)
+    const body = await request.json();
+    const { id, ids, status, reason } = body;
     const isApproved = status === "approved";
     const isRejected = status === "rejected";
+
+    if ((!id && (!Array.isArray(ids) || ids.length === 0)) || !status) {
+      return NextResponse.json({ error: "กรุณาระบุรหัสอสังหาฯ และสถานะที่ต้องการเปลี่ยน" }, { status: 400 });
+    }
 
     // 🔑 KEYWORD: บันทึกร่องรอยการตรวจสอบประกาศ (ใครตรวจ ตอนไหน)
     // หาแอดมินจากอีเมลในเซสชัน เพราะ session ไม่ได้การันตีว่ามี id ของแถวจริงใน DB
@@ -316,13 +317,44 @@ export async function PATCH(request: Request) {
       ? await db.users.findUnique({ where: { email: session.user.email }, select: { id: true } })
       : null;
 
-    // 3.3 อัปเดตสถานะในตาราง properties
+    // กรณีจัดการพร้อมกันหลายรายการ (Batch Actions)
+    if (Array.isArray(ids) && ids.length > 0) {
+      await db.properties.updateMany({
+        where: { id: { in: ids } },
+        data: {
+          status,
+          ...(isApproved ? { reject_reason: null, reviewed_by: reviewer?.id ?? null, reviewed_at: new Date() } : {})
+        }
+      });
+
+      // ดึงนายหน้าเจ้าของประกาศเพื่อส่งการแจ้งเตือน
+      const affectedProperties = await db.properties.findMany({
+        where: { id: { in: ids }, agent_id: { not: null } },
+        select: { id: true, title: true, agent_id: true }
+      });
+
+      await Promise.allSettled(
+        affectedProperties.map((p) => {
+          if (!p.agent_id) return Promise.resolve();
+          return notifyUser({
+            userId: p.agent_id,
+            title: isApproved ? "ประกาศอสังหาริมทรัพย์ได้รับการอนุมัติ" : "แจ้งผลการตรวจสอบประกาศอสังหาริมทรัพย์",
+            content: `รายการ "${p.title}" ผ่านการตรวจสอบเรียบร้อยแล้ว และเปิดแสดงผลบนระบบศรีชัย พร็อพเพอร์ตี้`,
+            type: "property",
+            linkUrl: `/property/${p.id}`
+          }).catch(() => {});
+        })
+      );
+
+      return NextResponse.json({ success: true, count: ids.length });
+    }
+
+    // กรณีจัดการรายการเดี่ยว (Single Item Action)
     const updatedProperty = await db.properties.update({
       where: { id },
       data: {
         status,
         reject_reason: isRejected ? (reason || null) : isApproved ? null : undefined,
-        // บันทึกเฉพาะตอนตรวจจริง (อนุมัติ/ตีกลับ) สถานะอื่นเช่น sold ไม่ใช่การตรวจ
         ...(isApproved || isRejected
           ? { reviewed_by: reviewer?.id ?? null, reviewed_at: new Date() }
           : {})

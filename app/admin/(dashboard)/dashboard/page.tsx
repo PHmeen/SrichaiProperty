@@ -9,7 +9,9 @@ import {
   Search,
   Loader2,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  AlertCircle,
+  Clock
 } from 'lucide-react';
 
 const REFRESH_INTERVAL_MS = 20000;
@@ -369,6 +371,19 @@ export default function AdminDashboardPage() {
                   รายงานปัญหา ({reportsCount})
                 </Link>
               )}
+              {moderationItems.filter(i => i.slaUrgent).length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModerationFilter('urgent');
+                    document.getElementById('moderation')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="inline-flex items-center gap-1.5 bg-red-600 text-white px-2.5 py-1 rounded-lg font-extrabold text-xs shadow-xs hover:bg-red-700 transition-colors animate-pulse cursor-pointer"
+                >
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  <span>งานด่วน SLA &lt; 4 ชม. ({moderationItems.filter(i => i.slaUrgent).length})</span>
+                </button>
+              )}
             </div>
 
             <Link
@@ -453,13 +468,14 @@ export default function AdminDashboardPage() {
                   <button
                     type="button"
                     onClick={() => setModerationFilter('urgent')}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-colors ${
+                    className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-colors flex items-center gap-1.5 cursor-pointer ${
                       moderationFilter === 'urgent'
-                        ? 'bg-amber-600 text-white shadow-xs'
-                        : 'bg-white border border-slate-200 text-amber-800 hover:bg-amber-50'
+                        ? 'bg-red-600 text-white shadow-xs'
+                        : 'bg-white border border-red-200 text-red-700 hover:bg-red-50'
                     }`}
                   >
-                    ด่วน SLA ({moderationItems.filter(i => i.slaUrgent).length})
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>ด่วน SLA ({moderationItems.filter(i => i.slaUrgent).length})</span>
                   </button>
                 </div>
               </div>

@@ -5,22 +5,23 @@
  * หน้าจัดการตรวจสอบอนุมัติประกาศอสังหาริมทรัพย์สำหรับแอดมิน (Admin Moderation Page)
  * /app/admin/(dashboard)/moderation/page.tsx
  * ==============================================================================
- * หน้าที่หลัก:
- * 1. ดึงรายการประกาศบ้าน/คอนโดจาก API `/api/admin/moderation` แยกตามแท็บสถานะ (รอตรวจสอบ, อนุมัติแล้ว, ปฏิเสธ)
- * 2. กรองประกาศตามประเภทธุรกรรม (ขาย / เช่า / ทั้งหมด)
- * 3. ดำเนินการอนุมัติประกาศ (`handleApprove`) หรือ ปฏิเสธประกาศพร้อมระบุเหตุผลผ่าน Pop-up Modal (`openRejectModal`)
- * 4. รองรับการดูตัวอย่างรูปภาพประกาศย่อและแสดงสถิติ SLA
+ * ยกระดับสู่มาตรฐานระดับสากล (PropTech Enterprise Standard):
+ * 1. Advanced Filters: กรองตามประเภทอสังหาฯ, ช่วงราคา, สถานะนายหน้า (PRO/ทั่วไป), จังหวัด/ทำเล
+ * 2. Quick Preview Drawer: แถบข้างสไลด์โชว์รูปภาพทุกรูป, แผนที่ปักหมุด, โฉนด/เอกสาร, สิ่งอำนวยความสะดวก
+ * 3. Batch Actions: ติ๊กเลือกหลายประกาศเพื่อ "อนุมัติทั้งหมดในคลิกเดียว" พร้อม Floating Action Bar
+ * 4. Reject Reason Presets: ชิปเทมเพลตเหตุผลตีกลับสำเร็จรูปที่แก้ไขข้อความได้อิสระ
+ * 5. ส่งออกไฟล์รายงาน CSV และระบบ SLA ติดตามผลการทำงานจริง
  * ==============================================================================
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { toast } from '@/components/ui/toast';
+import QuickPreviewDrawer, { QuickPreviewProperty } from '@/components/admin/QuickPreviewDrawer';
 import {
   Search,
   Home,
   Camera,
-  Star,
   MapPin,
   Square,
   Bed,
@@ -30,40 +31,17 @@ import {
   Check,
   AlertTriangle,
   RefreshCw,
-  Download
+  Download,
+  Filter,
+  CheckCircle2,
+  Clock,
+  Sparkles,
+  SlidersHorizontal,
+  RotateCcw
 } from 'lucide-react';
 
-/** โครงสร้างข้อมูลประกาศอสังหาริมทรัพย์สำหรับแอดมินตรวจสอบ */
-interface PropertyData {
-  id: string;                    // รหัสอสังหาฯ ในฐานข้อมูล (UUID)
-  title: string;                 // ชื่อหัวข้อประกาศ
-  price: string;                 // ราคาขายหรือค่าเช่า (บาท)
-  listingType: 'sale' | 'rent';  // ประเภทประกาศ (ขาย = sale, เช่า = rent)
-  type: string;                  // ประเภทอสังหาฯ (เช่น บ้านเดี่ยว, คอนโด, ทาวน์เฮาส์)
-  location: string;              // ทำเล / ที่ตั้ง (ตำบล, อำเภอ, จังหวัด)
-  province?: string;             // จังหวัด
-  amphure?: string;              // อำเภอ/เขต
-  bedrooms: number;              // จำนวนห้องนอน
-  bathrooms: number;             // จำนวนห้องน้ำ
-  area: string;                  // ขนาดพื้นที่ (ตารางวา / ตารางเมตร)
-  agentName: string;             // ชื่อผู้ลงประกาศ / นายหน้า
-  agentPlan: string;             // แพ็กเกจสมาชิกของนายหน้า (Standard, PRO, VIP)
-  createdAt: string;             // วันเวลาที่ลงประกาศ
-  image: string | null;          // URL รูปภาพหน้าปกหลัก
-  images?: string[];             // อาร์เรย์รูปภาพเพิ่มเติมทั้งหมด
-  imageCount: number;            // จำนวนรูปภาพทั้งหมดที่มีในประกาศ
-  slaLabel: string;              // ข้อความแสดงเวลา SLA (เช่น เหลือ 45 นาที)
-  slaLevel: 'normal' | 'warning' | 'urgent' | 'overdue'; // ระดับความด่วนของ SLA
-  slaMinutesLeft: number;        // จำนวนนาทีที่เหลือตาม SLA
-  // ร่องรอยการตรวจสอบ — เป็น null ทั้งหมดถ้ายังไม่ถูกตรวจ
-  // หรือเป็นประกาศเก่าที่ตรวจไปก่อนจะมีฟีเจอร์นี้
-  reviewedAt: string | null;           // เวลาที่แอดมินกดตรวจเสร็จ
-  reviewerName: string | null;         // ชื่อแอดมินที่ตรวจ
-  reviewDurationLabel: string | null;  // ใช้เวลาไปเท่าไหร่ เช่น "3 ชม. 12 นาที"
-  reviewWithinSla: boolean | null;     // ทันกำหนด 24 ชม. หรือไม่
-}
+export type PropertyData = QuickPreviewProperty;
 
-/** สรุปผล SLA ของชุดประกาศที่กำลังดูอยู่ */
 interface SlaSummary {
   reviewedCount: number;
   averageLabel: string;
@@ -71,40 +49,53 @@ interface SlaSummary {
   withinSlaPercent: number;
 }
 
-// รายการเหตุผลตีกลับประกาศ
-// แยกออกมาเป็นค่าคงที่เพื่อให้เพิ่ม/แก้ตัวเลือกได้ที่เดียว
-const REJECT_REASONS = [
-  'ข้อมูล/รูปภาพไม่ครบถ้วนหรือไม่ชัดเจน',
-  'รูปภาพไม่ตรงกับทรัพย์ที่ประกาศ',
-  'ราคาหรือรายละเอียดดูผิดปกติ ต้องตรวจสอบเพิ่มเติม',
-  'ข้อมูลไม่ตรงกับความเป็นจริง',
-  'เอกสารสิทธิ์ไม่ครบถ้วน',
-  'ทำเลที่ตั้งหรือที่อยู่ไม่ถูกต้อง',
-  'ประกาศซ้ำกับรายการที่มีอยู่แล้วในระบบ',
-  'ข้อความประกาศมีเนื้อหาไม่เหมาะสม',
-  'อื่นๆ'
+// ชุดเทมเพลตเหตุผลตีกลับมาตรฐานสากล
+const REJECT_PRESETS = [
+  'รูปถ่ายไม่ชัดเจน มีลายน้ำจากเว็บไซต์อื่น หรือมีเบอร์โทรบดบังภาพหลัก',
+  'ราคาไม่สมเหตุสมผล หรือระบุหลักตัวเลขผิดพลาด (เช่น ใส่หลักพันแทนหลักล้าน)',
+  'ตำแหน่งพิกัดแผนที่ไม่ตรงกับที่ตั้งจริงของอสังหาริมทรัพย์',
+  'เอกสารสิทธิ์หรือโฉนดไม่ตรงกับชื่อผู้ลงประกาศ หรือข้อมูลไม่ครบถ้วน',
+  'คำบรรยายมีข้อความสแปม โฆษณาซ้ำซ้อน หรือละเมิดข้อกำหนดการใช้งาน',
+  'ข้อมูลรายละเอียดทรัพย์ เช่น ขนาดพื้นที่/ห้องนอน/ห้องน้ำ ไม่ตรงกับความเป็นจริง',
 ];
 
 export default function AdminModerationPage() {
   // ------------------------------------------------------------------------------
-  // 1. STATE MANAGEMENT (สภาวะข้อมูลในระบบ)
+  // 1. STATE MANAGEMENT
   // ------------------------------------------------------------------------------
-  
-  // สภาวะเก็บรายการประกาศที่ดึงมาจาก API หลังบ้าน
   const [properties, setProperties] = useState<PropertyData[]>([]);
   const [slaSummary, setSlaSummary] = useState<SlaSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Tabs & Primary Filters
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [listingTypeFilter, setListingTypeFilter] = useState<'all' | 'sale' | 'rent'>('all');
   const [sortBySla, setSortBySla] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // ------------------------------------------------------------------------------
-  // 2. API FETCHING & HANDLERS (ฟังก์ชันการเชื่อมต่อ API และจัดการอีเวนต์)
-  // ------------------------------------------------------------------------------
+  // Advanced Filters
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [propertyTypeFilter, setPropertyTypeFilter] = useState('all');
+  const [priceRangeFilter, setPriceRangeFilter] = useState<'all' | 'under_3m' | '3m_10m' | 'over_10m'>('all');
+  const [agentTierFilter, setAgentTierFilter] = useState<'all' | 'pro' | 'basic'>('all');
+  const [provinceFilter, setProvinceFilter] = useState('all');
 
-  /** ฟังก์ชันดึงรายการประกาศจากเซิร์ฟเวอร์หลังบ้านตามสถานะและตัวกรองประเภท */
+  // Quick Preview Drawer State
+  const [previewProperty, setPreviewProperty] = useState<PropertyData | null>(null);
+
+  // Batch Actions State
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBatchApproving, setIsBatchApproving] = useState(false);
+
+  // Reject Modal State
+  const [rejectingProperty, setRejectingProperty] = useState<PropertyData | null>(null);
+  const [rejectReason, setRejectReason] = useState(REJECT_PRESETS[0]);
+  const [submittingReject, setSubmittingReject] = useState(false);
+
+  // ------------------------------------------------------------------------------
+  // 2. DATA FETCHING
+  // ------------------------------------------------------------------------------
   const fetchProperties = (status: string, listingType: string) => {
     const query = listingType === 'all' ? '' : `&listingType=${listingType}`;
     fetch(`/api/admin/moderation?status=${status}${query}`)
@@ -124,7 +115,6 @@ export default function AdminModerationPage() {
       });
   };
 
-  // เรียกดึงข้อมูลใหม่ทุกครั้งที่ผู้ใช้เปลี่ยนแท็บสถานะหรือเปลี่ยนตัวกรองประเภท
   useEffect(() => {
     fetchProperties(activeTab, listingTypeFilter);
   }, [activeTab, listingTypeFilter]);
@@ -134,8 +124,28 @@ export default function AdminModerationPage() {
     fetchProperties(activeTab, listingTypeFilter);
   };
 
+  // Distinct Lists for Dynamic Filter Dropdowns
+  const distinctPropertyTypes = useMemo(() => {
+    const set = new Set<string>();
+    properties.forEach(p => {
+      if (p.type) set.add(p.type);
+    });
+    return Array.from(set);
+  }, [properties]);
+
+  const distinctProvinces = useMemo(() => {
+    const set = new Set<string>();
+    properties.forEach(p => {
+      if (p.province) set.add(p.province);
+    });
+    return Array.from(set);
+  }, [properties]);
+
+  // Filtered Properties Pipeline
   const displayedProperties = useMemo(() => {
     let list = properties;
+
+    // Search query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       list = list.filter(p =>
@@ -145,27 +155,185 @@ export default function AdminModerationPage() {
         (p.id || '').toLowerCase().includes(q)
       );
     }
+
+    // Property Type Filter
+    if (propertyTypeFilter !== 'all') {
+      list = list.filter(p => p.type === propertyTypeFilter);
+    }
+
+    // Price Range Filter
+    if (priceRangeFilter !== 'all') {
+      list = list.filter(p => {
+        const price = Number(p.price) || 0;
+        if (priceRangeFilter === 'under_3m') return price < 3000000;
+        if (priceRangeFilter === '3m_10m') return price >= 3000000 && price <= 10000000;
+        if (priceRangeFilter === 'over_10m') return price > 10000000;
+        return true;
+      });
+    }
+
+    // Agent Tier Filter
+    if (agentTierFilter !== 'all') {
+      list = list.filter(p => {
+        if (agentTierFilter === 'pro') return p.agentPlan === 'pro';
+        if (agentTierFilter === 'basic') return p.agentPlan !== 'pro';
+        return true;
+      });
+    }
+
+    // Province Filter
+    if (provinceFilter !== 'all') {
+      list = list.filter(p => p.province === provinceFilter);
+    }
+
+    // Sort by SLA
     return sortBySla
       ? [...list].sort((a, b) => a.slaMinutesLeft - b.slaMinutesLeft)
       : list;
-  }, [properties, searchQuery, sortBySla]);
+  }, [
+    properties,
+    searchQuery,
+    propertyTypeFilter,
+    priceRangeFilter,
+    agentTierFilter,
+    provinceFilter,
+    sortBySla
+  ]);
 
+  const resetAllFilters = () => {
+    setSearchQuery('');
+    setPropertyTypeFilter('all');
+    setPriceRangeFilter('all');
+    setAgentTierFilter('all');
+    setProvinceFilter('all');
+    setListingTypeFilter('all');
+    setSortBySla(false);
+  };
+
+  const hasActiveAdvancedFilters =
+    propertyTypeFilter !== 'all' ||
+    priceRangeFilter !== 'all' ||
+    agentTierFilter !== 'all' ||
+    provinceFilter !== 'all';
+
+  // ------------------------------------------------------------------------------
+  // 3. ACTION HANDLERS
+  // ------------------------------------------------------------------------------
+  const updateStatus = async (id: string, newStatus: string, reason?: string) => {
+    try {
+      const res = await fetch('/api/properties', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: newStatus, ...(reason ? { reason } : {}) })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("อัปเดตสถานะประกาศเรียบร้อยแล้ว");
+        fetchProperties(activeTab, listingTypeFilter);
+        if (previewProperty?.id === id) setPreviewProperty(null);
+      } else {
+        toast.error("เกิดข้อผิดพลาด: " + data.error);
+      }
+    } catch (err) {
+      console.error("เกิดข้อผิดพลาดในการอัปเดตสถานะ:", err);
+      toast.error("เกิดข้อผิดพลาดในการอัปเดตสถานะ");
+    }
+  };
+
+  const handleApprove = async (id: string) => {
+    if (!confirm('ยืนยันการอนุมัติประกาศนี้เพื่อเปิดแสดงผลบนเว็บไซต์?')) return;
+    await updateStatus(id, 'approved');
+  };
+
+  // Batch Selection Logic
+  const handleToggleSelect = (id: string) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setSelectedIds(next);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === displayedProperties.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(displayedProperties.map(p => p.id)));
+    }
+  };
+
+  const handleBatchApprove = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    if (!confirm(`ยืนยันการอนุมัติประกาศทั้งหมด ${ids.length} รายการที่เลือกไว้พร้อมกัน?`)) return;
+
+    setIsBatchApproving(true);
+    try {
+      const res = await fetch('/api/properties', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids, status: 'approved' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`อนุมัติสำเร็จ ${data.count || ids.length} รายการเรียบร้อยแล้ว`);
+        setSelectedIds(new Set());
+        fetchProperties(activeTab, listingTypeFilter);
+      } else {
+        toast.error("เกิดข้อผิดพลาด: " + (data.error || "ไม่สามารถอนุมัติได้"));
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล");
+    } finally {
+      setIsBatchApproving(false);
+    }
+  };
+
+  // Reject Modal Handlers
+  const openRejectModal = (property: PropertyData) => {
+    setRejectingProperty(property);
+    setRejectReason(REJECT_PRESETS[0]);
+  };
+
+  const closeRejectModal = () => {
+    setRejectingProperty(null);
+  };
+
+  const confirmReject = async () => {
+    if (!rejectingProperty) return;
+    if (!rejectReason.trim()) {
+      toast.warning('กรุณาระบุเหตุผลการปฏิเสธประกาศ');
+      return;
+    }
+
+    setSubmittingReject(true);
+    await updateStatus(rejectingProperty.id, 'rejected', rejectReason.trim());
+    setSubmittingReject(false);
+    closeRejectModal();
+  };
+
+  // CSV Export
   const handleExportCSV = () => {
     if (displayedProperties.length === 0) {
       toast.error('ไม่มีข้อมูลสำหรับส่งออก');
       return;
     }
 
-    const headers = ['รหัสประกาศ', 'หัวข้อ', 'ราคา', 'ประเภทธุรกรรม', 'ประเภทอสังหาฯ', 'ทำเล', 'นายหน้า', 'แพ็กเกจ', 'เวลาที่ลงประกาศ'];
+    const headers = ['รหัสประกาศ', 'หัวข้อ', 'ราคา', 'ประเภทธุรกรรม', 'ประเภทอสังหาฯ', 'จังหวัด', 'อำเภอ', 'ทำเล', 'นายหน้า', 'แพ็กเกจ', 'เวลาที่ลงประกาศ'];
     const rows = displayedProperties.map(p => [
       `"${p.id}"`,
-      `"${(p.title || '').replace(/"/g, '""')}"`,
-      `"${p.price}"`,
-      `"${p.listingType}"`,
+      `"${p.title.replace(/"/g, '""')}"`,
+      p.price,
+      p.listingType === 'rent' ? 'เช่า' : 'ขาย',
       `"${p.type}"`,
-      `"${p.location}"`,
+      `"${p.province || ''}"`,
+      `"${p.amphure || ''}"`,
+      `"${p.location.replace(/"/g, '""')}"`,
       `"${p.agentName}"`,
-      `"${p.agentPlan}"`,
+      p.agentPlan === 'pro' ? 'Verified PRO' : 'Basic',
       `"${new Date(p.createdAt).toLocaleString('th-TH')}"`
     ]);
 
@@ -181,34 +349,6 @@ export default function AdminModerationPage() {
     toast.success('ดาวน์โหลดไฟล์ CSV เรียบร้อยแล้ว');
   };
 
-  /** ฟังก์ชันยิง API อัปเดตสถานะประกาศ (อนุมัติ หรือ ปฏิเสธพร้อมเหตุผล) */
-  const updateStatus = async (id: string, newStatus: string, reason?: string) => {
-    try {
-      const res = await fetch('/api/properties', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status: newStatus, ...(reason ? { reason } : {}) })
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success("อัปเดตสถานะประกาศเรียบร้อยแล้ว");
-        fetchProperties(activeTab, listingTypeFilter);
-      } else {
-        toast.error("เกิดข้อผิดพลาด: " + data.error);
-      }
-    } catch (err) {
-      console.error("เกิดข้อผิดพลาดในการอัปเดตสถานะ:", err);
-      toast.error("เกิดข้อผิดพลาดในการอัปเดตสถานะ");
-    }
-  };
-
-  /** ฟังก์ชันกดอนุมัติประกาศ (Approve) */
-  const handleApprove = async (id: string) => {
-    if (!confirm('ยืนยันการอนุมัติประกาศนี้เพื่อขึ้นแสดงผลบนเว็บไซต์?')) return;
-    await updateStatus(id, 'approved');
-  };
-
-  // สีป้าย SLA ตามความด่วน: ปกติ = เขียว, ใกล้ครบ = เหลือง, ด่วน/เกินกำหนด = แดง
   const slaBadgeClass = (level: PropertyData['slaLevel']) => {
     if (level === 'urgent' || level === 'overdue') return 'bg-red-50 text-red-600 border-red-100';
     if (level === 'warning') return 'bg-amber-50 text-amber-600 border-amber-100';
@@ -216,428 +356,678 @@ export default function AdminModerationPage() {
   };
 
   // ------------------------------------------------------------------------------
-  // 3. REJECT MODAL STATE & LOGIC (ระบบป๊อบอัปปฏิเสธประกาศพร้อมระบุเหตุผล)
-  // ------------------------------------------------------------------------------
-  
-  // สภาวะเก็บข้อมูลประกาศที่กำลังถูกเลือกเพื่อปฏิเสธ (ถ้าเป็น null คือปิด Modal)
-  const [rejectingProperty, setRejectingProperty] = useState<PropertyData | null>(null);
-  // สภาวะเก็บตัวเลือกเหตุผลในการปฏิเสธที่แอดมินเลือก
-  const [rejectReasonOption, setRejectReasonOption] = useState<string>(REJECT_REASONS[0]);
-  // สภาวะเก็บข้อความเหตุผลเพิ่มเติมกรณีเลือก 'อื่นๆ'
-  const [customRejectReason, setCustomRejectReason] = useState<string>('');
-  // สภาวะกำลังกดส่งการปฏิเสธ
-  const [submittingReject, setSubmittingReject] = useState(false);
-
-  /** เปิด Modal ปฏิเสธประกาศ */
-  const openRejectModal = (property: PropertyData) => {
-    setRejectingProperty(property);
-    setRejectReasonOption(REJECT_REASONS[0]);
-    setCustomRejectReason('');
-  };
-
-  /** ปิด Modal ปฏิเสธประกาศ */
-  const closeRejectModal = () => {
-    setRejectingProperty(null);
-    setCustomRejectReason('');
-  };
-
-  /** ยืนยันการปฏิเสธประกาศและส่งเหตุผลไปยังหลังบ้าน */
-  const confirmReject = async () => {
-    if (!rejectingProperty) return;
-    const finalReason = rejectReasonOption === 'อื่นๆ' ? customRejectReason.trim() : rejectReasonOption;
-    if (rejectReasonOption === 'อื่นๆ' && !finalReason) {
-      toast.warning('กรุณาระบุเหตุผลการปฏิเสธในช่องข้อความ');
-      return;
-    }
-
-    setSubmittingReject(true);
-    await updateStatus(rejectingProperty.id, 'rejected', finalReason);
-    setSubmittingReject(false);
-    closeRejectModal();
-  };
-
-  // ------------------------------------------------------------------------------
-  // 4. JSX STRUCTURE (โครงสร้างการแสดงผล UI)
+  // 4. JSX RENDERING
   // ------------------------------------------------------------------------------
   return (
     <>
-        {/* Header แถบด้านบนแสดงชื่อหน้าและช่องค้นหาด่วน */}
-        <header className="min-h-16 py-3 bg-white border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 shrink-0 relative z-0">
-          <div>
-            <h2 className="text-lg font-extrabold text-slate-800">คิวตรวจสอบประกาศ (Listing Moderation)</h2>
-            <p className="text-xs text-slate-500 font-medium">
-              ตรวจสอบข้อมูล รูปภาพ และความถูกต้องก่อนอนุมัติประกาศขึ้นหน้าเว็บ
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="relative w-full sm:w-64">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="ค้นหาชื่อประกาศ, ทำเล, นายหน้า..."
-                className="w-full pl-9 pr-8 py-2 bg-slate-100 border border-transparent rounded-lg focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium text-slate-700 text-xs shadow-sm"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-            <button
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition border border-slate-200 cursor-pointer shrink-0"
-              title="รีเฟรชข้อมูล"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">รีเฟรช</span>
-            </button>
-            <button
-              onClick={handleExportCSV}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 rounded-lg transition border border-slate-200 shadow-sm cursor-pointer shrink-0"
-              title="ส่งออกไฟล์ CSV"
-            >
-              <Download className="w-3.5 h-3.5 text-slate-500" />
-              <span className="hidden sm:inline">ส่งออก CSV</span>
-            </button>
-          </div>
-        </header>
+      {/* Top Header */}
+      <header className="min-h-16 py-3 bg-white border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 shrink-0 relative z-0">
+        <div>
+          <h1 className="text-lg font-extrabold text-slate-800">คิวตรวจสอบประกาศ (Listing Moderation)</h1>
+          <p className="text-xs text-slate-500 font-medium">
+            ระบบตรวจสอบความถูกต้อง รูปถ่าย และเอกสารสิทธิ์อสังหาริมทรัพย์ระดับพรีเมียม
+          </p>
+        </div>
 
-        <div className="p-4 sm:p-6 lg:p-8 flex-1 overflow-y-auto">
-          {/* ส่วนที่ 1: แถบเลือกสถานะ (Tabs) และตัวกรองประเภทการขาย/เช่า */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-            {/* แท็บสลับสถานะ: รอตรวจสอบ / อนุมัติแล้ว / ถูกระงับหรือปฏิเสธ */}
-            <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl max-w-full overflow-x-auto no-scrollbar w-fit border border-slate-200">
-              <button 
-                onClick={() => { setActiveTab('pending'); setLoading(true); }} 
-                className={`px-5 py-2 rounded-lg font-bold transition-all text-xs flex items-center gap-2 whitespace-nowrap ${activeTab === 'pending' ? 'bg-white text-slate-800 shadow-sm border border-slate-200/60' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
-              >
-                รอตรวจสอบ {activeTab === 'pending' && <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-md text-[10px]">ใหม่</span>}
-              </button>
-              <button 
-                onClick={() => { setActiveTab('approved'); setLoading(true); }} 
-                className={`px-5 py-2 rounded-lg font-bold transition-all text-xs whitespace-nowrap ${activeTab === 'approved' ? 'bg-white text-slate-800 shadow-sm border border-slate-200/60' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
-              >
-                อนุมัติแล้ว
-              </button>
-              <button 
-                onClick={() => { setActiveTab('rejected'); setLoading(true); }} 
-                className={`px-5 py-2 rounded-lg font-bold transition-all text-xs whitespace-nowrap ${activeTab === 'rejected' ? 'bg-white text-slate-800 shadow-sm border border-slate-200/60' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
-              >
-                ถูกระงับ/ปฏิเสธ
-              </button>
-            </div>
-            
-            {/* ตัวเลือกกรองเฉพาะขาย/เช่า และปุ่มจัดเรียง SLA */}
-            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-              <select
-                value={listingTypeFilter}
-                onChange={(e) => { setListingTypeFilter(e.target.value as 'all' | 'sale' | 'rent'); setLoading(true); }}
-                className="bg-white border border-slate-200 text-slate-600 font-bold py-2 px-3 sm:px-4 rounded-lg text-xs hover:bg-slate-50 transition shadow-sm cursor-pointer outline-none"
-              >
-                <option value="all">ขาย/เช่าทั้งหมด</option>
-                <option value="sale">เฉพาะขาย</option>
-                <option value="rent">เฉพาะเช่า</option>
-              </select>
+        <div className="flex items-center gap-2">
+          {/* Quick Search Input */}
+          <div className="relative w-full sm:w-64">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="ค้นหาชื่อประกาศ, ทำเล, นายหน้า..."
+              className="w-full pl-9 pr-8 py-2 bg-slate-100 border border-transparent rounded-lg focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium text-slate-700 text-xs shadow-xs"
+            />
+            {searchQuery && (
               <button
-                onClick={() => setSortBySla((prev) => !prev)}
-                className={`border font-bold py-2 px-3 sm:px-4 rounded-lg text-xs transition shadow-sm ${sortBySla ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
               >
-                เรียงตาม SLA (ด่วนสุด)
+                <X className="w-3.5 h-3.5" />
               </button>
-            </div>
+            )}
           </div>
 
-          {/* 🔑 KEYWORD: การ์ดสรุปผล SLA ย้อนหลัง
-              ตอบคำถาม "ทีมตรวจทันกำหนดจริงไหม" ด้วยตัวเลขจากข้อมูลจริง
-              ไม่ใช่แค่บอกว่ามีระบบ SLA — โชว์เฉพาะแท็บที่ตรวจแล้วและมีข้อมูลพอ */}
-          {activeTab !== 'pending' && slaSummary && slaSummary.reviewedCount > 0 && (
-            <div className="mb-5 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-wrap items-center gap-x-8 gap-y-3">
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">ตรวจแล้วในชุดนี้</p>
-                <p className="text-xl font-black text-slate-900">{slaSummary.reviewedCount} ประกาศ</p>
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">เวลาเฉลี่ยที่ใช้ตรวจ</p>
-                <p className="text-xl font-black text-blue-600">{slaSummary.averageLabel}</p>
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">ตรวจทันกำหนด</p>
-                <p className={`text-xl font-black ${slaSummary.withinSlaPercent >= 90 ? 'text-emerald-600' : slaSummary.withinSlaPercent >= 70 ? 'text-amber-600' : 'text-red-600'}`}>
-                  {slaSummary.withinSlaPercent}%
-                  <span className="text-xs font-bold text-slate-400 ml-1.5">({slaSummary.withinSlaCount}/{slaSummary.reviewedCount})</span>
-                </p>
-              </div>
-              <p className="text-[10px] font-bold text-slate-400 ml-auto max-w-xs leading-relaxed">
-                นับเฉพาะประกาศที่มีบันทึกเวลาตรวจ ประกาศเก่าก่อนเริ่มเก็บข้อมูลจะไม่ถูกนำมาเฉลี่ย
-              </p>
-            </div>
-          )}
+          {/* Toggle Advanced Filters Button */}
+          <button
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-lg transition border cursor-pointer shrink-0 ${
+              showAdvancedFilters || hasActiveAdvancedFilters
+                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                : 'text-slate-700 bg-white hover:bg-slate-50 border-slate-200'
+            }`}
+            title="ตัวกรองขั้นสูง"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">ตัวกรอง</span>
+            {hasActiveAdvancedFilters && (
+              <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+            )}
+          </button>
 
-          {/* ส่วนที่ 2: แสดงผลรายการประกาศตามสถานะ */}
-          {loading ? (
-             // แสดงไอคอนกำลังหมุนเมื่อดึงข้อมูล
-             <div className="flex flex-col items-center justify-center py-20">
-               <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
-               <p className="text-slate-500 font-bold">กำลังโหลดคิวประกาศ...</p>
-             </div>
-          ) : displayedProperties.length === 0 ? (
-            // แสดงกล่องว่างเปล่ากรณีไม่มีข้อมูลในสถานะนั้นๆ
-            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm">
-              <Home className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-              <h3 className="text-lg font-bold text-slate-700 mb-1">ไม่พบรายการประกาศ</h3>
-              <p className="text-slate-500 font-medium">ไม่มีประกาศในสถานะที่คุณเลือก</p>
-            </div>
-          ) : (
-            // แสดงรายการประกาศในคิวแบบการ์ด
-            <div className="space-y-5">
-              {displayedProperties.map((property) => (
-                <div key={property.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow">
-                  {/* แถบสีขอบซ้ายแสดงสถานะ (ส้ม = รอตรวจ, เขียว = อนุมัติ, เทา = ปฏิเสธ) */}
-                  <div className="flex">
-                    <div className={`w-1 shrink-0 ${activeTab === 'pending' ? 'bg-amber-500' : activeTab === 'approved' ? 'bg-emerald-500' : 'bg-slate-400'}`}></div>
-                    
-                    <div className="flex-1 p-5 flex flex-col xl:flex-row gap-6">
-                      
-                      {/* ฝั่งซ้าย: รูปภาพหน้าปกและรูปภาพประกอบย่อ */}
-                      <div className="xl:w-[280px] shrink-0 space-y-2">
-                        {/* รูปหลัก (Main Image) */}
-                        <div className="relative h-44 rounded-xl overflow-hidden bg-slate-100 group border border-slate-100 flex items-center justify-center">
-                           {property.image ? (
-                             <Image src={property.image} alt={property.title} width={280} height={176} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                           ) : (
-                             <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-100 font-bold text-xs gap-1">
-                               <Camera className="w-8 h-8 text-slate-300 mb-1" />
-                               <span>ไม่มีรูปภาพแนบมา</span>
-                             </div>
-                           )}
-                           {property.image && (
-                             <div className="absolute top-2 right-2 bg-slate-900/80 backdrop-blur-sm text-amber-400 text-[9px] font-black px-2 py-1 rounded-md z-10 flex items-center gap-1">
-                               <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                               <span>มีรูปภาพแนบ</span>
-                             </div>
-                           )}
-                        </div>
-                        {/* รูปประกอบย่อเพิ่มเติม 3 รูปแรก */}
-                        {property.images && property.images.length > 1 && (
-                          <div className="grid grid-cols-3 gap-2">
-                            {property.images.slice(1, 3).map((subImg, idx) => (
-                              <div key={idx} className="h-16 rounded-lg bg-slate-100 overflow-hidden border border-slate-100">
-                                <Image src={subImg} alt={`${property.title}-${idx}`} width={90} height={64} className="w-full h-full object-cover opacity-80" />
-                              </div>
-                            ))}
-                            {property.imageCount > 3 ? (
-                              <div className="h-16 rounded-lg bg-slate-100 flex items-center justify-center font-bold text-slate-500 text-xs shadow-inner border border-slate-200">
-                                +{property.imageCount - 3} รูป
-                              </div>
-                            ) : property.images.length === 2 ? (
-                              <div className="h-16 rounded-lg bg-slate-50 border border-dashed border-slate-200" />
-                            ) : null}
-                          </div>
-                        )}
-                      </div>
+          {/* Refresh Button */}
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition border border-slate-200 cursor-pointer shrink-0 disabled:opacity-50"
+            title="รีเฟรชข้อมูล"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">รีเฟรช</span>
+          </button>
 
-                      {/* ฝั่งขวา: รายละเอียดข้อมูลอสังหาฯ และปุ่มดำเนินการ */}
-                      <div className="flex-1 flex flex-col">
-                        
-                        {/* 1. แถบบนแสดงประเภทอสังหาฯ, ป้ายขาย/เช่า, รหัส ID และ SLA */}
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex items-center gap-2 mb-2">
-                             {/* ป้ายประเภทอสังหาฯ (เช่น HOUSE, CONDO) */}
-                             <span className="bg-blue-50 text-blue-600 text-[10px] font-black px-2.5 py-1 rounded-md border border-blue-100">{property.type || 'HOUSE'}</span>
-                             {/* ป้ายประเภทการขาย/เช่า (ขาย = สีเขียว, เช่า = สีม่วง) */}
-                             <span className={`text-[10px] font-black px-2.5 py-1 rounded-md border ${property.listingType === 'rent' ? 'bg-violet-50 text-violet-600 border-violet-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
-                               {property.listingType === 'rent' ? 'ให้เช่า (Rent)' : 'ขาย (Sale)'}
-                             </span>
-                          </div>
-                          <div className="flex flex-col items-end gap-1.5">
-                             {/* รหัสประจำประกาศ (ID ย่อ 8 หลักแรก) */}
-                             <span className="text-[10px] text-slate-400 font-bold uppercase">ID: {property.id.slice(0, 8)}</span>
-                             {/* ตัวแจ้งเตือนเวลา SLA สำหรับคิวรออนุมัติ */}
-                             {activeTab === 'pending' && (
-                               <span className={`text-[10px] font-black px-2 py-1 rounded-md border flex items-center gap-1 ${slaBadgeClass(property.slaLevel)}`}>
-                                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                 SLA: {property.slaLabel}
-                               </span>
-                             )}
+          {/* CSV Export Button */}
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 rounded-lg transition border border-slate-200 shadow-xs cursor-pointer shrink-0"
+            title="ส่งออกไฟล์ CSV"
+          >
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span className="hidden sm:inline">ส่งออก CSV</span>
+          </button>
+        </div>
+      </header>
 
-                             {/* 🔑 KEYWORD: ร่องรอยการตรวจสอบ — ใครตรวจ ใช้เวลาเท่าไหร่ ทันกำหนดไหม
-                                 โชว์เฉพาะแท็บที่ตรวจแล้ว ประกาศเก่าก่อนมีฟีเจอร์นี้จะไม่มีข้อมูล จึงต้องเช็ค null */}
-                             {activeTab !== 'pending' && property.reviewDurationLabel && (
-                               <span className={`text-[10px] font-black px-2 py-1 rounded-md border flex items-center gap-1 ${
-                                 property.reviewWithinSla
-                                   ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                                   : 'bg-red-50 text-red-600 border-red-100'
-                               }`}>
-                                 <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                 ใช้เวลา {property.reviewDurationLabel}
-                                 {property.reviewWithinSla ? ' · ทันกำหนด' : ' · เกินกำหนด'}
-                               </span>
-                             )}
-                             {activeTab !== 'pending' && property.reviewerName && property.reviewedAt && (
-                               <span className="text-[10px] font-bold text-slate-400">
-                                 ตรวจโดย {property.reviewerName} · {new Date(property.reviewedAt).toLocaleString('th-TH', { day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                               </span>
-                             )}
-                          </div>
-                        </div>
+      {/* Main Workspace */}
+      <div className="p-4 sm:p-6 lg:p-8 flex-1 overflow-y-auto">
+        {/* Status Tabs and Quick Sorters */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          {/* Status Tabs */}
+          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl max-w-full overflow-x-auto no-scrollbar w-fit border border-slate-200">
+            <button
+              onClick={() => { setActiveTab('pending'); setLoading(true); }}
+              className={`px-5 py-2 rounded-lg font-bold transition-all text-xs flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                activeTab === 'pending'
+                  ? 'bg-white text-slate-800 shadow-xs border border-slate-200/60'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+              }`}
+            >
+              <span>รอตรวจสอบ</span>
+              {activeTab === 'pending' && properties.length > 0 && (
+                <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md text-[10px] font-black">
+                  {properties.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => { setActiveTab('approved'); setLoading(true); }}
+              className={`px-5 py-2 rounded-lg font-bold transition-all text-xs whitespace-nowrap cursor-pointer ${
+                activeTab === 'approved'
+                  ? 'bg-white text-slate-800 shadow-xs border border-slate-200/60'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+              }`}
+            >
+              อนุมัติแล้ว
+            </button>
+            <button
+              onClick={() => { setActiveTab('rejected'); setLoading(true); }}
+              className={`px-5 py-2 rounded-lg font-bold transition-all text-xs whitespace-nowrap cursor-pointer ${
+                activeTab === 'rejected'
+                  ? 'bg-white text-slate-800 shadow-xs border border-slate-200/60'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+              }`}
+            >
+              ถูกระงับ/ปฏิเสธ
+            </button>
+          </div>
 
-                        {/* 2. ชื่อหัวข้อประกาศ และ ราคาแสดงผล */}
-                        <h3 className="text-[16px] font-extrabold text-slate-900 leading-tight mb-2 pr-10">{property.title}</h3>
-                        <p className="text-2xl font-black text-blue-600 mb-4">฿ {Number(property.price).toLocaleString()}</p>
-                        
-                        {/* 3. รายละเอียดสเปกอสังหาฯ (ทำเล, ขนาดพื้นที่, จำนวนห้องนอน/ห้องน้ำ) */}
-                        <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-500 mb-6">
-                           <span className="flex items-center gap-1.5">
-                             <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                             <span>{property.location}</span>
-                           </span>
-                           <span className="flex items-center gap-1.5">
-                             <Square className="w-3.5 h-3.5 text-slate-400" />
-                             <span>{property.area} ตร.ม.</span>
-                           </span>
-                           <span className="flex items-center gap-1.5">
-                             <Bed className="w-3.5 h-3.5 text-slate-400" />
-                             <span>{property.bedrooms} นอน</span>
-                           </span>
-                           <span className="flex items-center gap-1.5">
-                             <Bath className="w-3.5 h-3.5 text-slate-400" />
-                             <span>{property.bathrooms} น้ำ</span>
-                           </span>
-                        </div>
+          {/* Quick Filters */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <select
+              value={listingTypeFilter}
+              onChange={(e) => { setListingTypeFilter(e.target.value as 'all' | 'sale' | 'rent'); setLoading(true); }}
+              className="bg-white border border-slate-200 text-slate-600 font-bold py-2 px-3 sm:px-4 rounded-lg text-xs hover:bg-slate-50 transition shadow-xs cursor-pointer outline-none"
+            >
+              <option value="all">ขาย/เช่าทั้งหมด</option>
+              <option value="sale">เฉพาะขาย</option>
+              <option value="rent">เฉพาะเช่า</option>
+            </select>
 
-                        {/* 4. ข้อมูลนายหน้าผู้ลงประกาศ และ ปุ่มดำเนินการ (อนุมัติ / ปฏิเสธ / พรีวิว) */}
-                        <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-4">
-                           {/* ข้อมูลโปรไฟล์นายหน้าผู้ส่งประกาศ */}
-                           <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-black border border-blue-200">
-                                {property.agentName[0]}
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-1.5">
-                                   <p className="font-extrabold text-slate-800 text-sm">{property.agentName}</p>
-                                   {property.agentPlan === 'pro' && (
-                                      <span className="bg-amber-100 text-amber-700 text-[8px] font-black px-1.5 py-0.5 rounded uppercase">PRO Agent</span>
-                                   )}
-                                </div>
-                                <p className="text-[10px] text-slate-400 font-medium">ส่งเมื่อ {new Date(property.createdAt).toLocaleString('th-TH')}</p>
-                              </div>
-                           </div>
-
-                           {/* กลุ่มปุ่มกดดำเนินการสำหรับแอดมิน */}
-                           <div className="flex items-center gap-3">
-                              {/* ปุ่มพรีวิวดูหน้าประกาศจริง */}
-                              <button className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5">
-                                <Eye className="w-3.5 h-3.5 text-slate-600" />
-                                <span>ดูพรีวิว</span>
-                              </button>
-                              
-                              {/* ปุ่มอนุมัติ / ปฏิเสธ (แสดงเฉพาะในแท็บ "รอตรวจสอบ") */}
-                              {activeTab === 'pending' && (
-                                <>
-                                  <button onClick={() => openRejectModal(property)} className="px-6 py-2.5 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-600 font-bold rounded-xl transition-all shadow-sm flex items-center gap-2">
-                                    <X className="w-3.5 h-3.5 text-slate-500" />
-                                    <span>ปฏิเสธการลง</span>
-                                  </button>
-                                  <button onClick={() => handleApprove(property.id)} className="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl transition-all shadow-lg shadow-blue-600/30 active:scale-95 flex items-center gap-2">
-                                    <Check className="w-4 h-4 text-white stroke-[2.5]" />
-                                    <span>อนุมัติและเผยแพร่</span>
-                                  </button>
-                                </>
-                              )}
-                           </div>
-                        </div>
-
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+            <button
+              onClick={() => setSortBySla((prev) => !prev)}
+              className={`border font-bold py-2 px-3 sm:px-4 rounded-lg text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5 ${
+                sortBySla
+                  ? 'bg-blue-600 border-blue-600 text-white'
+                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>เรียงตาม SLA (ด่วนสุด)</span>
+            </button>
+          </div>
         </div>
 
         {/* ------------------------------------------------------------------------------
-         * 5. REJECT REASON POP-UP MODAL (ป๊อบอัปเลือกเหตุผลปฏิเสธประกาศ)
+         * ADVANCED FILTERS PANEL
          * ------------------------------------------------------------------------------ */}
-        {rejectingProperty && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 border border-slate-100">
-              {/* ส่วนหัวของ Modal ปฏิเสธ */}
-              <div className="flex items-center justify-between border-b pb-3">
-                <h3 className="font-extrabold text-red-600 text-base flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-red-600" />
-                  <span>ยืนยันการปฏิเสธประกาศ</span>
-                </h3>
-                <button onClick={closeRejectModal} className="text-slate-400 hover:text-slate-600 font-bold p-1 cursor-pointer">
-                  <X className="w-5 h-5" />
+        {showAdvancedFilters && (
+          <div className="mb-6 p-4 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-3 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <span className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Filter className="w-3.5 h-3.5 text-blue-600" />
+                <span>ตัวกรองละเอียด (Advanced Filters)</span>
+              </span>
+              {hasActiveAdvancedFilters && (
+                <button
+                  onClick={resetAllFilters}
+                  className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 cursor-pointer"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>ล้างตัวกรองทั้งหมด</span>
                 </button>
-              </div>
+              )}
+            </div>
 
-              {/* สรุปชื่อประกาศที่กำลังถูกระงับ/ปฏิเสธ */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* 1. Property Type */}
               <div>
-                <p className="text-xs font-bold text-slate-500">ประกาศที่จะปฏิเสธ:</p>
-                <p className="text-sm font-extrabold text-slate-900 line-clamp-1">{rejectingProperty.title}</p>
-                <p className="text-xs font-medium text-slate-500 mt-0.5">นายหน้า: {rejectingProperty.agentName}</p>
+                <label className="block text-[11px] font-bold text-slate-500 mb-1">ประเภทอสังหาฯ</label>
+                <select
+                  value={propertyTypeFilter}
+                  onChange={(e) => setPropertyTypeFilter(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 font-semibold py-1.5 px-3 rounded-lg text-xs focus:bg-white focus:outline-none focus:border-blue-500"
+                >
+                  <option value="all">ทุกประเภท</option>
+                  {distinctPropertyTypes.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
               </div>
 
-              {/* รายการตัวเลือกเหตุผลการปฏิเสธ (Radio Options) */}
-              <div className="space-y-2">
-                <label className="block text-xs font-extrabold text-slate-700">กรุณาเลือกเหตุผลในการปฏิเสธ:</label>
-
-                {REJECT_REASONS.map((reasonOpt, idx) => (
-                  <label key={idx} className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white transition cursor-pointer text-xs font-bold text-slate-700">
-                    <input
-                      type="radio"
-                      name="rejectReasonOption"
-                      value={reasonOpt}
-                      checked={rejectReasonOption === reasonOpt}
-                      onChange={(e) => setRejectReasonOption(e.target.value)}
-                      className="accent-red-600"
-                    />
-                    <span>{reasonOpt}</span>
-                  </label>
-                ))}
-
-                {/* ช่องกรอกข้อความเหตุผลเพิ่มเติมกรณีเลือก "อื่นๆ" */}
-                {rejectReasonOption === 'อื่นๆ' && (
-                  <textarea
-                    rows={2}
-                    placeholder="พิมพ์ระบุเหตุผลเพิ่มเติม..."
-                    value={customRejectReason}
-                    onChange={(e) => setCustomRejectReason(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-red-500 mt-2"
-                  />
-                )}
+              {/* 2. Price Range */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 mb-1">ช่วงราคา</label>
+                <select
+                  value={priceRangeFilter}
+                  onChange={(e) => setPriceRangeFilter(e.target.value as 'all' | 'under_3m' | '3m_10m' | 'over_10m')}
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 font-semibold py-1.5 px-3 rounded-lg text-xs focus:bg-white focus:outline-none focus:border-blue-500"
+                >
+                  <option value="all">ทุกช่วงราคา</option>
+                  <option value="under_3m">ต่ำกว่า 3,000,000 บาท</option>
+                  <option value="3m_10m">3,000,000 – 10,000,000 บาท</option>
+                  <option value="over_10m">มากกว่า 10,000,000 บาท</option>
+                </select>
               </div>
 
-              {/* ปุ่มกดย้อนกลับ และ ปุ่มยืนยันปฏิเสธ */}
-              <div className="flex items-center justify-end gap-2 border-t pt-3">
-                <button
-                  type="button"
-                  onClick={closeRejectModal}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs cursor-pointer"
+              {/* 3. Agent Tier */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 mb-1">สถานะนายหน้า</label>
+                <select
+                  value={agentTierFilter}
+                  onChange={(e) => setAgentTierFilter(e.target.value as 'all' | 'pro' | 'basic')}
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 font-semibold py-1.5 px-3 rounded-lg text-xs focus:bg-white focus:outline-none focus:border-blue-500"
                 >
-                  ย้อนกลับ
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmReject}
-                  disabled={submittingReject}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs cursor-pointer shadow disabled:opacity-50"
+                  <option value="all">นายหน้าทั้งหมด</option>
+                  <option value="pro">เฉพาะ Verified PRO</option>
+                  <option value="basic">นายหน้าทั่วไป (Basic)</option>
+                </select>
+              </div>
+
+              {/* 4. Province */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-500 mb-1">จังหวัด / ทำเล</label>
+                <select
+                  value={provinceFilter}
+                  onChange={(e) => setProvinceFilter(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-700 font-semibold py-1.5 px-3 rounded-lg text-xs focus:bg-white focus:outline-none focus:border-blue-500"
                 >
-                  {submittingReject ? 'กำลังปฏิเสธ...' : 'ยืนยันปฏิเสธ'}
-                </button>
+                  <option value="all">ทุกจังหวัด</option>
+                  {distinctProvinces.map(p => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
         )}
+
+        {/* SLA Summary Performance Card */}
+        {activeTab !== 'pending' && slaSummary && slaSummary.reviewedCount > 0 && (
+          <div className="mb-5 bg-white rounded-2xl border border-slate-200 shadow-xs p-4 flex flex-wrap items-center gap-x-8 gap-y-3">
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">ตรวจแล้วในชุดนี้</p>
+              <p className="text-xl font-black text-slate-900">{slaSummary.reviewedCount} ประกาศ</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">เวลาเฉลี่ยที่ใช้ตรวจ</p>
+              <p className="text-xl font-black text-blue-600">{slaSummary.averageLabel}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">ตรวจทันกำหนด</p>
+              <p className={`text-xl font-black ${slaSummary.withinSlaPercent >= 90 ? 'text-emerald-600' : slaSummary.withinSlaPercent >= 70 ? 'text-amber-600' : 'text-red-600'}`}>
+                {slaSummary.withinSlaPercent}%
+                <span className="text-xs font-bold text-slate-400 ml-1.5">({slaSummary.withinSlaCount}/{slaSummary.reviewedCount})</span>
+              </p>
+            </div>
+            <p className="text-[10px] font-bold text-slate-400 ml-auto max-w-xs leading-relaxed">
+              คำนวณจากบันทึกเวลาจริงของประกาศที่ผ่านการตรวจสอบแล้ว
+            </p>
+          </div>
+        )}
+
+        {/* Batch Select All Toolbar for Pending tab */}
+        {activeTab === 'pending' && displayedProperties.length > 0 && (
+          <div className="mb-4 px-3 py-2 bg-slate-100/70 border border-slate-200/80 rounded-xl flex items-center justify-between text-xs">
+            <label className="flex items-center gap-2 font-bold text-slate-700 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={selectedIds.size > 0 && selectedIds.size === displayedProperties.length}
+                onChange={handleSelectAll}
+                className="w-4 h-4 rounded text-blue-600 accent-blue-600 cursor-pointer"
+              />
+              <span>เลือกทั้งหมด ({displayedProperties.length} รายการ)</span>
+            </label>
+
+            {selectedIds.size > 0 && (
+              <span className="font-extrabold text-blue-600">
+                เลือกแล้ว {selectedIds.size} รายการ
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Content Listing */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
+            <p className="text-slate-500 font-bold">กำลังโหลดคิวประกาศ...</p>
+          </div>
+        ) : displayedProperties.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-xs">
+            <Home className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+            <h2 className="text-lg font-bold text-slate-700 mb-1">ไม่พบรายการประกาศ</h2>
+            <p className="text-slate-500 font-medium text-xs">ไม่มีประกาศที่ตรงกับตัวกรองที่คุณเลือกในขณะนี้</p>
+            {hasActiveAdvancedFilters && (
+              <button
+                onClick={resetAllFilters}
+                className="mt-4 px-4 py-2 bg-blue-50 text-blue-700 font-bold text-xs rounded-xl hover:bg-blue-100 transition cursor-pointer"
+              >
+                ล้างตัวกรองทั้งหมด
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {displayedProperties.map((property) => {
+              const isSelected = selectedIds.has(property.id);
+
+              return (
+                <div
+                  key={property.id}
+                  className={`bg-white rounded-2xl border shadow-xs overflow-hidden flex flex-col hover:shadow-md transition-all ${
+                    isSelected ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-slate-200'
+                  }`}
+                >
+                  <div className="flex">
+                    {/* Left Accent Bar */}
+                    <div
+                      className={`w-1.5 shrink-0 ${
+                        activeTab === 'pending'
+                          ? property.slaUrgent
+                            ? 'bg-red-500'
+                            : 'bg-amber-500'
+                          : activeTab === 'approved'
+                          ? 'bg-emerald-500'
+                          : 'bg-slate-400'
+                      }`}
+                    />
+
+                    <div className="flex-1 p-5 flex flex-col xl:flex-row gap-5">
+                      {/* Left: Checkbox + Photo Preview */}
+                      <div className="xl:w-[260px] shrink-0 space-y-2">
+                        <div className="relative h-44 rounded-xl overflow-hidden bg-slate-100 group border border-slate-200 flex items-center justify-center">
+                          {/* Checkbox (in pending tab) */}
+                          {activeTab === 'pending' && (
+                            <div className="absolute top-2.5 left-2.5 z-20">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => handleToggleSelect(property.id)}
+                                className="w-5 h-5 rounded-md text-blue-600 bg-white/90 border-slate-300 accent-blue-600 cursor-pointer shadow-md"
+                              />
+                            </div>
+                          )}
+
+                          {property.image ? (
+                            <Image
+                              src={property.image}
+                              alt={property.title}
+                              width={260}
+                              height={176}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 cursor-pointer"
+                              onClick={() => setPreviewProperty(property)}
+                            />
+                          ) : (
+                            <div
+                              onClick={() => setPreviewProperty(property)}
+                              className="w-full h-full flex flex-col items-center justify-center text-slate-400 bg-slate-100 font-bold text-xs gap-1 cursor-pointer"
+                            >
+                              <Camera className="w-8 h-8 text-slate-300 mb-1" />
+                              <span>ไม่มีรูปภาพแนบ</span>
+                            </div>
+                          )}
+
+                          {property.imageCount > 0 && (
+                            <button
+                              onClick={() => setPreviewProperty(property)}
+                              className="absolute bottom-2 right-2 bg-slate-950/80 backdrop-blur-xs text-white text-[10px] font-black px-2 py-0.5 rounded-md z-10 flex items-center gap-1 hover:bg-blue-600 transition"
+                            >
+                              <Eye className="w-3 h-3" />
+                              <span>{property.imageCount} รูป</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Sub thumbnails preview */}
+                        {property.images && property.images.length > 1 && (
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {property.images.slice(1, 3).map((subImg, idx) => (
+                              <div
+                                key={idx}
+                                onClick={() => setPreviewProperty(property)}
+                                className="h-14 rounded-lg bg-slate-100 overflow-hidden border border-slate-200 cursor-pointer relative"
+                              >
+                                <Image
+                                  src={subImg}
+                                  alt={`thumb-${idx}`}
+                                  fill
+                                  sizes="80px"
+                                  className="object-cover opacity-80 hover:opacity-100 transition"
+                                />
+                              </div>
+                            ))}
+                            {property.imageCount > 3 && (
+                              <button
+                                onClick={() => setPreviewProperty(property)}
+                                className="h-14 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center font-bold text-slate-600 text-xs border border-slate-200 transition cursor-pointer"
+                              >
+                                +{property.imageCount - 3} รูป
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right: Property Details & Actions */}
+                      <div className="flex-1 flex flex-col justify-between">
+                        <div>
+                          {/* Badges Bar */}
+                          <div className="flex justify-between items-start mb-2 gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="bg-blue-50 text-blue-700 text-[10px] font-black px-2.5 py-0.5 rounded-md border border-blue-100">
+                                {property.type || 'HOUSE'}
+                              </span>
+                              <span
+                                className={`text-[10px] font-black px-2.5 py-0.5 rounded-md border ${
+                                  property.listingType === 'rent'
+                                    ? 'bg-violet-50 text-violet-700 border-violet-100'
+                                    : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                }`}
+                              >
+                                {property.listingType === 'rent' ? 'ให้เช่า (Rent)' : 'ขาย (Sale)'}
+                              </span>
+                              {property.documents && property.documents.length > 0 && (
+                                <span className="bg-amber-50 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-md border border-amber-200 flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3" />
+                                  <span>มีโฉนด/เอกสาร</span>
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex flex-col items-end gap-1">
+                              <span className="text-[10px] text-slate-400 font-mono font-bold uppercase">
+                                ID: {property.id.slice(0, 8)}
+                              </span>
+
+                              {/* SLA Badge in pending */}
+                              {activeTab === 'pending' && (
+                                <span
+                                  className={`text-[10px] font-black px-2 py-0.5 rounded-md border flex items-center gap-1 ${slaBadgeClass(
+                                    property.slaLevel
+                                  )}`}
+                                >
+                                  <Clock className="w-3 h-3" />
+                                  SLA: {property.slaLabel}
+                                </span>
+                              )}
+
+                              {/* Review Audit in approved/rejected */}
+                              {activeTab !== 'pending' && property.reviewerName && (
+                                <span className="text-[10px] font-bold text-slate-400">
+                                  ตรวจโดย {property.reviewerName}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Title & Price */}
+                          <h2
+                            onClick={() => setPreviewProperty(property)}
+                            className="text-base font-extrabold text-slate-900 leading-snug mb-1 hover:text-blue-600 transition cursor-pointer"
+                          >
+                            {property.title}
+                          </h2>
+
+                          <p className="text-xl font-black text-blue-600 mb-3">
+                            ฿ {Number(property.price).toLocaleString()}
+                            {property.listingType === 'rent' && (
+                              <span className="text-xs text-slate-400 font-semibold ml-1">/ เดือน</span>
+                            )}
+                          </p>
+
+                          {/* Specs */}
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-semibold text-slate-500 mb-4">
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3.5 h-3.5 text-rose-500" />
+                              <span className="truncate max-w-xs">{property.location}</span>
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Square className="w-3.5 h-3.5 text-slate-400" />
+                              <span>{property.area} ตร.ม.</span>
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Bed className="w-3.5 h-3.5 text-slate-400" />
+                              <span>{property.bedrooms} นอน</span>
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Bath className="w-3.5 h-3.5 text-slate-400" />
+                              <span>{property.bathrooms} น้ำ</span>
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Footer: Agent profile and Actions */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-100 pt-3 mt-2">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-black text-xs border border-blue-200 shrink-0">
+                              {property.agentName ? property.agentName.charAt(0).toUpperCase() : 'A'}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <p className="font-extrabold text-slate-800 text-xs">{property.agentName}</p>
+                                {property.agentPlan === 'pro' && (
+                                  <span className="bg-amber-100 text-amber-800 text-[9px] font-black px-1.5 py-0.2 rounded uppercase">
+                                    PRO
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-slate-400">
+                                ส่งเมื่อ {new Date(property.createdAt).toLocaleDateString('th-TH')}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {/* Quick Preview Drawer Trigger */}
+                            <button
+                              onClick={() => setPreviewProperty(property)}
+                              className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>ดูพรีวิวแบบละเอียด</span>
+                            </button>
+
+                            {/* Pending Tab Actions */}
+                            {activeTab === 'pending' && (
+                              <>
+                                <button
+                                  onClick={() => openRejectModal(property)}
+                                  className="px-3.5 py-2 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 text-rose-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                  <span>ตีกลับ</span>
+                                </button>
+                                <button
+                                  onClick={() => handleApprove(property.id)}
+                                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>อนุมัติ</span>
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ------------------------------------------------------------------------------
+       * FLOATING BATCH ACTION BAR (ลอยขึ้นมาเมื่อมีการติ๊กเลือก ≥ 1 ประกาศ)
+       * ------------------------------------------------------------------------------ */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white px-6 py-3.5 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-4 animate-in fade-in slide-in-from-bottom duration-200">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="text-xs font-bold text-slate-200">
+              เลือกอยู่ <strong className="text-white text-sm">{selectedIds.size}</strong> รายการ
+            </span>
+          </div>
+
+          <div className="h-5 w-px bg-slate-700" />
+
+          <button
+            onClick={handleBatchApprove}
+            disabled={isBatchApproving}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl transition flex items-center gap-1.5 shadow-md shadow-emerald-600/30 cursor-pointer disabled:opacity-50"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            <span>{isBatchApproving ? 'กำลังอนุมัติ...' : `อนุมัติทั้งหมด (${selectedIds.size})`}</span>
+          </button>
+
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-xs text-slate-400 hover:text-white transition font-medium cursor-pointer"
+          >
+            ยกเลิก
+          </button>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------------------
+       * QUICK PREVIEW DRAWER (สไลด์จากขวา)
+       * ------------------------------------------------------------------------------ */}
+      <QuickPreviewDrawer
+        property={previewProperty}
+        isOpen={Boolean(previewProperty)}
+        onClose={() => setPreviewProperty(null)}
+        onApprove={activeTab === 'pending' ? handleApprove : undefined}
+        onReject={activeTab === 'pending' ? openRejectModal : undefined}
+      />
+
+      {/* ------------------------------------------------------------------------------
+       * REJECT REASON POP-UP MODAL (พร้อมชิปเทมเพลตเหตุผลมาตรฐาน)
+       * ------------------------------------------------------------------------------ */}
+      {rejectingProperty && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4 border border-slate-200 animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-red-600 text-base flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+                <span>ระบุเหตุผลการตีกลับ / ส่งแก้ไข</span>
+              </h3>
+              <button
+                onClick={closeRejectModal}
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Target Property */}
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+              <p className="text-[11px] font-bold text-slate-400 uppercase">ประกาศที่ต้องการส่งกลับ:</p>
+              <p className="text-sm font-extrabold text-slate-800 line-clamp-1">{rejectingProperty.title}</p>
+              <p className="text-xs font-semibold text-slate-500 mt-0.5">นายหน้า: {rejectingProperty.agentName}</p>
+            </div>
+
+            {/* Presets Chips */}
+            <div>
+              <label className="block text-xs font-extrabold text-slate-700 mb-2">
+                เลือกเทมเพลตเหตุผลด่วน (Reject Presets):
+              </label>
+              <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto pr-1">
+                {REJECT_PRESETS.map((preset, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setRejectReason(preset)}
+                    className={`text-left text-[11px] font-medium px-2.5 py-1.5 rounded-lg border transition cursor-pointer ${
+                      rejectReason === preset
+                        ? 'bg-red-50 text-red-700 border-red-200 font-bold'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Textarea for Customized Reason */}
+            <div>
+              <label className="block text-xs font-extrabold text-slate-700 mb-1">
+                ข้อความแจ้งเตือนนายหน้า (สามารถแก้ไขเพิ่มเติมได้):
+              </label>
+              <textarea
+                rows={3}
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="ระบุข้อความแนะนำสิ่งที่นายหน้าต้องแก้ไข..."
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-slate-800"
+              />
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
+              <button
+                type="button"
+                onClick={closeRejectModal}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs cursor-pointer transition"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={confirmReject}
+                disabled={submittingReject}
+                className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs cursor-pointer shadow-md shadow-red-600/20 transition disabled:opacity-50"
+              >
+                {submittingReject ? 'กำลังส่งข้อมูล...' : 'ยืนยันการส่งกลับแก้ไข'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
-

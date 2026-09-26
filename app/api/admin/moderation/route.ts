@@ -34,6 +34,9 @@ export async function GET(req: Request) {
             first_name: true,
             last_name: true,
             email: true,
+            phone: true,
+            line_id: true,
+            profile_image: true,
             plan_type: true
           }
         },
@@ -47,6 +50,13 @@ export async function GET(req: Request) {
         },
         provinces: true,
         amphures: true,
+        districts: true,
+        property_documents: true,
+        property_amenities: {
+          include: {
+            amenities: true
+          }
+        }
       },
       orderBy: {
         created_at: 'desc'
@@ -69,18 +79,36 @@ export async function GET(req: Request) {
         location: p.location,
         province: p.provinces?.name_th || "",
         amphure: p.amphures?.name_th || "",
+        district: p.districts?.name_th || "",
+        latitude: p.latitude ? Number(p.latitude) : null,
+        longitude: p.longitude ? Number(p.longitude) : null,
+        description: p.description || "",
         bedrooms: p.bedrooms || 0,
         bathrooms: p.bathrooms || 0,
         area: p.area_sqm ? p.area_sqm.toString() : "0",
+        parkingSpaces: p.parking_spaces || 0,
+        floors: p.floors || 1,
+        ownershipType: p.ownership_type || "",
         agentName: p.users ? `${p.users.first_name} ${p.users.last_name}` : "ไม่ระบุตัวแทน",
+        agentEmail: p.users?.email || "",
+        agentPhone: p.users?.phone || "",
+        agentLineId: p.users?.line_id || "",
+        agentProfileImage: p.users?.profile_image || null,
         agentPlan: p.users?.plan_type || "basic",
         createdAt: p.created_at,
         image: mainImage,
         images: allImages,
         imageCount: allImages.length,
+        amenities: p.property_amenities.map((pa) => pa.amenities.name),
+        documents: p.property_documents.map((d) => ({
+          id: d.id,
+          url: d.doc_url,
+          type: d.doc_type || "document"
+        })),
         slaLabel: slaInfo.label,
         slaLevel: slaInfo.level,
         slaMinutesLeft: slaInfo.minutesLeft,
+        slaUrgent: slaInfo.level === 'urgent' || slaInfo.level === 'overdue',
         // ร่องรอยการตรวจสอบ — null ทั้งหมดถ้ายังไม่ถูกตรวจ
         reviewedAt: p.reviewed_at,
         reviewerName: p.reviewer ? `${p.reviewer.first_name} ${p.reviewer.last_name}` : null,
