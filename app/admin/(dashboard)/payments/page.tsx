@@ -15,8 +15,17 @@ import {
   AlertCircle,
   RefreshCw,
   Download,
-  Search
+  Search,
+  StickyNote,
+  AlertTriangle,
+  User
 } from 'lucide-react';
+
+interface InternalNote {
+  text: string;
+  author: string;
+  updatedAt: string;
+}
 
 interface Payment {
   id: string;
@@ -28,6 +37,7 @@ interface Payment {
   agentId: string | null;
   agentName: string;
   agentEmail: string;
+  internalNote?: InternalNote | null;
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -42,6 +52,15 @@ const STATUS_CLASS: Record<string, string> = {
   rejected: 'bg-red-100 text-red-800 border-red-200',
 };
 
+const PAYMENT_REJECT_PRESETS = [
+  'ยอดเงินในสลิปไม่ตรงกับราคาแพ็กเกจ (599.00 บาท)',
+  'สลิปซ้ำ หรือเคยใช้ยืนยันการชำระเงินในระบบแล้ว',
+  'ภาพสลิปมีร่องรอยการตัดต่อ หรือรายละเอียดไม่ชัดเจน',
+  'ไม่พบยอดเงินโอนเข้าในสเตทเมนต์บัญชีธนาคารปลายทาง',
+  'วันและเวลาในสลิปไม่ตรงกับช่วงเวลาที่มีการทำรายการ',
+  'อื่นๆ (ระบุคำแนะนำเพิ่มเติมด้านล่าง)'
+];
+
 type Filter = 'pending' | 'approved' | 'rejected' | 'all';
 
 export default function AdminPaymentsPage() {
@@ -55,9 +74,20 @@ export default function AdminPaymentsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [tick, setTick] = useState(0);
 
+  // Rejection Modal State
+  const [rejectingPayment, setRejectingPayment] = useState<Payment | null>(null);
+  const [selectedRejectReason, setSelectedRejectReason] = useState(PAYMENT_REJECT_PRESETS[0]);
+  const [customRejectNote, setCustomRejectNote] = useState('');
+  const [submittingReject, setSubmittingReject] = useState(false);
+
+  // Internal Note Modal State
+  const [noteModalPayment, setNoteModalPayment] = useState<Payment | null>(null);
+  const [noteText, setNoteText] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/admin/payments?status=${filter}`)
+    fetch(`/api/admin/payments?status=${filter}&t=${Date.now()}`)
       .then(async (r) => {
         if (r.status === 401) {
           if (!cancelled) {
@@ -95,18 +125,18 @@ export default function AdminPaymentsPage() {
     setTick(t => t + 1);
   };
 
-  const handleAction = async (id: string, agentId: string | null, action: 'approve' | 'reject') => {
-    if (!confirm(`ยืนยันการ${action === 'approve' ? 'อนุมัติ' : 'ปฏิเสธ'}รายการนี้?`)) return;
-    setProcessingId(id);
+  const handleApprove = async (p: Payment) => {
+    if (!confirm(`ยืนยันการอนุมัติสิทธิ์ Verified PRO ให้แก่ "${p.agentName}" ใช่หรือไม่?`)) return;
+    setProcessingId(p.id);
     try {
       const res = await fetch('/api/admin/payments', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactionId: id, action, agentId }),
+        body: JSON.stringify({ transactionId: p.id, action: 'approve', agentId: p.agentId }),
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(`ทำรายการ ${action === 'approve' ? 'อนุมัติ' : 'ปฏิเสธ'} สลิปสำเร็จ`);
+        toast.success(`อนุมัติสลิปและปรับสิทธิ์เป็น Verified PRO เรียบร้อยแล้ว`);
         setTick(t => t + 1);
       } else {
         toast.error(data.error ?? 'เกิดข้อผิดพลาด');
@@ -115,6 +145,81 @@ export default function AdminPaymentsPage() {
       toast.error('เกิดข้อผิดพลาดในการเชื่อมต่อ');
     } finally {
       setProcessingId(null);
+    }
+  };
+
+  const handleOpenRejectModal = (p: Payment) => {
+    setRejectingPayment(p);
+    setSelectedRejectReason(PAYMENT_REJECT_PRESETS[0]);
+    setCustomRejectNote('');
+  };
+
+  const handleConfirmReject = async () => {
+    if (!rejectingPayment) return;
+    setSubmittingReject(true);
+    try {
+      const res = await fetch('/api/admin/payments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transactionId: rejectingPayment.id,
+          action: 'reject',
+          agentId: rejectingPayment.agentId,
+          reason: selectedRejectReason,
+          note: customRejectNote.trim()
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('ปฏิเสธสลิปและส่งการแจ้งเตือนไปยังนายหน้าเรียบร้อยแล้ว');
+        setRejectingPayment(null);
+        setTick(t => t + 1);
+      } else {
+        toast.error(data.error ?? 'เกิดข้อผิดพลาด');
+      }
+    } catch {
+      toast.error('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    } finally {
+      setSubmittingReject(false);
+    }
+  };
+
+  const handleOpenNoteModal = (p: Payment) => {
+    setNoteModalPayment(p);
+    setNoteText(p.internalNote?.text || '');
+  };
+
+  const handleSaveNote = async () => {
+    if (!noteModalPayment) return;
+    setSavingNote(true);
+    try {
+      const res = await fetch('/api/admin/payments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transactionId: noteModalPayment.id,
+          action: 'save_note',
+          note: noteText.trim()
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('บันทึกโน้ตภายในเรียบร้อยแล้ว');
+        // Update locally
+        setPayments(prev => prev.map(item => {
+          if (item.id === noteModalPayment.id) {
+            return { ...item, internalNote: data.note };
+          }
+          return item;
+        }));
+        setNoteModalPayment(null);
+      } else {
+        toast.error(data.error ?? 'ไม่สามารถบันทึกโน้ตได้');
+      }
+    } catch {
+      toast.error('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    } finally {
+      setSavingNote(false);
     }
   };
 
@@ -127,7 +232,8 @@ export default function AdminPaymentsPage() {
       const email = (p.agentEmail || '').toLowerCase();
       const id = (p.id || '').toLowerCase();
       const order = (p.orderId || '').toLowerCase();
-      return name.includes(q) || email.includes(q) || id.includes(q) || order.includes(q);
+      const note = (p.internalNote?.text || '').toLowerCase();
+      return name.includes(q) || email.includes(q) || id.includes(q) || order.includes(q) || note.includes(q);
     });
   }, [payments, searchQuery]);
 
@@ -138,13 +244,14 @@ export default function AdminPaymentsPage() {
       return;
     }
 
-    const headers = ['รหัสธุรกรรม', 'นายหน้าผู้ชำระ', 'อีเมล', 'ยอดเงิน (บาท)', 'สถานะ', 'วันที่ทำรายการ'];
+    const headers = ['รหัสธุรกรรม', 'นายหน้าผู้ชำระ', 'อีเมล', 'ยอดเงิน (บาท)', 'สถานะ', 'โน้ตภายใน', 'วันที่ทำรายการ'];
     const rows = filteredPayments.map(p => [
       `"${p.id}"`,
       `"${p.agentName}"`,
       `"${p.agentEmail}"`,
       `"${p.amount}"`,
       `"${STATUS_LABEL[p.status] || p.status}"`,
+      `"${(p.internalNote?.text || '').replace(/"/g, '""')}"`,
       `"${new Date(p.createdAt).toLocaleString('th-TH')}"`
     ]);
 
@@ -189,7 +296,7 @@ export default function AdminPaymentsPage() {
             <span>รายการชำระเงิน (Verified PRO Payments)</span>
           </h2>
           <p className="text-xs text-slate-500 font-medium">
-            ตรวจสอบสลิปโอนเงิน PromptPay และอนุมัติสิทธิ์แพ็กเกจสมาชิก
+            ตรวจสอบสลิปโอนเงิน บันทึกโน้ตตรวจสอบภายในทีม และอนุมัติสิทธิ์แพ็กเกจสมาชิก
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -244,13 +351,13 @@ export default function AdminPaymentsPage() {
               type="text" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="ค้นหาชื่อนายหน้า, อีเมล, รหัส..." 
+              placeholder="ค้นหาชื่อนายหน้า, อีเมล, โน้ต..." 
               className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium text-slate-700 text-xs shadow-sm"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -275,12 +382,13 @@ export default function AdminPaymentsPage() {
         ) : (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left min-w-[680px]">
+              <table className="w-full text-xs text-left min-w-[760px]">
                 <thead className="border-b border-slate-200 bg-slate-50 text-slate-500 text-[10px] font-black uppercase tracking-wider">
                   <tr>
                     <th className="px-5 py-3.5">นายหน้าผู้โอน</th>
                     <th className="px-5 py-3.5">ยอดเงินชำระ</th>
                     <th className="px-5 py-3.5">หลักฐานสลิป</th>
+                    <th className="px-5 py-3.5">โน้ตตรวจสอบภายใน</th>
                     <th className="px-5 py-3.5">วันที่ทำรายการ</th>
                     <th className="px-5 py-3.5 text-center">สถานะ</th>
                     <th className="px-5 py-3.5 text-right">ดำเนินการ</th>
@@ -312,6 +420,31 @@ export default function AdminPaymentsPage() {
                           <span className="text-slate-300 font-medium">ไม่มีสลิป</span>
                         )}
                       </td>
+                      <td className="px-5 py-4">
+                        {p.internalNote?.text ? (
+                          <div
+                            onClick={() => handleOpenNoteModal(p)}
+                            className="bg-amber-50/80 hover:bg-amber-100/80 border border-amber-200/80 p-2 rounded-xl cursor-pointer max-w-[220px] transition"
+                            title="คลิกเพื่อแก้ไขโน้ต"
+                          >
+                            <div className="flex items-center gap-1 text-[10px] font-bold text-amber-800 mb-0.5">
+                              <StickyNote className="w-3 h-3 text-amber-600 shrink-0" />
+                              <span className="truncate">{p.internalNote.author}</span>
+                            </div>
+                            <p className="text-[11px] text-slate-700 font-medium line-clamp-2">
+                              {p.internalNote.text}
+                            </p>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleOpenNoteModal(p)}
+                            className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 px-2 py-1 rounded-lg transition border border-dashed border-slate-300 text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+                          >
+                            <StickyNote className="w-3 h-3" />
+                            <span>+ บันทึกโน้ต</span>
+                          </button>
+                        )}
+                      </td>
                       <td className="px-5 py-4 text-slate-600 font-medium">
                         {new Date(p.createdAt).toLocaleString('th-TH')}
                       </td>
@@ -322,10 +455,10 @@ export default function AdminPaymentsPage() {
                       </td>
                       <td className="px-5 py-4 text-right">
                         {p.status === 'pending' ? (
-                          <div className="flex justify-end gap-2">
+                          <div className="flex justify-end gap-1.5">
                             <button
                               disabled={processingId === p.id}
-                              onClick={() => handleAction(p.id, p.agentId, 'approve')}
+                              onClick={() => handleApprove(p)}
                               className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg disabled:opacity-40 transition shadow-sm text-xs cursor-pointer flex items-center gap-1"
                             >
                               <Check className="w-3.5 h-3.5" />
@@ -333,8 +466,8 @@ export default function AdminPaymentsPage() {
                             </button>
                             <button
                               disabled={processingId === p.id}
-                              onClick={() => handleAction(p.id, p.agentId, 'reject')}
-                              className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold rounded-lg disabled:opacity-40 transition text-xs cursor-pointer flex items-center gap-1"
+                              onClick={() => handleOpenRejectModal(p)}
+                              className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-red-50 hover:text-red-700 hover:border-red-200 text-slate-700 font-bold rounded-lg disabled:opacity-40 transition text-xs cursor-pointer flex items-center gap-1"
                             >
                               <X className="w-3.5 h-3.5 text-slate-500" />
                               <span>ปฏิเสธ</span>
@@ -352,20 +485,22 @@ export default function AdminPaymentsPage() {
           </div>
         )}
 
-        {/* Slip Lightbox Modal */}
+        {/* ------------------------------------------------------------------------------
+         * SLIP LIGHTBOX MODAL
+         * ------------------------------------------------------------------------------ */}
         {slipUrl && (
           <div 
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" 
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" 
             onClick={() => setSlipUrl(null)}
           >
             <div 
-              className="bg-white rounded-2xl p-5 max-w-sm w-full shadow-2xl space-y-3 relative" 
+              className="bg-white rounded-2xl p-5 max-w-sm w-full shadow-2xl space-y-3 relative animate-in zoom-in-95 duration-150" 
               onClick={e => e.stopPropagation()}
             >
               <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                 <p className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
                   <Receipt className="w-4 h-4 text-slate-600" />
-                  <span>หลักฐานการโอนเงิน (สลิป)</span>
+                  <span>หลักฐานการโอนเงิน (สลิป PromptPay)</span>
                 </p>
                 <button 
                   onClick={() => setSlipUrl(null)} 
@@ -385,7 +520,168 @@ export default function AdminPaymentsPage() {
             </div>
           </div>
         )}
+
+        {/* ------------------------------------------------------------------------------
+         * PAYMENT REJECTION REASON MODAL
+         * ------------------------------------------------------------------------------ */}
+        {rejectingPayment && (
+          <div className="fixed inset-0 z-50 bg-slate-950/65 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+            <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4 border border-slate-200 animate-in zoom-in-95 duration-200">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="font-extrabold text-red-600 text-base flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-red-600" />
+                  <span>ระบุเหตุผลการปฏิเสธสลิปการชำระเงิน</span>
+                </h3>
+                <button
+                  onClick={() => setRejectingPayment(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs">
+                <p className="font-bold text-slate-400 uppercase">นายหน้าผู้ชำระเงิน:</p>
+                <p className="font-extrabold text-slate-900 text-sm mt-0.5">
+                  {rejectingPayment.agentName} ({rejectingPayment.agentEmail})
+                </p>
+                <p className="text-amber-700 font-bold mt-1">ยอดเงิน: ฿{rejectingPayment.amount.toLocaleString()} บาท</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-extrabold text-slate-700">
+                  เลือกเหตุผลในการปฏิเสธ (ระบบจะส่งแจ้งเตือนให้นายหน้าทราบ):
+                </label>
+
+                {PAYMENT_REJECT_PRESETS.map((preset, idx) => (
+                  <label
+                    key={idx}
+                    className={`flex items-center gap-2 p-2.5 rounded-xl border transition cursor-pointer text-xs font-semibold ${
+                      selectedRejectReason === preset
+                        ? 'bg-red-50 text-red-800 border-red-200 font-bold'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-white'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="paymentRejectReason"
+                      value={preset}
+                      checked={selectedRejectReason === preset}
+                      onChange={(e) => setSelectedRejectReason(e.target.value)}
+                      className="accent-red-600 cursor-pointer"
+                    />
+                    <span>{preset}</span>
+                  </label>
+                ))}
+              </div>
+
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 mb-1">
+                  คำแนะนำเพิ่มเติมให้นายหน้า (ถ้ามี):
+                </label>
+                <textarea
+                  rows={2}
+                  value={customRejectNote}
+                  onChange={(e) => setCustomRejectNote(e.target.value)}
+                  placeholder="เช่น กรุณาโอนเงินผ่าน QR Code สดในหน้าชำระเงิน หรือแนบสลิปฉบับจริงที่ดาวน์โหลดจากแอพธนาคาร..."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-slate-800"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setRejectingPayment(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs cursor-pointer transition"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmReject}
+                  disabled={submittingReject}
+                  className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs cursor-pointer shadow-md shadow-red-600/20 transition disabled:opacity-50"
+                >
+                  {submittingReject ? 'กำลังส่งข้อมูล...' : 'ยืนยันปฏิเสธและแจ้งเตือน'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------------------------
+         * INTERNAL ADMIN NOTE MODAL
+         * ------------------------------------------------------------------------------ */}
+        {noteModalPayment && (
+          <div className="fixed inset-0 z-50 bg-slate-950/65 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+            <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 border border-slate-200 animate-in zoom-in-95 duration-200">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
+                  <StickyNote className="w-5 h-5 text-amber-500" />
+                  <span>บันทึกโน้ตภายใน (Internal Admin Note)</span>
+                </h3>
+                <button
+                  onClick={() => setNoteModalPayment(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200/60 text-xs">
+                <p className="font-bold text-amber-900">
+                  ธุรกรรม: {noteModalPayment.agentName} (฿{noteModalPayment.amount.toLocaleString()})
+                </p>
+                <p className="text-[11px] text-amber-700/80 mt-0.5">
+                  โน้ตนี้จะมองเห็นเฉพาะทีมแอดมิน เพื่อส่งต่อข้อมูลและบันทึกผลการตรวจสอบยอดเงิน
+                </p>
+              </div>
+
+              {noteModalPayment.internalNote && (
+                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
+                  <span className="flex items-center gap-1 font-medium">
+                    <User className="w-3 h-3 text-slate-400" />
+                    <span>แก้ไขล่าสุดโดย: {noteModalPayment.internalNote.author}</span>
+                  </span>
+                  <span>{new Date(noteModalPayment.internalNote.updatedAt).toLocaleString('th-TH')}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 mb-1">
+                  ข้อความบันทึกตรวจสอบ:
+                </label>
+                <textarea
+                  rows={4}
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  placeholder="เช่น ตรวจสอบยอดเงินกับ SCB Easy App แล้ว ยอดเข้าเวลา 14:20 น. ตรงตามสลิป สามารถอนุมัติได้..."
+                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-800"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setNoteModalPayment(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs cursor-pointer transition"
+                >
+                  ปิด
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveNote}
+                  disabled={savingNote}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs cursor-pointer shadow-md shadow-blue-600/20 transition disabled:opacity-50"
+                >
+                  {savingNote ? 'กำลังบันทึก...' : 'บันทึกโน้ต'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
 }
+
