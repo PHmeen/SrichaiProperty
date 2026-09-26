@@ -13,10 +13,25 @@
  * ==============================================================================
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { toast } from '@/components/ui/toast';
-import { Search, Home, Camera, Star, MapPin, Square, Bed, Bath, Eye, X, Check, AlertTriangle } from 'lucide-react';
+import {
+  Search,
+  Home,
+  Camera,
+  Star,
+  MapPin,
+  Square,
+  Bed,
+  Bath,
+  Eye,
+  X,
+  Check,
+  AlertTriangle,
+  RefreshCw,
+  Download
+} from 'lucide-react';
 
 /** โครงสร้างข้อมูลประกาศอสังหาริมทรัพย์สำหรับแอดมินตรวจสอบ */
 interface PropertyData {
@@ -78,17 +93,12 @@ export default function AdminModerationPage() {
   // สภาวะเก็บรายการประกาศที่ดึงมาจาก API หลังบ้าน
   const [properties, setProperties] = useState<PropertyData[]>([]);
   const [slaSummary, setSlaSummary] = useState<SlaSummary | null>(null);
-  // สภาวะสถานะกำลังโหลดข้อมูล (Spinner)
   const [loading, setLoading] = useState(true);
-  // สภาวะแท็บสถานะประกาศที่เลือกอยู่ ('pending' = รอตรวจสอบ, 'approved' = อนุมัติแล้ว, 'rejected' = ถูกปฏิเสธ)
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
-  // สภาวะตัวกรองประเภทการขาย/เช่า ('all' = ทั้งหมด, 'sale' = ขาย, 'rent' = เช่า)
   const [listingTypeFilter, setListingTypeFilter] = useState<'all' | 'sale' | 'rent'>('all');
   const [sortBySla, setSortBySla] = useState(false);
-
-  const displayedProperties = sortBySla
-    ? [...properties].sort((a, b) => a.slaMinutesLeft - b.slaMinutesLeft)
-    : properties;
+  const [searchQuery, setSearchQuery] = useState('');
 
   // ------------------------------------------------------------------------------
   // 2. API FETCHING & HANDLERS (ฟังก์ชันการเชื่อมต่อ API และจัดการอีเวนต์)
@@ -101,14 +111,16 @@ export default function AdminModerationPage() {
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          setProperties(data.properties);
+          setProperties(data.properties || []);
           setSlaSummary(data.slaSummary ?? null);
         }
-        setLoading(false);
       })
       .catch(err => {
         console.error("เกิดข้อผิดพลาดในการโหลดคิวประกาศ:", err);
+      })
+      .finally(() => {
         setLoading(false);
+        setIsRefreshing(false);
       });
   };
 
@@ -116,6 +128,58 @@ export default function AdminModerationPage() {
   useEffect(() => {
     fetchProperties(activeTab, listingTypeFilter);
   }, [activeTab, listingTypeFilter]);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchProperties(activeTab, listingTypeFilter);
+  };
+
+  const displayedProperties = useMemo(() => {
+    let list = properties;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(p =>
+        (p.title || '').toLowerCase().includes(q) ||
+        (p.location || '').toLowerCase().includes(q) ||
+        (p.agentName || '').toLowerCase().includes(q) ||
+        (p.id || '').toLowerCase().includes(q)
+      );
+    }
+    return sortBySla
+      ? [...list].sort((a, b) => a.slaMinutesLeft - b.slaMinutesLeft)
+      : list;
+  }, [properties, searchQuery, sortBySla]);
+
+  const handleExportCSV = () => {
+    if (displayedProperties.length === 0) {
+      toast.error('ไม่มีข้อมูลสำหรับส่งออก');
+      return;
+    }
+
+    const headers = ['รหัสประกาศ', 'หัวข้อ', 'ราคา', 'ประเภทธุรกรรม', 'ประเภทอสังหาฯ', 'ทำเล', 'นายหน้า', 'แพ็กเกจ', 'เวลาที่ลงประกาศ'];
+    const rows = displayedProperties.map(p => [
+      `"${p.id}"`,
+      `"${(p.title || '').replace(/"/g, '""')}"`,
+      `"${p.price}"`,
+      `"${p.listingType}"`,
+      `"${p.type}"`,
+      `"${p.location}"`,
+      `"${p.agentName}"`,
+      `"${p.agentPlan}"`,
+      `"${new Date(p.createdAt).toLocaleString('th-TH')}"`
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `srichai_moderation_${activeTab}_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('ดาวน์โหลดไฟล์ CSV เรียบร้อยแล้ว');
+  };
 
   /** ฟังก์ชันยิง API อัปเดตสถานะประกาศ (อนุมัติ หรือ ปฏิเสธพร้อมเหตุผล) */
   const updateStatus = async (id: string, newStatus: string, reason?: string) => {
@@ -199,10 +263,48 @@ export default function AdminModerationPage() {
     <>
         {/* Header แถบด้านบนแสดงชื่อหน้าและช่องค้นหาด่วน */}
         <header className="min-h-16 py-3 bg-white border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 shrink-0 relative z-0">
-          <h2 className="text-lg font-extrabold text-slate-800">คิวตรวจสอบประกาศ (Listing Moderation)</h2>
-          <div className="relative w-full sm:w-72 flex items-center">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
-            <input type="text" placeholder="ค้นหารหัส PRJ-XXX, ชื่อประกาศ..." className="w-full pl-9 pr-4 py-2 bg-slate-100 border border-transparent rounded-full focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium text-slate-700 text-xs" />
+          <div>
+            <h2 className="text-lg font-extrabold text-slate-800">คิวตรวจสอบประกาศ (Listing Moderation)</h2>
+            <p className="text-xs text-slate-500 font-medium">
+              ตรวจสอบข้อมูล รูปภาพ และความถูกต้องก่อนอนุมัติประกาศขึ้นหน้าเว็บ
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="relative w-full sm:w-64">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="ค้นหาชื่อประกาศ, ทำเล, นายหน้า..."
+                className="w-full pl-9 pr-8 py-2 bg-slate-100 border border-transparent rounded-lg focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium text-slate-700 text-xs shadow-sm"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition border border-slate-200 cursor-pointer shrink-0"
+              title="รีเฟรชข้อมูล"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">รีเฟรช</span>
+            </button>
+            <button
+              onClick={handleExportCSV}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 rounded-lg transition border border-slate-200 shadow-sm cursor-pointer shrink-0"
+              title="ส่งออกไฟล์ CSV"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <span className="hidden sm:inline">ส่งออก CSV</span>
+            </button>
           </div>
         </header>
 

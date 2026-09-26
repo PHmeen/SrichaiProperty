@@ -1,102 +1,141 @@
+'use client';
+
 /**
  * ==============================================================================
  * คอมโพเนนต์การ์ดตรวจสอบอนุมัติเอกสาร KYC นายหน้า (Admin KYC Agent Card)
  * /components/admin/AdminKycAgentCard.tsx
  * ==============================================================================
- * วัตถุประสงค์:
- * 1. แสดงรายละเอียดนายหน้าที่ยื่นคำขออนุมัติสิทธิ์เป็น Agent (รูปโปรไฟล์, ชื่อ-สกุล, อีเมล, เบอร์โทร)
- * 2. แสดงรูปภาพเอกสารยืนยันตัวตน (บัตรประชาชน / ใบอนุญาตนายหน้า) ให้แอดมินตรวจสอบ
- * 3. มีปุ่มดำเนินการ อนุมัติ (Approved) / ปฏิเสธ (Rejected) / ลบข้อมูลนายหน้า
- * ==============================================================================
  */
 
 import React from 'react';
-import Image from 'next/image'; // ใช้แสดงรูปโปรไฟล์เอเย่นต์และรูปเอกสาร KYC
+import Image from 'next/image';
+import {
+  FileText,
+  UserCheck,
+  Trash2,
+  ExternalLink,
+  Shield,
+  Phone,
+  Mail,
+  Calendar,
+  Check,
+  X,
+  FileCheck
+} from 'lucide-react';
 
-/** โครงสร้างข้อมูลเอเย่นต์/นายหน้าสำหรับตรวจสอบ KYC */
 export interface AgentData {
-  id: string;                   // รหัสผู้ใช้งาน (User ID)
-  email: string;                // อีเมลประจำบัญชี
-  first_name: string;           // ชื่อจริง
-  last_name: string;            // นามสกุล
-  phone: string;                // เบอร์โทรศัพท์ติดต่อ
-  profile_image: string | null; // URL รูปโปรไฟล์
-  kyc_doc: string | null;       // URL รูปถ่ายเอกสารยืนยันตัวตน (KYC)
-  status: string;               // สถานะการอนุมัติ (pending = รอตรวจ, approved = อนุมัติแล้ว, rejected = ไม่อนุมัติ)
-  created_at: string;           // วันเวลาที่ส่งยื่นเอกสาร
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  profile_image: string | null;
+  kyc_doc: string | null;
+  status: string;
+  created_at: string;
+  line_id?: string | null;
 }
 
-/** Props สำหรับ AdminKycAgentCard Component */
 interface Props {
-  agent: AgentData;                                              // ข้อมูลนายหน้า 1 รายการ
-  activeTab: 'pending' | 'approved' | 'rejected';                // แท็บที่เปิดดูอยู่ปัจจุบัน
-  onUpdateStatus: (userId: string, status: string) => void;     // ฟังก์ชันเปลี่ยนสถานะอนุมัติ/ปฏิเสธ
-  onDeleteAgent?: (userId: string) => void;                       // ฟังก์ชันลบข้อมูลนายหน้าออกจากระบบ
+  agent: AgentData;
+  activeTab: 'pending' | 'approved' | 'rejected';
+  onUpdateStatus: (userId: string, status: string) => void;
+  onDeleteAgent?: (userId: string) => void;
 }
 
 export default function AdminKycAgentCard({ agent, activeTab, onUpdateStatus, onDeleteAgent }: Props) {
   return (
-    <div className="bg-white rounded-2xl border-2 border-amber-500/20 shadow-sm overflow-hidden flex flex-col">
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:border-slate-300 transition">
       {/* Card Main Content */}
       <div className="flex flex-col xl:flex-row p-4 sm:p-6 gap-6">
         {/* Left: Info */}
-        <div className="xl:w-1/3 flex flex-col gap-6 border-b xl:border-b-0 xl:border-r border-slate-100 pb-6 xl:pb-0 xl:pr-6">
-          
+        <div className="xl:w-1/3 flex flex-col gap-5 border-b xl:border-b-0 xl:border-r border-slate-100 pb-5 xl:pb-0 xl:pr-6">
           <div className="flex items-center gap-2">
-             <span className="bg-blue-50 text-blue-600 text-[10px] font-black px-2 py-1 rounded-md border border-blue-100 tracking-wider">ขออัปเกรดเป็น AGENT (R2)</span>
-             <span className="bg-slate-50 text-slate-400 text-[10px] font-bold px-2 py-1 rounded-md border border-slate-100 uppercase">User ID: {agent.id.slice(0, 8)}</span>
+            <span className="bg-blue-50 text-blue-700 text-[10px] font-black px-2.5 py-1 rounded-md border border-blue-100 tracking-wider">
+              ยื่นขอเป็นนายหน้า (Agent Application)
+            </span>
+            <span className="bg-slate-100 text-slate-500 text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-slate-200">
+              ID: {agent.id.slice(0, 8)}
+            </span>
           </div>
 
           <div className="flex items-center gap-4">
             {agent.profile_image ? (
-               <Image src={agent.profile_image} alt="Profile" width={64} height={64} className="w-16 h-16 rounded-full object-cover border-2 border-slate-100 shadow-sm" unoptimized />
+              <Image
+                src={agent.profile_image}
+                alt="Profile"
+                width={56}
+                height={56}
+                className="w-14 h-14 rounded-full object-cover border-2 border-slate-100 shadow-sm shrink-0"
+                unoptimized
+              />
             ) : (
-               <div className="w-16 h-16 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl font-black border-2 border-white shadow-sm">
-                 {agent.first_name?.[0]}{agent.last_name?.[0]}
-               </div>
+              <div className="w-14 h-14 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-lg font-black border-2 border-white shadow-sm shrink-0">
+                {agent.first_name?.[0] || 'A'}{agent.last_name?.[0] || ''}
+              </div>
             )}
-            <div>
-              <h3 className="text-lg font-extrabold text-slate-900">{agent.first_name} {agent.last_name}</h3>
-              <p className="text-slate-400 font-medium text-xs">@{agent.first_name.toLowerCase()}_agent</p>
+            <div className="min-w-0">
+              <h3 className="text-base font-extrabold text-slate-900 truncate">
+                {agent.first_name} {agent.last_name}
+              </h3>
+              <p className="text-slate-400 font-medium text-xs mt-0.5 truncate flex items-center gap-1">
+                <Shield className="w-3 h-3 text-blue-500 shrink-0" />
+                <span>ผู้ยื่นขอรับการตรวจสอบ</span>
+              </p>
             </div>
           </div>
 
-          <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-200/60 text-xs">
-              <span className="text-slate-500 font-bold">อีเมล (Email):</span>
-              <span className="text-slate-800 font-semibold">{agent.email}</span>
+          <div className="space-y-2.5 bg-slate-50 p-3.5 rounded-xl border border-slate-100 text-xs">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-200/60">
+              <span className="text-slate-500 font-bold flex items-center gap-1.5">
+                <Mail className="w-3 h-3 text-slate-400 shrink-0" />
+                <span>อีเมล:</span>
+              </span>
+              <span className="text-slate-800 font-semibold truncate ml-2">{agent.email}</span>
             </div>
-            <div className="flex justify-between items-center pb-3 border-b border-slate-200/60 text-xs">
-              <span className="text-slate-500 font-bold">เบอร์โทร (Phone):</span>
+            <div className="flex justify-between items-center pb-2 border-b border-slate-200/60">
+              <span className="text-slate-500 font-bold flex items-center gap-1.5">
+                <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                <span>เบอร์โทร:</span>
+              </span>
               <span className="text-slate-800 font-semibold">{agent.phone || '-'}</span>
             </div>
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-500 font-bold">วันที่ส่งข้อมูล:</span>
-              <span className="text-slate-800 font-semibold">{new Date(agent.created_at).toLocaleString('th-TH')}</span>
+            {agent.line_id && (
+              <div className="flex justify-between items-center pb-2 border-b border-slate-200/60">
+                <span className="text-slate-500 font-bold">LINE ID:</span>
+                <span className="text-slate-800 font-semibold">{agent.line_id}</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center">
+              <span className="text-slate-500 font-bold flex items-center gap-1.5">
+                <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                <span>วันที่ยื่นเอกสาร:</span>
+              </span>
+              <span className="text-slate-700 font-medium">
+                {new Date(agent.created_at).toLocaleString('th-TH')}
+              </span>
             </div>
           </div>
 
           {/* Checklist */}
           {activeTab === 'pending' && (
-            <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100/50">
-              <h4 className="text-[10px] font-black text-amber-600 mb-3 uppercase tracking-wider flex items-center gap-1.5">
-                <svg className="w-3.5 h-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                </svg>
-                <span>รายการตรวจสอบ (Admin Checklist)</span>
+            <div className="bg-amber-50/60 p-3.5 rounded-xl border border-amber-200/60">
+              <h4 className="text-[10px] font-black text-amber-800 mb-2.5 uppercase tracking-wider flex items-center gap-1.5">
+                <FileCheck className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                <span>เกณฑ์การตรวจสอบ (Verification Criteria)</span>
               </h4>
-              <div className="space-y-2.5">
-                <label className="flex items-center gap-2.5 cursor-pointer group">
-                  <input type="checkbox" className="w-4 h-4 rounded text-amber-500 focus:ring-amber-500 border-slate-300 cursor-pointer" />
-                  <span className="text-xs text-slate-600 font-medium group-hover:text-slate-900 transition-colors">รูปภาพเอกสารชัดเจน อ่านง่าย</span>
+              <div className="space-y-2 text-xs">
+                <label className="flex items-center gap-2 cursor-pointer text-slate-700 font-medium">
+                  <input type="checkbox" className="w-3.5 h-3.5 rounded text-amber-600 focus:ring-amber-500 border-slate-300 cursor-pointer" />
+                  <span>ภาพเอกสารชัดเจน ไม่เบลอ ไม่มัว</span>
                 </label>
-                <label className="flex items-center gap-2.5 cursor-pointer group">
-                  <input type="checkbox" className="w-4 h-4 rounded text-amber-500 focus:ring-amber-500 border-slate-300 cursor-pointer" />
-                  <span className="text-xs text-slate-600 font-medium group-hover:text-slate-900 transition-colors">ชื่อ-สกุล ตรงกับข้อมูลที่กรอกมา</span>
+                <label className="flex items-center gap-2 cursor-pointer text-slate-700 font-medium">
+                  <input type="checkbox" className="w-3.5 h-3.5 rounded text-amber-600 focus:ring-amber-500 border-slate-300 cursor-pointer" />
+                  <span>ชื่อ-นามสกุล ตรงกับข้อมูลที่กรอก</span>
                 </label>
-                <label className="flex items-center gap-2.5 cursor-pointer group">
-                  <input type="checkbox" className="w-4 h-4 rounded text-amber-500 focus:ring-amber-500 border-slate-300 cursor-pointer" />
-                  <span className="text-xs text-slate-600 font-medium group-hover:text-slate-900 transition-colors">เอกสารยังไม่หมดอายุ</span>
+                <label className="flex items-center gap-2 cursor-pointer text-slate-700 font-medium">
+                  <input type="checkbox" className="w-3.5 h-3.5 rounded text-amber-600 focus:ring-amber-500 border-slate-300 cursor-pointer" />
+                  <span>เอกสารบัตรประชาชนยังไม่หมดอายุ</span>
                 </label>
               </div>
             </div>
@@ -105,104 +144,96 @@ export default function AdminKycAgentCard({ agent, activeTab, onUpdateStatus, on
 
         {/* Right: Images */}
         <div className="xl:w-2/3 flex flex-col sm:flex-row gap-4 overflow-x-auto pb-2">
-           {/* KYC Doc Image */}
-           <div className="relative w-full sm:min-w-[280px] sm:max-w-[360px] h-[220px] sm:h-[240px] rounded-xl border border-slate-200 bg-slate-50 overflow-hidden group shrink-0">
-             <div className="absolute top-3 left-3 bg-slate-900/70 backdrop-blur-sm text-white text-[9px] font-bold px-2 py-1 rounded-md z-10">ภาพถ่ายบัตรประชาชน</div>
-              {agent.kyc_doc ? (
-                agent.kyc_doc.toLowerCase().endsWith('.pdf') ? (
-                  <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-slate-100 text-center space-y-2">
-                    <svg className="w-10 h-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <span className="text-xs font-bold text-slate-700">ไฟล์เอกสาร PDF</span>
-                    <a 
-                      href={agent.kyc_doc} 
-                      target="_blank" 
-                      rel="noreferrer"
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-bold transition shadow-sm"
-                    >
-                      เปิดดูไฟล์ PDF ↗
-                    </a>
-                  </div>
-                ) : (
-                  <Image 
-                    src={agent.kyc_doc} 
-                    alt="KYC Document" 
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-500" 
-                    unoptimized
-                  />
-                )
+          {/* KYC Doc Image */}
+          <div className="relative w-full sm:min-w-[280px] sm:max-w-[360px] h-[220px] sm:h-[240px] rounded-xl border border-slate-200 bg-slate-50 overflow-hidden group shrink-0">
+            <div className="absolute top-2.5 left-2.5 bg-slate-900/80 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-md z-10">
+              ภาพถ่ายบัตรประชาชน
+            </div>
+            {agent.kyc_doc ? (
+              agent.kyc_doc.toLowerCase().endsWith('.pdf') ? (
+                <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-slate-100 text-center space-y-2">
+                  <FileText className="w-10 h-10 text-red-500" />
+                  <span className="text-xs font-bold text-slate-700">ไฟล์เอกสาร PDF</span>
+                  <a
+                    href={agent.kyc_doc}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1"
+                  >
+                    <span>เปิดดูไฟล์ PDF</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
               ) : (
-               <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
-                 <svg className="w-10 h-10 mb-2 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                 </svg>
-                 <span className="text-xs font-bold">ไม่มีไฟล์เอกสาร</span>
-               </div>
-             )}
-           </div>
+                <Image
+                  src={agent.kyc_doc}
+                  alt="KYC Document"
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-500 cursor-pointer"
+                  unoptimized
+                />
+              )
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
+                <FileText className="w-8 h-8 mb-1.5 text-slate-300" />
+                <span className="text-xs font-medium text-slate-400">ไม่มีไฟล์เอกสารแนบ</span>
+              </div>
+            )}
+          </div>
 
-           {/* Profile Image */}
-           <div className="relative w-full sm:min-w-[180px] sm:max-w-[240px] h-[220px] sm:h-[240px] rounded-xl border border-slate-200 bg-slate-50 overflow-hidden group shrink-0">
-             <div className="absolute top-3 left-3 bg-slate-900/70 backdrop-blur-sm text-white text-[9px] font-bold px-2 py-1 rounded-md z-10">ภาพถ่ายหน้าตัวเอง</div>
-             {agent.profile_image ? (
-               <Image 
-                 src={agent.profile_image} 
-                 alt="Selfie" 
-                 fill
-                 className="object-cover object-top group-hover:scale-105 transition-transform duration-500" 
-                 unoptimized
-               />
-             ) : (
-               <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
-                 <svg className="w-10 h-10 mb-2 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                 </svg>
-                 <span className="text-xs font-bold">ไม่มีรูปโปรไฟล์</span>
-               </div>
-             )}
-           </div>
+          {/* Profile Image */}
+          <div className="relative w-full sm:min-w-[180px] sm:max-w-[240px] h-[220px] sm:h-[240px] rounded-xl border border-slate-200 bg-slate-50 overflow-hidden group shrink-0">
+            <div className="absolute top-2.5 left-2.5 bg-slate-900/80 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-md z-10">
+              ภาพถ่ายหน้าตรง
+            </div>
+            {agent.profile_image ? (
+              <Image
+                src={agent.profile_image}
+                alt="Profile Selfie"
+                fill
+                className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                unoptimized
+              />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
+                <UserCheck className="w-8 h-8 mb-1.5 text-slate-300" />
+                <span className="text-xs font-medium text-slate-400">ไม่มีภาพหน้าตรง</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Card Footer Actions */}
       {activeTab === 'pending' && (
-        <div className="bg-slate-50 border-t border-slate-100 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="bg-slate-50 border-t border-slate-100 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-            <span className="text-xs font-bold text-amber-600">รอตรวจสอบเอกสาร (Status: Pending)</span>
+            <span className="text-xs font-bold text-amber-700">รอการตรวจสอบเอกสารเพื่ออนุมัติสิทธิ์นายหน้า</span>
           </div>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2">
             {onDeleteAgent && (
-              <button 
+              <button
                 onClick={() => onDeleteAgent(agent.id)}
-                className="px-3.5 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold rounded-xl transition-all text-xs flex items-center justify-center gap-1.5 cursor-pointer flex-1 sm:flex-initial"
+                className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold rounded-lg transition text-xs flex items-center gap-1 cursor-pointer"
               >
-                <svg className="w-3.5 h-3.5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                <span>ลบบัญชีนี้</span>
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>ลบบัญชี</span>
               </button>
             )}
-            <button 
+            <button
               onClick={() => onUpdateStatus(agent.id, 'rejected')}
-              className="px-4 py-2.5 bg-white border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-100 text-slate-600 font-bold rounded-xl transition-all text-xs flex items-center justify-center gap-1.5 flex-1 sm:flex-initial cursor-pointer"
+              className="px-3.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold rounded-lg transition text-xs flex items-center gap-1 cursor-pointer"
             >
-              <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              <span>ไม่อนุมัติ</span>
+              <X className="w-3.5 h-3.5 text-slate-500" />
+              <span>ปฏิเสธ</span>
             </button>
-            <button 
+            <button
               onClick={() => onUpdateStatus(agent.id, 'approved')}
-              className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-xl transition-all shadow-lg shadow-amber-500/30 active:scale-95 text-xs flex items-center justify-center gap-1.5 flex-1 sm:flex-initial cursor-pointer"
+              className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition text-xs shadow-sm flex items-center gap-1 cursor-pointer"
             >
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-              </svg>
-              <span>อนุมัติทันที</span>
+              <Check className="w-3.5 h-3.5 text-white" />
+              <span>อนุมัติเป็นนายหน้า</span>
             </button>
           </div>
         </div>

@@ -2,11 +2,27 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation'; // ใช้เช็คหน้าปัจจุบันเพื่อไฮไลต์เมนูที่กำลังเปิดอยู่
-import { signOut } from 'next-auth/react'; // ใช้ออกจากระบบเมื่อกดปุ่มออกจากระบบในแถบเมนู
+import { usePathname } from 'next/navigation';
+import { signOut, useSession } from 'next-auth/react';
+import {
+  LayoutDashboard,
+  BarChart3,
+  FileCheck2,
+  ShieldCheck,
+  AlertCircle,
+  CreditCard,
+  Users,
+  ExternalLink,
+  Menu,
+  X,
+  LogOut,
+  Building2,
+  Shield
+} from 'lucide-react';
 
 export default function AdminSidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [counts, setCounts] = useState({
     pending: 0,
@@ -33,21 +49,23 @@ export default function AdminSidebar() {
 
   const isActive = (path: string) => pathname === path;
 
+  const adminName = session?.user?.name || (session?.user?.email ? session.user.email.split('@')[0] : 'Admin');
+  const initial = adminName ? adminName.charAt(0).toUpperCase() : 'A';
+
   return (
     <>
       {/* Mobile Top Header Bar (< lg) */}
       <div className="lg:hidden fixed top-0 inset-x-0 h-14 bg-[#0f172a] text-white border-b border-slate-800 px-4 flex items-center justify-between z-40 shadow-md">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-black text-white text-base shadow-md shadow-blue-500/30">
-            S
+            <Building2 className="w-4 h-4" />
           </div>
           <div>
             <h1 className="text-white font-extrabold text-sm tracking-tight leading-none">
               SrichaiAdmin
             </h1>
-            <span className="text-[8px] text-emerald-400 font-bold flex items-center gap-1 uppercase tracking-wider mt-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              System Online
+            <span className="text-[10px] text-slate-400 font-medium flex items-center gap-1 mt-0.5">
+              ระบบจัดการอสังหาฯ
             </span>
           </div>
         </div>
@@ -59,13 +77,9 @@ export default function AdminSidebar() {
           aria-label="สลับเมนูแอดมิน"
         >
           {isMobileOpen ? (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="w-5 h-5" />
           ) : (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+            <Menu className="w-5 h-5" />
           )}
         </button>
       </div>
@@ -86,16 +100,15 @@ export default function AdminSidebar() {
           {/* Logo Header & Mobile Close */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-black text-white text-base shadow-lg shadow-blue-500/20">
-                S
+              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+                <Building2 className="w-4 h-4" />
               </div>
               <div>
                 <h1 className="text-white font-extrabold text-sm tracking-tight flex items-center gap-1.5">
                   SrichaiAdmin
                 </h1>
-                <span className="text-[8px] text-emerald-400 font-bold flex items-center gap-1 uppercase tracking-wider">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  System Online
+                <span className="text-[10px] text-slate-400 font-medium">
+                  พอร์ทัลผู้ดูแลระบบ
                 </span>
               </div>
             </div>
@@ -106,38 +119,29 @@ export default function AdminSidebar() {
               className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
               aria-label="ปิดเมนู"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X className="w-4 h-4" />
             </button>
           </div>
 
           <Link 
             href="/" 
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-blue-500/20 active:scale-[0.98] text-xs"
+            className="w-full bg-slate-800/80 hover:bg-slate-800 text-slate-200 hover:text-white font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-2 transition-all border border-slate-700/60 text-xs"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-            </svg>
+            <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
             <span>เปิดหน้าเว็บไซต์หลัก</span>
           </Link>
 
-          <nav className="space-y-6 pt-3 text-xs">
+          <nav className="space-y-6 pt-1 text-xs">
             <div className="space-y-1">
               <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-2.5">ภาพรวม</span>
               <Link
                 href="/admin/dashboard"
                 onClick={() => setIsMobileOpen(false)}
                 className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg font-bold transition-all text-left ${
-                  isActive('/admin/dashboard') ? 'bg-slate-800 text-white shadow-inner' : 'hover:bg-slate-800/60 text-slate-300'
+                  isActive('/admin/dashboard') ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'hover:bg-slate-800/70 text-slate-300'
                 }`}
               >
-                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <rect x="3" y="3" width="7" height="7" rx="1" />
-                  <rect x="14" y="3" width="7" height="7" rx="1" />
-                  <rect x="14" y="14" width="7" height="7" rx="1" />
-                  <rect x="3" y="14" width="7" height="7" rx="1" />
-                </svg>
+                <LayoutDashboard className={`w-4 h-4 ${isActive('/admin/dashboard') ? 'text-white' : 'text-slate-400'}`} />
                 <span>แดชบอร์ดหลัก</span>
               </Link>
 
@@ -145,12 +149,10 @@ export default function AdminSidebar() {
                 href="/admin/analytics"
                 onClick={() => setIsMobileOpen(false)}
                 className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg font-bold transition-all text-left ${
-                  isActive('/admin/analytics') ? 'bg-slate-800 text-white shadow-inner' : 'hover:bg-slate-800/60 text-slate-300'
+                  isActive('/admin/analytics') ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30' : 'hover:bg-slate-800/70 text-slate-300'
                 }`}
               >
-                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 20V10M12 20V4M6 20v-6" />
-                </svg>
+                <BarChart3 className={`w-4 h-4 ${isActive('/admin/analytics') ? 'text-white' : 'text-slate-400'}`} />
                 <span>สถิติและรายงาน</span>
               </Link>
             </div>
@@ -162,17 +164,15 @@ export default function AdminSidebar() {
                 href="/admin/moderation" 
                 onClick={() => setIsMobileOpen(false)}
                 className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg transition-colors text-left font-semibold ${
-                  isActive('/admin/moderation') ? 'bg-slate-800 text-white font-bold' : 'hover:bg-slate-800/60 text-slate-300'
+                  isActive('/admin/moderation') ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-600/30' : 'hover:bg-slate-800/70 text-slate-300'
                 }`}
               >
                 <span className="flex items-center gap-2.5">
-                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
+                  <FileCheck2 className={`w-4 h-4 ${isActive('/admin/moderation') ? 'text-white' : 'text-slate-400'}`} />
                   <span>ประกาศอสังหาฯ</span>
                 </span>
                 {counts.pending > 0 && (
-                  <span className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-5 text-center">
+                  <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-5 text-center leading-none">
                     {counts.pending}
                   </span>
                 )}
@@ -182,17 +182,15 @@ export default function AdminSidebar() {
                 href="/admin/kyc" 
                 onClick={() => setIsMobileOpen(false)}
                 className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg transition-colors text-left font-semibold ${
-                  isActive('/admin/kyc') ? 'bg-slate-800 text-white font-bold' : 'hover:bg-slate-800/60 text-slate-300'
+                  isActive('/admin/kyc') ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-600/30' : 'hover:bg-slate-800/70 text-slate-300'
                 }`}
               >
                 <span className="flex items-center gap-2.5">
-                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
+                  <ShieldCheck className={`w-4 h-4 ${isActive('/admin/kyc') ? 'text-white' : 'text-slate-400'}`} />
                   <span>ยืนยันตัวตนนายหน้า (KYC)</span>
                 </span>
                 {counts.kyc > 0 && (
-                  <span className="bg-amber-500 text-slate-900 text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-5 text-center">
+                  <span className="bg-amber-500 text-slate-900 text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-5 text-center leading-none">
                     {counts.kyc}
                   </span>
                 )}
@@ -202,17 +200,15 @@ export default function AdminSidebar() {
                 href="/admin/reports" 
                 onClick={() => setIsMobileOpen(false)}
                 className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg transition-colors text-left font-semibold ${
-                  isActive('/admin/reports') ? 'bg-slate-800 text-white font-bold' : 'hover:bg-slate-800/60 text-slate-300'
+                  isActive('/admin/reports') ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-600/30' : 'hover:bg-slate-800/70 text-slate-300'
                 }`}
               >
                 <span className="flex items-center gap-2.5">
-                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
+                  <AlertCircle className={`w-4 h-4 ${isActive('/admin/reports') ? 'text-white' : 'text-slate-400'}`} />
                   <span>รายงานปัญหา (Reports)</span>
                 </span>
                 {counts.reports > 0 && (
-                  <span className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-5 text-center">
+                  <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-5 text-center leading-none">
                     {counts.reports}
                   </span>
                 )}
@@ -222,18 +218,15 @@ export default function AdminSidebar() {
                 href="/admin/payments" 
                 onClick={() => setIsMobileOpen(false)}
                 className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg transition-colors text-left font-semibold ${
-                  isActive('/admin/payments') ? 'bg-slate-800 text-white font-bold' : 'hover:bg-slate-800/60 text-slate-300'
+                  isActive('/admin/payments') ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-600/30' : 'hover:bg-slate-800/70 text-slate-300'
                 }`}
               >
                 <span className="flex items-center gap-2.5">
-                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <rect x="2" y="5" width="20" height="14" rx="2" />
-                    <line x1="2" y1="10" x2="22" y2="10" />
-                  </svg>
+                  <CreditCard className={`w-4 h-4 ${isActive('/admin/payments') ? 'text-white' : 'text-slate-400'}`} />
                   <span>รายการชำระเงิน (PRO)</span>
                 </span>
                 {counts.payments > 0 && (
-                  <span className="bg-amber-500 text-slate-950 text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-5 text-center">
+                  <span className="bg-amber-500 text-slate-950 text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-5 text-center leading-none">
                     {counts.payments}
                   </span>
                 )}
@@ -246,12 +239,10 @@ export default function AdminSidebar() {
                 href="/admin/users" 
                 onClick={() => setIsMobileOpen(false)}
                 className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-colors text-left font-semibold ${
-                  isActive('/admin/users') ? 'bg-slate-800 text-white font-bold shadow-inner' : 'hover:bg-slate-800/60 text-slate-300'
+                  isActive('/admin/users') ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-600/30' : 'hover:bg-slate-800/70 text-slate-300'
                 }`}
               >
-                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
+                <Users className={`w-4 h-4 ${isActive('/admin/users') ? 'text-white' : 'text-slate-400'}`} />
                 <span>จัดการผู้ใช้งาน</span>
               </Link>
             </div>
@@ -259,24 +250,25 @@ export default function AdminSidebar() {
         </div>
 
         {/* User profile section */}
-        <div className="p-4 border-t border-slate-800 bg-slate-900/60 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-blue-500 text-white font-black flex items-center justify-center shadow-inner">
-              A
+        <div className="p-4 border-t border-slate-800/80 bg-slate-900/80 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-black flex items-center justify-center shadow-inner shrink-0 text-xs">
+              {initial}
             </div>
-            <div>
-              <p className="text-white font-black text-xs">Admin Root</p>
-              <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Super Administrator</p>
+            <div className="min-w-0 truncate">
+              <p className="text-white font-bold text-xs truncate">{adminName}</p>
+              <p className="text-[10px] text-slate-400 truncate flex items-center gap-1">
+                <Shield className="w-2.5 h-2.5 text-blue-400 shrink-0" />
+                <span>ผู้ดูแลระบบ</span>
+              </p>
             </div>
           </div>
           <button 
-            onClick={() => signOut({ callbackUrl: '/login' })}
-            className="text-slate-500 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/10 cursor-pointer flex items-center gap-1" 
+            onClick={() => signOut({ callbackUrl: '/admin/login' })}
+            className="text-slate-400 hover:text-red-400 transition-colors p-2 rounded-lg hover:bg-slate-800 cursor-pointer shrink-0" 
             title="ออกจากระบบ"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
       </aside>
