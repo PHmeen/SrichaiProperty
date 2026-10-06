@@ -267,7 +267,10 @@ function SearchPageContent() {
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
   // ข้อมูลการค้นหาอิงแลนด์มาร์กและระยะทาง (Landmark Proximity Search State)
-  const [landmarkRadius, setLandmarkRadius] = useState<number>(10); // ค่าเริ่มต้น 10 กม.
+  const [landmarkRadius, setLandmarkRadius] = useState<number>(() => {
+    const r = searchParams.get('radius');
+    return r && !isNaN(Number(r)) ? Number(r) : 10;
+  });
   const [dynamicLandmark, setDynamicLandmark] = useState<LandmarkTarget | null>(null);
   const [manualLandmark, setManualLandmark] = useState<LandmarkTarget | null>(null);
   const popularLandmarks = useMemo(() => getPopularLandmarks(), []);
@@ -365,6 +368,7 @@ function SearchPageContent() {
       .map(([k]) => k)
       .join(',');
     if (activeFacs) params.set('facilities', activeFacs);
+    if (activeLandmark && landmarkRadius !== 10) params.set('radius', landmarkRadius.toString());
 
     const newQuery = params.toString();
     const newUrl = newQuery ? `${pathname}?${newQuery}` : pathname;
@@ -373,7 +377,7 @@ function SearchPageContent() {
     if (newUrl !== currentUrl) {
       router.replace(newUrl, { scroll: false });
     }
-  }, [debouncedSearchTerm, activeTab, propertyType, agentId, filters, pathname, router, searchParams]);
+  }, [debouncedSearchTerm, activeTab, propertyType, agentId, filters, activeLandmark, landmarkRadius, pathname, router, searchParams]);
 
   // ดึงพิกัดแลนด์มาร์กเพิ่มเติมผ่าน API สำหรับสถานที่นอกพจนานุกรม
   useEffect(() => {
@@ -975,8 +979,51 @@ function SearchPageContent() {
             )}
           </div>
 
+          {/* Quick Landmark Chips */}
+          <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mt-3.5 max-w-2xl mx-auto text-xs">
+            <span className="text-slate-400 font-medium text-[11px] flex items-center gap-1">
+              <MapPin className="w-3 h-3 text-blue-400 shrink-0" />
+              ลองค้นหา:
+            </span>
+            {[
+              'บ้านแถวเซ็นทรัล',
+              'คอนโดใกล้สนามบิน',
+              'บ้านแถว ม.อ.',
+              'แถวตลาดกิมหยง',
+              'บ้านแถวเกาะยอ',
+            ].map((chip) => {
+              const isSelected = debouncedSearchTerm === chip || activeLandmark?.name.includes(chip.replace(/บ้านแถว|คอนโดใกล้|แถว/g, ''));
+              return (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm(chip);
+                    setDebouncedSearchTerm(chip);
+                    saveRecentSearch(chip);
+                    const intent = parseSearchIntent(chip);
+                    if (intent.propertyType && propertyType === 'all') {
+                      setPropertyType(intent.propertyType);
+                    }
+                    if (intent.detectedLandmark) {
+                      setManualLandmark(intent.detectedLandmark);
+                      setSortBy('distance_asc');
+                    }
+                  }}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer backdrop-blur-xs border ${
+                    isSelected
+                      ? 'bg-blue-600 text-white border-blue-400 shadow-xs font-bold'
+                      : 'bg-white/10 hover:bg-white/20 text-slate-200 border-white/20'
+                  }`}
+                >
+                  {chip}
+                </button>
+              );
+            })}
+          </div>
+
           {/* Quick Filter Pills */}
-          <div className="flex flex-wrap items-center justify-center gap-2 mt-4 max-w-2xl mx-auto text-xs">
+          <div className="flex flex-wrap items-center justify-center gap-2 mt-3 max-w-2xl mx-auto text-xs">
             <span className="text-slate-400 font-medium text-[11px] mr-1 hidden sm:inline">ปุ่มลัด:</span>
             
             {/* 1. สัตว์เลี้ยงได้ */}
@@ -1067,6 +1114,15 @@ function SearchPageContent() {
               setIsMobileDrawerOpen={setIsMobileDrawerOpen}
               handleClearFilters={handleClearFilters}
               totalResults={sortedProperties.length}
+              activeLandmark={activeLandmark}
+              landmarkRadius={landmarkRadius}
+              setLandmarkRadius={setLandmarkRadius}
+              onClearLandmark={() => {
+                setManualLandmark(null);
+                setDynamicLandmark(null);
+                setSearchTerm('');
+                setDebouncedSearchTerm('');
+              }}
             />
           </div>
 

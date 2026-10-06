@@ -29,8 +29,10 @@ import {
   X,
   ChevronDown,
   Check,
-  Sofa
+  Sofa,
+  Navigation
 } from 'lucide-react';
+import { LandmarkTarget } from '@/lib/services/landmarkService';
 
 export interface FilterState {
   province: string;
@@ -68,6 +70,10 @@ interface SearchSidebarProps {
   setIsMobileDrawerOpen?: (val: boolean) => void;
   handleClearFilters: () => void;
   totalResults?: number;
+  activeLandmark?: LandmarkTarget | null;
+  landmarkRadius?: number;
+  setLandmarkRadius?: (r: number) => void;
+  onClearLandmark?: () => void;
 }
 
 const BEDROOM_OPTIONS = [
@@ -299,6 +305,10 @@ export default function SearchSidebar({
   setIsMobileDrawerOpen,
   handleClearFilters,
   totalResults,
+  activeLandmark,
+  landmarkRadius,
+  setLandmarkRadius,
+  onClearLandmark,
 }: SearchSidebarProps) {
   const [provincesList, setProvincesList] = useState<LocationItem[]>([]);
   const [amphuresList, setAmphuresList] = useState<LocationItem[]>([]);
@@ -417,6 +427,55 @@ export default function SearchSidebar({
           </div>
           
           <div className="space-y-3">
+            {/* ข้อมูลแลนด์มาร์กศูนย์กลาง (เมื่อกำลังค้นหาตามแลนด์มาร์ก) */}
+            {activeLandmark && (
+              <div className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/80 rounded-xl space-y-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-blue-900">
+                    <Navigation className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    <span>รอบ {activeLandmark.name}</span>
+                  </div>
+                  {onClearLandmark && (
+                    <button
+                      type="button"
+                      onClick={onClearLandmark}
+                      className="text-slate-400 hover:text-rose-600 p-0.5 rounded-full hover:bg-slate-200/50 transition cursor-pointer"
+                      title="ยกเลิกการค้นหาตามแลนด์มาร์กนี้"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {setLandmarkRadius && landmarkRadius !== undefined && (
+                  <div className="flex items-center gap-1 pt-0.5 overflow-x-auto">
+                    <span className="text-[10px] text-slate-500 font-bold shrink-0">รัศมี:</span>
+                    {[
+                      { label: '3 กม.', val: 3 },
+                      { label: '5 กม.', val: 5 },
+                      { label: '10 กม.', val: 10 },
+                      { label: '20 กม.', val: 20 },
+                      { label: 'ทั้งหมด', val: 0 },
+                    ].map((r) => (
+                      <button
+                        key={r.val}
+                        type="button"
+                        onClick={() => setLandmarkRadius(r.val)}
+                        className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition cursor-pointer shrink-0 ${
+                          landmarkRadius === r.val
+                            ? 'bg-blue-600 text-white shadow-2xs'
+                            : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        {r.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <p className="text-[10px] text-blue-600 font-medium">กำลังคำนวณระยะทางจริงจากจุดนี้</p>
+              </div>
+            )}
+
             {/* จังหวัด (พิมพ์ค้นหาได้) */}
             <SearchableLocationSelect
               label="จังหวัด"
