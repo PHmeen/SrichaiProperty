@@ -31,6 +31,17 @@ export interface ParsedSearchIntent {
   listingType?: 'sale' | 'rent';
   detectedLandmark: LandmarkTarget | null;
   landmarkCandidate: string;
+  priceMin?: string;
+  priceMax?: string;
+  bedrooms?: string;
+  facilities?: {
+    pool?: boolean;
+    petFriendly?: boolean;
+    parking?: boolean;
+    gym?: boolean;
+    furnished?: boolean;
+    security?: boolean;
+  };
 }
 
 /**
@@ -168,6 +179,216 @@ export const CURATED_LANDMARKS: LandmarkTarget[] = [
     aliases: ['บิ๊กซี หาดใหญ่', 'บิ๊กซีเอ็กซ์ตร้า', 'big c หาดใหญ่', 'big c extra'],
     province: 'สงขลา',
     description: 'บิ๊กซี เอ็กซ์ตร้า ถ.เพชรเกษม'
+  },
+  {
+    id: 'songkhla-koh-yor',
+    name: 'เกาะยอ (สงขลา)',
+    category: 'attraction',
+    lat: 7.1580,
+    lng: 100.5500,
+    aliases: ['เกาะยอ', 'สะพานติณ', 'สะพานติณสูลานนท์', 'ติณสูลานนท์', 'เกาะยอสงขลา', 'บ้านเกาะยอ'],
+    province: 'สงขลา',
+    description: 'เกาะยอและสะพานติณสูลานนท์ ทะเลสาบสงขลา'
+  },
+  {
+    id: 'hatyai-hospital',
+    name: 'โรงพยาบาลหาดใหญ่',
+    category: 'hospital',
+    lat: 7.0142,
+    lng: 100.4731,
+    aliases: ['รพ.หาดใหญ่', 'รพ หาดใหญ่', 'โรงพยาบาลหาดใหญ่', 'รพ. ศูนย์หาดใหญ่'],
+    province: 'สงขลา',
+    description: 'โรงพยาบาลศูนย์หาดใหญ่ ถ.รัถการ'
+  },
+  {
+    id: 'bangkok-hatyai-hospital',
+    name: 'โรงพยาบาลกรุงเทพหาดใหญ่',
+    category: 'hospital',
+    lat: 7.0012,
+    lng: 100.4932,
+    aliases: ['รพ.กรุงเทพหาดใหญ่', 'รพ.กรุงเทพ หาดใหญ่', 'โรงพยาบาลกรุงเทพหาดใหญ่', 'รพ.กรุงเทพ', 'กรุงเทพหาดใหญ่'],
+    province: 'สงขลา',
+    description: 'โรงพยาบาลเอกชนชั้นนำเครือ BDMS ถ.คลองเรียน 1'
+  },
+  {
+    id: 'sikarin-hatyai-hospital',
+    name: 'โรงพยาบาลศิครินทร์ หาดใหญ่',
+    category: 'hospital',
+    lat: 7.0125,
+    lng: 100.4862,
+    aliases: ['รพ.ศิครินทร์', 'รพ ศิครินทร์', 'โรงพยาบาลศิครินทร์', 'ศิครินทร์หาดใหญ่', 'ศิครินทร์'],
+    province: 'สงขลา',
+    description: 'โรงพยาบาลเอกชน ถ.นิพัทธ์สงเคราะห์ 1'
+  },
+  {
+    id: 'songkhla-hospital',
+    name: 'โรงพยาบาลสงขลา (เกาะยอ)',
+    category: 'hospital',
+    lat: 7.1520,
+    lng: 100.5620,
+    aliases: ['รพ.สงขลา', 'รพ สงขลา', 'โรงพยาบาลสงขลา'],
+    province: 'สงขลา',
+    description: 'โรงพยาบาลศูนย์ประจำจังหวัดสงขลา ใกล้หัวสะพานติณฯ'
+  },
+  {
+    id: 'thaksin-university',
+    name: 'มหาวิทยาลัยทักษิณ สงขลา',
+    category: 'education',
+    lat: 7.1645,
+    lng: 100.6120,
+    aliases: ['ม.ทักษิณ', 'ม ทักษิณ', 'มหาวิทยาลัยทักษิณ', 'ม.ทักษิณ สงขลา', 'thaksin university'],
+    province: 'สงขลา',
+    description: 'สถาบันอุดมศึกษา ถ.กาญจนวนิช เมืองสงขลา'
+  },
+  {
+    id: 'hatyai-university',
+    name: 'มหาวิทยาลัยหาดใหญ่',
+    category: 'education',
+    lat: 6.9855,
+    lng: 100.4725,
+    aliases: ['ม.หาดใหญ่', 'ม หาดใหญ่', 'มหาวิทยาลัยหาดใหญ่', 'คลองหวะ', 'ม.หาดใหญ่ คลองหวะ'],
+    province: 'สงขลา',
+    description: 'มหาวิทยาลัยเอกชนย่านคลองหวะ หาดใหญ่'
+  },
+  {
+    id: 'rmutsv-songkhla',
+    name: 'มหาวิทยาลัยเทคโนโลยีราชมงคลศรีวิชัย',
+    category: 'education',
+    lat: 7.2025,
+    lng: 100.5980,
+    aliases: ['มทร.ศรีวิชัย', 'มทร ศรีวิชัย', 'ราชมงคลสงขลา', 'เทคโนสงขลา', 'มทร.'],
+    province: 'สงขลา',
+    description: 'มหาวิทยาลัยเทคโนโลยีราชมงคลศรีวิชัย เมืองสงขลา'
+  },
+  {
+    id: 'skru-songkhla',
+    name: 'มหาวิทยาลัยราชภัฏสงขลา',
+    category: 'education',
+    lat: 7.1720,
+    lng: 100.6150,
+    aliases: ['ราชภัฏสงขลา', 'ม.ราชภัฏสงขลา', 'มรภ.สงขลา', 'ราชภัฏ สงขลา'],
+    province: 'สงขลา',
+    description: 'มหาวิทยาลัยราชภัฏสงขลา ถ.กาญจนวนิช'
+  },
+  {
+    id: 'yordwittayalai-school',
+    name: 'โรงเรียนหาดใหญ่วิทยาลัย (ญ.ว.)',
+    category: 'education',
+    lat: 7.0122,
+    lng: 100.4755,
+    aliases: ['ญว', 'ญ.ว.', 'รร.ญ.ว.', 'โรงเรียนญว', 'หาดใหญ่วิทยาลัย', 'โรงเรียนหาดใหญ่วิทยาลัย'],
+    province: 'สงขลา',
+    description: 'โรงเรียนมัธยมศึกษาชั้นนำ ถ.เพชรเกษม หาดใหญ่'
+  },
+  {
+    id: 'yorsor-school',
+    name: 'โรงเรียนหาดใหญ่วิทยาลัยสมบูรณ์กุลกันยา (ญ.ส.)',
+    category: 'education',
+    lat: 7.0090,
+    lng: 100.4680,
+    aliases: ['ญส', 'ญ.ส.', 'รร.ญ.ส.', 'โรงเรียนญส', 'หาดใหญ่วิทยาลัย 2'],
+    province: 'สงขลา',
+    description: 'โรงเรียนมัธยมศึกษา ถ.พลพิชัย หาดใหญ่'
+  },
+  {
+    id: 'saengthong-school',
+    name: 'โรงเรียนแสงทองวิทยา',
+    category: 'education',
+    lat: 7.0040,
+    lng: 100.4780,
+    aliases: ['แสงทอง', 'แสงทองวิทยา', 'รร.แสงทอง', 'โรงเรียนแสงทอง'],
+    province: 'สงขลา',
+    description: 'โรงเรียนชื่อดังใจกลางเมืองหาดใหญ่'
+  },
+  {
+    id: 'thida-school',
+    name: 'โรงเรียนธิดานุเคราะห์',
+    category: 'education',
+    lat: 7.0020,
+    lng: 100.4760,
+    aliases: ['ธิดานุเคราะห์', 'ธิดา', 'รร.ธิดานุเคราะห์', 'โรงเรียนธิดานุเคราะห์'],
+    province: 'สงขลา',
+    description: 'โรงเรียนคาทอลิกชื่อดัง ถ.แสงศรี หาดใหญ่'
+  },
+  {
+    id: 'zone-khet-8',
+    name: 'ย่านเขต 8 (ถนนราษฎร์อุทิศ หาดใหญ่)',
+    category: 'other',
+    lat: 7.0095,
+    lng: 100.4635,
+    aliases: ['เขต 8', 'เขต8', 'ราษฎร์อุทิศ', 'ถ.ราษฎร์อุทิศ', 'ถนนราษฎร์อุทิศ', 'ย่านเขต 8'],
+    province: 'สงขลา',
+    description: 'ย่านการค้าและแหล่งของกินยอดนิยมเมืองหาดใหญ่'
+  },
+  {
+    id: 'lee-gardens-downtown',
+    name: 'ใจกลางเมืองหาดใหญ่ (สาย 1-2-3 / ลีการ์เดนส์)',
+    category: 'shopping',
+    lat: 7.0055,
+    lng: 100.4705,
+    aliases: ['ลีการ์เดนส์', 'สาย 1', 'สาย 2', 'สาย 3', 'เสน่หานุสรณ์', 'นิพัทธ์อุทิศ', 'ใจกลางเมืองหาดใหญ่', 'ตัวเมืองหาดใหญ่', 'ลีการ์เด้น'],
+    province: 'สงขลา',
+    description: 'ย่านใจกลางเมืองและถนนคนเดินการค้าสำคัญ'
+  },
+  {
+    id: 'zone-khuan-lang',
+    name: 'โซนควนลัง หาดใหญ่',
+    category: 'other',
+    lat: 6.9950,
+    lng: 100.4320,
+    aliases: ['ควนลัง', 'ต.ควนลัง', 'ตำบลควนลัง', 'แยกควนลัง', 'สนามบินนอก'],
+    province: 'สงขลา',
+    description: 'พื้นที่อยู่อาศัยขยายตัวและเส้นทางสู่สนามบิน'
+  },
+  {
+    id: 'zone-ban-phru',
+    name: 'โซนบ้านพรุ หาดใหญ่',
+    category: 'other',
+    lat: 6.9550,
+    lng: 100.4850,
+    aliases: ['บ้านพรุ', 'ต.บ้านพรุ', 'ตำบลบ้านพรุ', 'เทศบาลเมืองบ้านพรุ'],
+    province: 'สงขลา',
+    description: 'พื้นที่ชุมชนอยู่อาศัยตอนใต้ของหาดใหญ่'
+  },
+  {
+    id: 'zone-nam-noi',
+    name: 'โซนน้ำน้อย หาดใหญ่-สงขลา',
+    category: 'other',
+    lat: 7.0780,
+    lng: 100.5420,
+    aliases: ['น้ำน้อย', 'ต.น้ำน้อย', 'ตำบลน้ำน้อย', 'ทางไปสงขลา'],
+    province: 'สงขลา',
+    description: 'พื้นที่เชื่อมต่อระหว่างเมืองหาดใหญ่และเมืองสงขลา'
+  },
+  {
+    id: 'zone-singhanakhon',
+    name: 'โซนสิงหนคร (สงขลา)',
+    category: 'other',
+    lat: 7.2350,
+    lng: 100.5480,
+    aliases: ['สิงหนคร', 'อ.สิงหนคร', 'อำเภอสิงหนคร', 'หัวเขา'],
+    province: 'สงขลา',
+    description: 'พื้นที่ท่าเรือน้ำลึกและศูนย์กลางเศรษฐกิจฝั่งสิงหนคร'
+  },
+  {
+    id: 'songkhla-old-town',
+    name: 'ย่านเมืองเก่าสงขลา (ถนนนางงาม)',
+    category: 'attraction',
+    lat: 7.1950,
+    lng: 100.5890,
+    aliases: ['เมืองเก่าสงขลา', 'ถนนนางงาม', 'ย่านเมืองเก่าสงขลา', 'ตัวเมืองสงขลา', 'เมืองสงขลา'],
+    province: 'สงขลา',
+    description: 'ย่านสถาปัตยกรรมชิโน-โปรตุกีสและวัฒนธรรมสงขลา'
+  },
+  {
+    id: 'zone-sadao',
+    name: 'โซนอำเภอสะเดา / ด่านนอก',
+    category: 'other',
+    lat: 6.5240,
+    lng: 100.4210,
+    aliases: ['สะเดา', 'อ.สะเดา', 'ด่านนอก', 'ด่านสะเดา', 'ชายแดนสะเดา'],
+    province: 'สงขลา',
+    description: 'อำเภอเศรษฐกิจการค้าชายแดนไทย-มาเลเซีย'
   },
 
   // --- กรุงเทพฯ & ปริมณฑล (รองรับผู้ใช้ทั่วประเทศ) ---
@@ -313,7 +534,8 @@ function normalizeThaiText(text: string): string {
 
 /**
  * 1. วิเคราะห์เจตนาของคำค้นหา (NLP & Intent Parser)
- * แปลง "บ้านแถวเซ้นทรัล" -> { type: 'house', spatialIntent: true, landmark: CentralFestival }
+ * แปลง "บ้านแถวเซ้นทรัล ไม่เกิน 3 ล้าน 3 นอน มีสระว่ายน้ำ"
+ * -> { type: 'house', priceMax: '3000000', bedrooms: '3', facilities: { pool: true }, landmark: CentralFestival }
  */
 export function parseSearchIntent(rawQuery: string): ParsedSearchIntent {
   const normalized = normalizeThaiText(rawQuery);
@@ -322,32 +544,120 @@ export function parseSearchIntent(rawQuery: string): ParsedSearchIntent {
   let spatialIntent = false;
   let propertyType: ParsedSearchIntent['propertyType'] = undefined;
   let listingType: ParsedSearchIntent['listingType'] = undefined;
+  let priceMin: string | undefined = undefined;
+  let priceMax: string | undefined = undefined;
+  let bedrooms: string | undefined = undefined;
+  const facilities: NonNullable<ParsedSearchIntent['facilities']> = {};
 
-  // 1.1 ตรวจจับประเภทอสังหาริมทรัพย์
-  if (/บ้านเดี่ยว|บ้านสองชั้น|บ้านพัก|บ้าน/i.test(lower)) {
+  let workingText = lower;
+
+  // 1.1 สกัดงบประมาณ / ราคา (Budget Extraction)
+  // กรณี 1: ช่วงราคา X - Y ล้าน หรือ X ถึง Y ล้าน
+  const rangeMatch = workingText.match(/(\d+(?:\.\d+)?)\s*(?:-|ถึง)\s*(\d+(?:\.\d+)?)\s*ล้าน/);
+  if (rangeMatch) {
+    priceMin = Math.round(parseFloat(rangeMatch[1]) * 1000000).toString();
+    priceMax = Math.round(parseFloat(rangeMatch[2]) * 1000000).toString();
+    workingText = workingText.replace(rangeMatch[0], ' ');
+  }
+
+  // กรณี 2: ไม่เกิน / ต่ำกว่า / งบ X ล้าน
+  if (!priceMax) {
+    const maxMilMatch = workingText.match(/(?:ไม่เกิน|ต่ำกว่า|งบไม่เกิน|งบ)\s*(\d+(?:\.\d+)?)\s*ล้าน/);
+    if (maxMilMatch) {
+      priceMax = Math.round(parseFloat(maxMilMatch[1]) * 1000000).toString();
+      workingText = workingText.replace(maxMilMatch[0], ' ');
+    }
+  }
+
+  // กรณี 3: ไม่เกิน / ต่ำกว่า / งบ X แสน
+  if (!priceMax) {
+    const maxSaenMatch = workingText.match(/(?:ไม่เกิน|ต่ำกว่า|งบไม่เกิน|งบ)\s*(\d+(?:\.\d+)?)\s*แสน/);
+    if (maxSaenMatch) {
+      priceMax = Math.round(parseFloat(maxSaenMatch[1]) * 100000).toString();
+      workingText = workingText.replace(maxSaenMatch[0], ' ');
+    }
+  }
+
+  // กรณี 4: มากกว่า / เกิน X ล้าน
+  if (!priceMin) {
+    const minMilMatch = workingText.match(/(?:มากกว่า|เกิน|ตั้งแต่)\s*(\d+(?:\.\d+)?)\s*ล้าน/);
+    if (minMilMatch) {
+      priceMin = Math.round(parseFloat(minMilMatch[1]) * 1000000).toString();
+      workingText = workingText.replace(minMilMatch[0], ' ');
+    }
+  }
+
+  // กรณี 5: ไม่เกิน / ต่ำกว่า / งบ X,XXX (บาท) เช่น ค่าเช่าไม่เกิน 15,000
+  if (!priceMax) {
+    const maxNumMatch = workingText.match(/(?:ไม่เกิน|ต่ำกว่า|งบไม่เกิน|งบ)\s*(\d[\d,]{3,})\s*(?:บาท)?/);
+    if (maxNumMatch) {
+      priceMax = maxNumMatch[1].replace(/,/g, '');
+      workingText = workingText.replace(maxNumMatch[0], ' ');
+    }
+  }
+
+  // 1.2 สกัดห้องนอน (Bedrooms Extraction)
+  const bedMatch = workingText.match(/(\d+)\s*(?:ห้องนอน|ห้อง นอน|นอน)/);
+  if (bedMatch) {
+    bedrooms = bedMatch[1];
+    workingText = workingText.replace(bedMatch[0], ' ');
+  } else if (/สตูดิโอ|studio/i.test(workingText)) {
+    bedrooms = '0';
+    workingText = workingText.replace(/สตูดิโอ|studio/gi, ' ');
+  }
+
+  // 1.3 สกัดสิ่งอำนวยความสะดวก (Facilities Extraction)
+  if (/สระว่ายน้ำ|สระน้ำ|มีสระ|pool/i.test(workingText)) {
+    facilities.pool = true;
+    workingText = workingText.replace(/สระว่ายน้ำ|สระน้ำ|มีสระ|pool/gi, ' ');
+  }
+  if (/สัตว์เลี้ยงได้|เลี้ยงสัตว์ได้|เลี้ยงสัตว์|สัตว์เลี้ยง|pet friendly|pet/i.test(workingText)) {
+    facilities.petFriendly = true;
+    workingText = workingText.replace(/สัตว์เลี้ยงได้|เลี้ยงสัตว์ได้|เลี้ยงสัตว์|สัตว์เลี้ยง|pet friendly|pet/gi, ' ');
+  }
+  if (/ที่จอดรถ|จอดรถ|ที่จอด|parking/i.test(workingText)) {
+    facilities.parking = true;
+    workingText = workingText.replace(/ที่จอดรถ|จอดรถ|ที่จอด|parking/gi, ' ');
+  }
+  if (/ฟิตเนส|ยิม|fitness|gym/i.test(workingText)) {
+    facilities.gym = true;
+    workingText = workingText.replace(/ฟิตเนส|ยิม|fitness|gym/gi, ' ');
+  }
+  if (/แต่งครบ|พร้อมอยู่|เฟอร์นิเจอร์|เฟอร์ฯ ครบ|เฟอร์ครบ|furnished/i.test(workingText)) {
+    facilities.furnished = true;
+    workingText = workingText.replace(/แต่งครบ|พร้อมอยู่|เฟอร์นิเจอร์|เฟอร์ฯ ครบ|เฟอร์ครบ|furnished/gi, ' ');
+  }
+  if (/รักษาความปลอดภัย|cctv|รปภ|security/i.test(workingText)) {
+    facilities.security = true;
+    workingText = workingText.replace(/รักษาความปลอดภัย|cctv|รปภ|security/gi, ' ');
+  }
+
+  // 1.4 ตรวจจับประเภทอสังหาริมทรัพย์
+  if (/บ้านเดี่ยว|บ้านสองชั้น|บ้านพัก|บ้าน/i.test(workingText)) {
     propertyType = 'house';
-  } else if (/คอนโดมิเนียม|คอนโด/i.test(lower)) {
+  } else if (/คอนโดมิเนียม|คอนโด/i.test(workingText)) {
     propertyType = 'condo';
-  } else if (/ทาวน์โฮม|ทาวน์เฮ้าส์|ทาวน์เฮาส์/i.test(lower)) {
+  } else if (/ทาวน์โฮม|ทาวน์เฮ้าส์|ทาวน์เฮาส์/i.test(workingText)) {
     propertyType = 'townhome';
-  } else if (/ที่ดิน|แปลงที่ดิน/i.test(lower)) {
+  } else if (/ที่ดิน|แปลงที่ดิน/i.test(workingText)) {
     propertyType = 'land';
   }
 
-  // 1.2 ตรวจจับประเภทสัญญา ซื้อ / ขาย / เช่า
-  if (/เช่า|ให้เช่า|ค่าเช่า/i.test(lower)) {
+  // 1.5 ตรวจจับประเภทสัญญา ซื้อ / ขาย / เช่า
+  if (/เช่า|ให้เช่า|ค่าเช่า/i.test(workingText)) {
     listingType = 'rent';
-  } else if (/ซื้อ|ขาย/i.test(lower)) {
+  } else if (/ซื้อ|ขาย/i.test(workingText)) {
     listingType = 'sale';
   }
 
-  // 1.3 ตัดคำบอกประเภททรัพย์และคำซื้อขายออกเพื่อหาคำบอกตำแหน่ง
-  let workingText = lower
-    .replace(/บ้านเดี่ยว|บ้าน|คอนโดมิเนียม|คอนโด|ทาวน์โฮม|ทาวน์เฮ้าส์|ที่ดิน/g, ' ')
-    .replace(/ขาย|เช่า|ให้เช่า|ซื้อ/g, ' ')
+  // 1.6 ตัดคำบอกประเภททรัพย์และคำซื้อขายออกเพื่อหาคำบอกตำแหน่ง
+  workingText = workingText
+    .replace(/บ้านเดี่ยว|บ้าน|คอนโดมิเนียม|คอนโด|ทาวน์โฮม|ทาวน์เฮ้าส์|ทาวน์เฮาส์|ที่ดิน/gi, ' ')
+    .replace(/ขาย|เช่า|ให้เช่า|ซื้อ/gi, ' ')
+    .replace(/พร้อม|มี|ราคา|งบ/gi, ' ')
     .trim();
 
-  // 1.4 ตรวจสอบว่ามีคำบอกตำแหน่งหรือไม่ (เช่น "แถว", "ใกล้")
+  // 1.7 ตรวจสอบว่ามีคำบอกตำแหน่งหรือไม่ (เช่น "แถว", "ใกล้")
   for (const spatialWord of SPATIAL_KEYWORDS) {
     if (workingText.includes(spatialWord)) {
       spatialIntent = true;
@@ -357,7 +667,7 @@ export function parseSearchIntent(rawQuery: string): ParsedSearchIntent {
 
   const landmarkCandidate = workingText.trim().replace(/\s+/g, ' ');
 
-  // 1.5 ค้นหาใน Curated Landmarks
+  // 1.8 ค้นหาใน Curated Landmarks
   let detectedLandmark = findCuratedLandmark(landmarkCandidate);
 
   // ถ้ายังไม่เจอ ลองค้นหาด้วย rawQuery หรือคำที่ normalize แล้ว
@@ -371,6 +681,8 @@ export function parseSearchIntent(rawQuery: string): ParsedSearchIntent {
     spatialIntent = true;
   }
 
+  const hasFacilities = Object.values(facilities).some(Boolean);
+
   return {
     originalQuery: rawQuery,
     cleanQuery: landmarkCandidate || rawQuery,
@@ -378,7 +690,11 @@ export function parseSearchIntent(rawQuery: string): ParsedSearchIntent {
     propertyType,
     listingType,
     detectedLandmark,
-    landmarkCandidate
+    landmarkCandidate,
+    priceMin,
+    priceMax,
+    bedrooms,
+    facilities: hasFacilities ? facilities : undefined,
   };
 }
 
@@ -502,6 +818,17 @@ export function filterAndSortByProximity(
  * 6. ดึงรายการแลนด์มาร์กยอดนิยมสำหรับแสดงปุ่มลัด / Autocomplete
  */
 export function getPopularLandmarks(): LandmarkTarget[] {
-  // ดึง 6 สถานที่สำคัญหลัก
-  return CURATED_LANDMARKS.slice(0, 6);
+  // ดึง 8 สถานที่สำคัญยอดนิยมในหาดใหญ่และสงขลา
+  const popularIds = [
+    'hatyai-central',
+    'hatyai-airport',
+    'psu-hatyai',
+    'psu-hospital',
+    'kimyong-market',
+    'songkhla-koh-yor',
+    'zone-khet-8',
+    'chalatat-beach'
+  ];
+  const list = CURATED_LANDMARKS.filter((lm) => popularIds.includes(lm.id));
+  return list.length > 0 ? list : CURATED_LANDMARKS.slice(0, 8);
 }

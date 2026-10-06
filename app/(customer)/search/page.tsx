@@ -233,35 +233,51 @@ function SearchPageContent() {
   const searchInputContainerRef = useRef<HTMLDivElement>(null);
   const { properties, propertiesLoading, favorites, toggleFavorite } = useApp();
 
-  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('q') || '');
+  const initialQuery = searchParams.get('q') || '';
+  const initialIntent = initialQuery ? parseSearchIntent(initialQuery) : null;
+
+  const [searchTerm, setSearchTerm] = useState(() => initialQuery);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
-  const [activeTab, setActiveTab] = useState<'buy' | 'rent'>(() => searchParams.get('tab') === 'rent' ? 'rent' : 'buy');
-  const [propertyType, setPropertyType] = useState(() => searchParams.get('type') || 'all');
+  const [activeTab, setActiveTab] = useState<'buy' | 'rent'>(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'rent') return 'rent';
+    if (tab === 'buy') return 'buy';
+    if (initialIntent?.listingType === 'rent') return 'rent';
+    return 'buy';
+  });
+  const [propertyType, setPropertyType] = useState(() => {
+    const pType = searchParams.get('type');
+    if (pType) return pType;
+    if (initialIntent?.propertyType) return initialIntent.propertyType;
+    return 'all';
+  });
   const [agentId, setAgentId] = useState(() => searchParams.get('agentId') || '');
 
   const [filters, setFilters] = useState<FilterState>(() => ({
     province: searchParams.get('province') || '',
     amphure: searchParams.get('amphure') || '',
     district: searchParams.get('district') || '',
-    priceMin: searchParams.get('priceMin') || '',
-    priceMax: searchParams.get('priceMax') || '',
-    bedrooms: searchParams.get('bedrooms') || 'any',
+    priceMin: searchParams.get('priceMin') || initialIntent?.priceMin || '',
+    priceMax: searchParams.get('priceMax') || initialIntent?.priceMax || '',
+    bedrooms: searchParams.get('bedrooms') || initialIntent?.bedrooms || 'any',
     bathrooms: searchParams.get('bathrooms') || 'any',
     parking: searchParams.get('parking') || 'any',
     areaMin: searchParams.get('areaMin') || '',
     areaMax: searchParams.get('areaMax') || '',
     isPremiumOnly: searchParams.get('premium') === 'true',
     facilities: {
-      petFriendly: searchParams.get('facilities')?.includes('petFriendly') || false,
-      pool: searchParams.get('facilities')?.includes('pool') || false,
-      gym: searchParams.get('facilities')?.includes('gym') || false,
-      parking: searchParams.get('facilities')?.includes('parking') || false,
-      security: searchParams.get('facilities')?.includes('security') || false,
-      furnished: searchParams.get('facilities')?.includes('furnished') || false,
+      petFriendly: searchParams.get('facilities')?.includes('petFriendly') || initialIntent?.facilities?.petFriendly || false,
+      pool: searchParams.get('facilities')?.includes('pool') || initialIntent?.facilities?.pool || false,
+      gym: searchParams.get('facilities')?.includes('gym') || initialIntent?.facilities?.gym || false,
+      parking: searchParams.get('facilities')?.includes('parking') || initialIntent?.facilities?.parking || false,
+      security: searchParams.get('facilities')?.includes('security') || initialIntent?.facilities?.security || false,
+      furnished: searchParams.get('facilities')?.includes('furnished') || initialIntent?.facilities?.furnished || false,
     },
   }));
 
-  const [sortBy, setSortBy] = useState<SortKey>('latest');
+  const [sortBy, setSortBy] = useState<SortKey>(() => {
+    return initialIntent?.detectedLandmark ? 'distance_asc' : 'latest';
+  });
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'map'>('grid');
   const [currentPage, setCurrentPage] = useState(1);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
@@ -272,7 +288,9 @@ function SearchPageContent() {
     return r && !isNaN(Number(r)) ? Number(r) : 10;
   });
   const [dynamicLandmark, setDynamicLandmark] = useState<LandmarkTarget | null>(null);
-  const [manualLandmark, setManualLandmark] = useState<LandmarkTarget | null>(null);
+  const [manualLandmark, setManualLandmark] = useState<LandmarkTarget | null>(() => {
+    return initialIntent?.detectedLandmark || null;
+  });
   const popularLandmarks = useMemo(() => getPopularLandmarks(), []);
 
   // วิเคราะห์เจตนาค้นหาอิงแลนด์มาร์กจากคำค้นหา (Derived Landmark จาก Query)
@@ -379,13 +397,9 @@ function SearchPageContent() {
     }
   }, [debouncedSearchTerm, activeTab, propertyType, agentId, filters, activeLandmark, landmarkRadius, pathname, router, searchParams]);
 
-  // ดึงพิกัดแลนด์มาร์กเพิ่มเติมผ่าน API สำหรับสถานที่นอกพจนานุกรม
+  // ดึงพิกัดแลนด์มาร์กเพิ่มเติมผ่าน API สำหรับสถานที่นอกพจนานุกรม (Asynchronous External Resolver)
   useEffect(() => {
-    if (!parsedIntent) {
-      return;
-    }
-
-    if (parsedIntent.spatialIntent && !parsedIntent.detectedLandmark && parsedIntent.landmarkCandidate) {
+    if (parsedIntent?.spatialIntent && !parsedIntent.detectedLandmark && parsedIntent.landmarkCandidate) {
       let isCancelled = false;
       fetch(`/api/landmarks/resolve?q=${encodeURIComponent(parsedIntent.landmarkCandidate)}`)
         .then((res) => res.json())
@@ -400,7 +414,7 @@ function SearchPageContent() {
         isCancelled = true;
       };
     }
-  }, [parsedIntent]);
+  }, [parsedIntent?.spatialIntent, parsedIntent?.detectedLandmark, parsedIntent?.landmarkCandidate]);
 
   const triggerSearch = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -415,7 +429,31 @@ function SearchPageContent() {
         const mappedTab = intent.listingType === 'rent' ? 'rent' : 'buy';
         if (activeTab !== mappedTab) setActiveTab(mappedTab);
       }
+      if (intent.priceMax) {
+        setFilters((prev) => ({ ...prev, priceMax: intent.priceMax! }));
+      }
+      if (intent.priceMin) {
+        setFilters((prev) => ({ ...prev, priceMin: intent.priceMin! }));
+      }
+      if (intent.bedrooms) {
+        setFilters((prev) => ({ ...prev, bedrooms: intent.bedrooms! }));
+      }
+      if (intent.facilities) {
+        setFilters((prev) => ({
+          ...prev,
+          facilities: {
+            ...prev.facilities,
+            ...(intent.facilities?.pool ? { pool: true } : {}),
+            ...(intent.facilities?.petFriendly ? { petFriendly: true } : {}),
+            ...(intent.facilities?.parking ? { parking: true } : {}),
+            ...(intent.facilities?.gym ? { gym: true } : {}),
+            ...(intent.facilities?.furnished ? { furnished: true } : {}),
+            ...(intent.facilities?.security ? { security: true } : {}),
+          }
+        }));
+      }
       if (intent.detectedLandmark) {
+        setManualLandmark(intent.detectedLandmark);
         setSortBy('distance_asc');
       }
     }
@@ -468,9 +506,10 @@ function SearchPageContent() {
     });
 
     return baseList.filter((prop) => {
-      // กรอง ซื้อ / เช่า
-      if (activeTab === 'rent' && prop.listingType !== 'rent') return false;
-      if (activeTab === 'buy' && prop.listingType !== 'sale') return false;
+      // กรอง ซื้อ / เช่า (คำนึงถึง Tab หรือ Intent จากคำค้นหา)
+      const effectiveTab = activeTab !== 'buy' ? activeTab : (parsedIntent?.listingType === 'rent' ? 'rent' : 'buy');
+      if (effectiveTab === 'rent' && prop.listingType !== 'rent') return false;
+      if (effectiveTab === 'buy' && prop.listingType !== 'sale') return false;
 
       // กรองเฉพาะนายหน้าที่เลือก
       if (agentId && prop.agent_id !== agentId) return false;
@@ -485,21 +524,106 @@ function SearchPageContent() {
         }
       }
 
-      // ค้นหาคำสำคัญ
+      // กรองประเภททรัพย์ (คำนึงถึงตัวกรองหลักและ Intent)
+      const effectiveType = propertyType !== 'all' ? propertyType : (parsedIntent?.propertyType || 'all');
+      const typeMap: Record<string, string> = { house: 'บ้าน', condo: 'คอนโด', townhome: 'ทาวน์โฮม', land: 'ที่ดิน' };
+      if (effectiveType !== 'all' && typeMap[effectiveType] && !prop.type.includes(typeMap[effectiveType]) && !(effectiveType === 'land' && prop.type.toLowerCase().includes('land'))) {
+        return false;
+      }
+
+      // กรองราคา (คำนึงถึงตัวกรองหลักและ Intent)
+      const price = parseInt(prop.price.replace(/[^\d]/g, ''), 10) || 0;
+      const effectivePriceMin = filters.priceMin || parsedIntent?.priceMin;
+      const effectivePriceMax = filters.priceMax || parsedIntent?.priceMax;
+      if (effectivePriceMin && price < parseInt(effectivePriceMin, 10)) return false;
+      if (effectivePriceMax && price > parseInt(effectivePriceMax, 10)) return false;
+
+      // กรองห้องนอน (คำนึงถึงตัวกรองหลักและ Intent)
+      const effectiveBedrooms = filters.bedrooms !== 'any' ? filters.bedrooms : (parsedIntent?.bedrooms || 'any');
+      if (effectiveBedrooms !== 'any') {
+        if (effectiveBedrooms === '0') {
+          const isZeroBed = (prop.bedrooms === 0 || !prop.bedrooms);
+          const hasStudioWord = /สตูดิโอ|studio/i.test(`${prop.title} ${prop.description} ${prop.type}`);
+          if (!isZeroBed && !hasStudioWord) return false;
+        } else {
+          if ((prop.bedrooms || 0) < parseInt(effectiveBedrooms, 10)) return false;
+        }
+      }
+      if (filters.bathrooms !== 'any' && (prop.bathrooms || 0) < parseInt(filters.bathrooms, 10)) return false;
+      if (filters.parking !== 'any' && (prop.parking || 0) < parseInt(filters.parking, 10)) return false;
+
+      // กรองพื้นที่ใช้สอย
+      if (filters.areaMin && (prop.area || 0) < parseFloat(filters.areaMin)) return false;
+      if (filters.areaMax && (prop.area || 0) > parseFloat(filters.areaMax)) return false;
+
+      // กรองสิ่งอำนวยความสะดวก (คำนึงถึงตัวกรองหลักและ Intent)
+      const desc = prop.description || '';
+      const propAmenities = prop.amenities || [];
+      const hasAmenity = (pattern: RegExp) => propAmenities.some((a) => pattern.test(a)) || pattern.test(desc);
+
+      const wantFurnished = filters.facilities.furnished || parsedIntent?.facilities?.furnished;
+      const wantPet = filters.facilities.petFriendly || parsedIntent?.facilities?.petFriendly;
+      const wantPool = filters.facilities.pool || parsedIntent?.facilities?.pool;
+      const wantGym = filters.facilities.gym || parsedIntent?.facilities?.gym;
+      const wantParking = filters.facilities.parking || parsedIntent?.facilities?.parking;
+      const wantSecurity = filters.facilities.security || parsedIntent?.facilities?.security;
+
+      if (wantFurnished && !hasAmenity(/เฟอร์นิเจอร์|แต่งครบ|พร้อมอยู่|furnished|เฟอร์ฯ|เฟอร์/i)) return false;
+      if (wantPet && !hasAmenity(/สัตว์เลี้ยง|pet/i)) return false;
+      if (wantPool && !hasAmenity(/สระ|pool/i)) return false;
+      if (wantGym && !hasAmenity(/ฟิตเนส|ยิม|gym/i)) return false;
+      if (wantParking && !hasAmenity(/ที่จอดรถ|จอดรถ|parking/i) && (prop.parking || 0) <= 0) return false;
+      if (wantSecurity && !hasAmenity(/รักษาความปลอดภัย|cctv|รปภ|security/i)) return false;
+
+      // ค้นหาคำสำคัญ (Full-Text Search โดยตัดคำ intent ที่ถูกนำไปเป็นตัวกรองแล้ว)
       const s = debouncedSearchTerm.toLowerCase().trim();
       if (s) {
-        let remainingTokens: string[] = [];
+        let cleaned = s;
 
+        // 1. ตัดชื่อแลนด์มาร์กที่กำลังค้นหาอยู่
         if (activeLandmark) {
-          // หากมี Active Landmark ให้ข้ามคำที่เป็นชื่อแลนด์มาร์กและคำบอกตำแหน่ง
-          const cleaned = s
-            .replace(new RegExp(activeLandmark.name.toLowerCase(), 'g'), ' ')
-            .replace(/แถวๆ|แถว|ใกล้ๆ|ใกล้|รอบๆ|รอบ|ติด|โซน|ย่าน|บริเวณ|ทางไป|บ้านเดี่ยว|บ้าน|คอนโดมิเนียม|คอนโด|ทาวน์โฮม|ที่ดิน|เช่า|ขาย/g, ' ')
-            .trim();
-          remainingTokens = cleaned.split(/\s+/).filter((t) => t.length >= 2);
-        } else {
-          remainingTokens = s.split(/\s+/).filter(Boolean);
+          cleaned = cleaned.replace(new RegExp(activeLandmark.name.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), ' ');
+          if (activeLandmark.aliases) {
+            for (const alias of activeLandmark.aliases) {
+              cleaned = cleaned.replace(new RegExp(alias.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), ' ');
+            }
+          }
         }
+
+        // 2. ตัดคำบอกตำแหน่ง (Spatial Prepositions)
+        cleaned = cleaned.replace(/แถวๆ|แถว|ใกล้ๆ|ใกล้|รอบๆ|รอบ|ติดกับ|ติด|โซน|ย่าน|บริเวณ|ทางไป|ตรงข้าม|หน้า|หลัง|ข้าง/g, ' ');
+
+        // 3. ตัดคำบอกประเภททรัพย์และสัญญาที่ถูกจัดการโดยตัวกรองแล้ว
+        cleaned = cleaned.replace(/บ้านเดี่ยว|บ้านแฝด|บ้านสองชั้น|บ้านพัก|บ้าน|คอนโดมิเนียม|คอนโด|ทาวน์โฮม|ทาวน์เฮ้าส์|ทาวน์เฮาส์|ที่ดิน|แปลงที่ดิน/g, ' ');
+        cleaned = cleaned.replace(/เช่า|ให้เช่า|ค่าเช่า|ขาย|ซื้อ|ขายขาด/g, ' ');
+
+        // 4. ตัดคำบอกงบประมาณ / ราคา (ที่ถูกแปลงเป็นตัวกรองราคาแล้ว)
+        cleaned = cleaned
+          .replace(/(\d+(?:\.\d+)?)\s*(?:-|ถึง)\s*(\d+(?:\.\d+)?)\s*ล้าน/g, ' ')
+          .replace(/(?:ไม่เกิน|ต่ำกว่า|งบไม่เกิน|งบ|มากกว่า|เกิน|ตั้งแต่)\s*(\d+(?:\.\d+)?)\s*(?:ล้าน|แสน)/g, ' ')
+          .replace(/(?:ไม่เกิน|ต่ำกว่า|งบไม่เกิน|งบ)\s*(\d[\d,]{3,})\s*(?:บาท)?/g, ' ')
+          .replace(/\b\d+(?:\.\d+)?\s*(?:ล้าน|แสน|บาท)\b/g, ' ')
+          .replace(/ราคา|งบ/g, ' ');
+
+        // 5. ตัดคำบอกห้องนอน / ห้องน้ำ / ที่จอดรถ
+        cleaned = cleaned
+          .replace(/\d+\s*(?:ห้องนอน|ห้อง นอน|นอน|beds?|bedroom)/g, ' ')
+          .replace(/สตูดิโอ|studio/g, ' ')
+          .replace(/\d+\s*(?:ห้องน้ำ|น้ำ)/g, ' ')
+          .replace(/\d+\s*(?:ที่จอดรถ|จอดรถ|คัน)/g, ' ');
+
+        // 6. ตัดคำบอกสิ่งอำนวยความสะดวก
+        cleaned = cleaned.replace(/สระว่ายน้ำ|สระน้ำ|มีสระ|pool/g, ' ');
+        cleaned = cleaned.replace(/สัตว์เลี้ยงได้|เลี้ยงสัตว์ได้|เลี้ยงสัตว์|สัตว์เลี้ยง|pet friendly|pet/g, ' ');
+        cleaned = cleaned.replace(/ที่จอดรถ|จอดรถ|ที่จอด|parking/g, ' ');
+        cleaned = cleaned.replace(/ฟิตเนส|ยิม|fitness|gym/g, ' ');
+        cleaned = cleaned.replace(/แต่งครบ|พร้อมอยู่|เฟอร์นิเจอร์|เฟอร์ฯ ครบ|เฟอร์ครบ|furnished/g, ' ');
+        cleaned = cleaned.replace(/รักษาความปลอดภัย|cctv|รปภ|security/g, ' ');
+
+        // 7. ตัดคำเชื่อมทั่วไป
+        cleaned = cleaned.replace(/มี|พร้อม|และ|กับ|ห้อง|แบบ|โครงการ|หลัง|แปลง|ยูนิต/g, ' ');
+
+        const remainingTokens = cleaned.trim().split(/\s+/).filter((t) => t.length >= 2);
 
         if (remainingTokens.length > 0) {
           const searchableBag = [
@@ -528,49 +652,9 @@ function SearchPageContent() {
         if (filters.district && prop.district_id !== parseInt(filters.district, 10)) return false;
       }
 
-      // กรองประเภททรัพย์
-      const typeMap: Record<string, string> = { house: 'บ้าน', condo: 'คอนโด', townhome: 'ทาวน์โฮม', land: 'ที่ดิน' };
-      if (propertyType !== 'all' && typeMap[propertyType] && !prop.type.includes(typeMap[propertyType]) && !(propertyType === 'land' && prop.type.toLowerCase().includes('land'))) {
-        return false;
-      }
-
-      // กรองราคา
-      const price = parseInt(prop.price.replace(/[^\d]/g, ''), 10) || 0;
-      if (filters.priceMin && price < parseInt(filters.priceMin, 10)) return false;
-      if (filters.priceMax && price > parseInt(filters.priceMax, 10)) return false;
-
-      // กรองห้องนอน / ห้องน้ำ / ที่จอดรถ
-      if (filters.bedrooms !== 'any') {
-        if (filters.bedrooms === '0') {
-          const isZeroBed = (prop.bedrooms === 0 || !prop.bedrooms);
-          const hasStudioWord = /สตูดิโอ|studio/i.test(`${prop.title} ${prop.description} ${prop.type}`);
-          if (!isZeroBed && !hasStudioWord) return false;
-        } else {
-          if ((prop.bedrooms || 0) < parseInt(filters.bedrooms, 10)) return false;
-        }
-      }
-      if (filters.bathrooms !== 'any' && (prop.bathrooms || 0) < parseInt(filters.bathrooms, 10)) return false;
-      if (filters.parking !== 'any' && (prop.parking || 0) < parseInt(filters.parking, 10)) return false;
-
-      // กรองพื้นที่ใช้สอย
-      if (filters.areaMin && (prop.area || 0) < parseFloat(filters.areaMin)) return false;
-      if (filters.areaMax && (prop.area || 0) > parseFloat(filters.areaMax)) return false;
-
-      // กรองสิ่งอำนวยความสะดวก
-      const desc = prop.description || '';
-      const propAmenities = prop.amenities || [];
-      const hasAmenity = (pattern: RegExp) => propAmenities.some((a) => pattern.test(a)) || pattern.test(desc);
-
-      if (filters.facilities.furnished && !hasAmenity(/เฟอร์นิเจอร์|แต่งครบ|พร้อมอยู่|furnished|เฟอร์ฯ|เฟอร์/i)) return false;
-      if (filters.facilities.petFriendly && !hasAmenity(/สัตว์เลี้ยง|pet/i)) return false;
-      if (filters.facilities.pool && !hasAmenity(/สระ|pool/i)) return false;
-      if (filters.facilities.gym && !hasAmenity(/ฟิตเนส|ยิม|gym/i)) return false;
-      if (filters.facilities.parking && !hasAmenity(/ที่จอดรถ|จอดรถ|parking/i) && (prop.parking || 0) <= 0) return false;
-      if (filters.facilities.security && !hasAmenity(/รักษาความปลอดภัย|cctv|รปภ|security/i)) return false;
-
       return true;
     });
-  }, [properties, activeTab, agentId, filters, debouncedSearchTerm, propertyType, activeLandmark, landmarkRadius]);
+  }, [properties, activeTab, agentId, filters, debouncedSearchTerm, propertyType, activeLandmark, landmarkRadius, parsedIntent]);
 
   // ----------------------------------------------------------------------------
   // ระบบเรียงลำดับผลลัพธ์ (Sort Engine)
