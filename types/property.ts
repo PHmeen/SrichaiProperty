@@ -49,4 +49,6 @@ export interface Property {
   ownership?: string | null;
   amenities?: string[];
   nearbies?: PropertyNearbyItem[];
+  distanceKm?: number;
+  distanceText?: string;
 }

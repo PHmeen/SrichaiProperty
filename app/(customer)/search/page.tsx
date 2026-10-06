@@ -16,10 +16,18 @@
  */
 
 import React, { useState, useEffect, useRef, Suspense, useMemo, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import SearchSidebar, { FilterState } from '@/components/customer/SearchSidebar';
 import PropertyCard from '@/components/customer/PropertyCard';
+import { 
+  parseSearchIntent, 
+  calculateDistanceKm, 
+  formatDistanceText, 
+  getPopularLandmarks, 
+  LandmarkTarget 
+} from '@/lib/services/landmarkService';
 import { 
   Search, 
   X, 
@@ -41,11 +49,25 @@ import {
   Check,
   LayoutGrid,
   List,
+  Map,
+  Navigation,
+  MapPin,
   Clock,
   TrendingUp,
   Maximize2,
-  Sofa
+  Sofa,
+  Compass
 } from 'lucide-react';
+
+// โหลดแผนที่ Leaflet แบบ SSR-safe
+const SearchProximityMap = dynamic(() => import('@/components/customer/SearchProximityMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[560px] bg-slate-100 rounded-2xl animate-pulse flex items-center justify-center text-slate-400 font-bold text-xs">
+      กำลังโหลดแผนที่ตำแหน่งอสังหาริมทรัพย์...
+    </div>
+  )
+});
 
 /**
  * คอมโพเนนต์ Dropdown สไตล์มินิมอล พร้อม Lucide Icon สวยงามสำหรับ Hero Search และ Sort
@@ -185,14 +207,14 @@ const DEFAULT_FILTERS: FilterState = {
 };
 
 const POPULAR_SEARCH_TAGS = [
-  'บ้านเดี่ยว 3 นอน',
-  'คอนโดใกล้ BTS',
-  'ทาวน์โฮมเลี้ยงสัตว์ได้',
+  'บ้านแถวเซ็นทรัล',
+  'คอนโดใกล้สนามบิน',
+  'บ้านแถว ม.อ.',
   'บ้านพร้อมสระว่ายน้ำ',
   'ต่ำกว่า 3 ล้าน'
 ];
 
-type SortKey = 'latest' | 'price_asc' | 'price_desc' | 'price_sqm_asc' | 'area_desc' | 'rating_desc';
+type SortKey = 'distance_asc' | 'latest' | 'price_asc' | 'price_desc' | 'price_sqm_asc' | 'area_desc' | 'rating_desc';
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'latest', label: 'ล่าสุด (Newest)' },
@@ -240,9 +262,24 @@ function SearchPageContent() {
   }));
 
   const [sortBy, setSortBy] = useState<SortKey>('latest');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'map'>('grid');
   const [currentPage, setCurrentPage] = useState(1);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+
+  // ข้อมูลการค้นหาอิงแลนด์มาร์กและระยะทาง (Landmark Proximity Search State)
+  const [landmarkRadius, setLandmarkRadius] = useState<number>(10); // ค่าเริ่มต้น 10 กม.
+  const [dynamicLandmark, setDynamicLandmark] = useState<LandmarkTarget | null>(null);
+  const [manualLandmark, setManualLandmark] = useState<LandmarkTarget | null>(null);
+  const popularLandmarks = useMemo(() => getPopularLandmarks(), []);
+
+  // วิเคราะห์เจตนาค้นหาอิงแลนด์มาร์กจากคำค้นหา (Derived Landmark จาก Query)
+  const parsedIntent = useMemo(() => {
+    const raw = debouncedSearchTerm.trim();
+    if (!raw) return null;
+    return parseSearchIntent(raw);
+  }, [debouncedSearchTerm]);
+
+  const activeLandmark = manualLandmark || parsedIntent?.detectedLandmark || dynamicLandmark;
 
   // Suggestions & Recent Searches
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -338,10 +375,46 @@ function SearchPageContent() {
     }
   }, [debouncedSearchTerm, activeTab, propertyType, agentId, filters, pathname, router, searchParams]);
 
+  // ดึงพิกัดแลนด์มาร์กเพิ่มเติมผ่าน API สำหรับสถานที่นอกพจนานุกรม
+  useEffect(() => {
+    if (!parsedIntent) {
+      return;
+    }
+
+    if (parsedIntent.spatialIntent && !parsedIntent.detectedLandmark && parsedIntent.landmarkCandidate) {
+      let isCancelled = false;
+      fetch(`/api/landmarks/resolve?q=${encodeURIComponent(parsedIntent.landmarkCandidate)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (!isCancelled && data.success && data.landmark) {
+            setDynamicLandmark(data.landmark);
+            setSortBy('distance_asc');
+          }
+        })
+        .catch(() => {});
+      return () => {
+        isCancelled = true;
+      };
+    }
+  }, [parsedIntent]);
+
   const triggerSearch = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setDebouncedSearchTerm(searchTerm);
-    if (searchTerm.trim()) saveRecentSearch(searchTerm);
+    if (searchTerm.trim()) {
+      saveRecentSearch(searchTerm);
+      const intent = parseSearchIntent(searchTerm.trim());
+      if (intent.propertyType && propertyType === 'all') {
+        setPropertyType(intent.propertyType);
+      }
+      if (intent.listingType) {
+        const mappedTab = intent.listingType === 'rent' ? 'rent' : 'buy';
+        if (activeTab !== mappedTab) setActiveTab(mappedTab);
+      }
+      if (intent.detectedLandmark) {
+        setSortBy('distance_asc');
+      }
+    }
     setIsSearchFocused(false);
     resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -349,6 +422,9 @@ function SearchPageContent() {
   const handleClearFilters = () => {
     setSearchTerm('');
     setDebouncedSearchTerm('');
+    setManualLandmark(null);
+    setDynamicLandmark(null);
+    setLandmarkRadius(10);
     setPropertyType('all');
     setAgentId('');
     setFilters(DEFAULT_FILTERS);
@@ -356,10 +432,38 @@ function SearchPageContent() {
   };
 
   // ----------------------------------------------------------------------------
-  // ระบบกรองอัจฉริยะ (Smart Filter Engine) รองรับการค้นหาคำสำคัญแบบ Token
+  // ระบบกรองอัจฉริยะ (Smart Filter Engine) รองรับการค้นหาคำสำคัญและระยะทาง
   // ----------------------------------------------------------------------------
   const filteredProperties = useMemo(() => {
-    return properties.filter((prop) => {
+    // 1. คำนวณระยะทางจาก Landmark (ถ้ามี Landmark Active)
+    const baseList = properties.map((prop) => {
+      if (
+        activeLandmark &&
+        prop.latitude != null &&
+        prop.longitude != null &&
+        !isNaN(Number(prop.latitude)) &&
+        !isNaN(Number(prop.longitude))
+      ) {
+        const distKm = calculateDistanceKm(
+          activeLandmark.lat,
+          activeLandmark.lng,
+          Number(prop.latitude),
+          Number(prop.longitude)
+        );
+        return {
+          ...prop,
+          distanceKm: distKm,
+          distanceText: formatDistanceText(distKm)
+        };
+      }
+      return {
+        ...prop,
+        distanceKm: undefined,
+        distanceText: undefined
+      };
+    });
+
+    return baseList.filter((prop) => {
       // กรอง ซื้อ / เช่า
       if (activeTab === 'rent' && prop.listingType !== 'rent') return false;
       if (activeTab === 'buy' && prop.listingType !== 'sale') return false;
@@ -370,31 +474,55 @@ function SearchPageContent() {
       // กรองทรัพย์พรีเมียม
       if (filters.isPremiumOnly && !prop.isPremium) return false;
 
-      // ค้นหาคำสำคัญแบบ Multi-keyword Token: พิมพ์ "บ้าน เชียงใหม่ 3 นอน" จะเจอได้
-      const s = debouncedSearchTerm.toLowerCase().trim();
-      if (s) {
-        const tokens = s.split(/\s+/).filter(Boolean);
-        const searchableBag = [
-          prop.title,
-          prop.location,
-          prop.amphureName,
-          prop.provinceName,
-          prop.districtName,
-          prop.agentName,
-          prop.type,
-          prop.description,
-          prop.tag,
-          ...(prop.amenities || [])
-        ].map(f => (f || '').toLowerCase()).join(' ');
-
-        const matchesAll = tokens.every(token => searchableBag.includes(token));
-        if (!matchesAll) return false;
+      // กรองตามรัศมีแลนด์มาร์ก (ถ้ามีการระบุ Landmark)
+      if (activeLandmark && landmarkRadius > 0) {
+        if (prop.distanceKm == null || prop.distanceKm > landmarkRadius) {
+          return false;
+        }
       }
 
-      // กรองทำเล จังหวัด / อำเภอ / ตำบล
-      if (filters.province && prop.province_id !== parseInt(filters.province, 10)) return false;
-      if (filters.amphure && prop.amphure_id !== parseInt(filters.amphure, 10)) return false;
-      if (filters.district && prop.district_id !== parseInt(filters.district, 10)) return false;
+      // ค้นหาคำสำคัญ
+      const s = debouncedSearchTerm.toLowerCase().trim();
+      if (s) {
+        let remainingTokens: string[] = [];
+
+        if (activeLandmark) {
+          // หากมี Active Landmark ให้ข้ามคำที่เป็นชื่อแลนด์มาร์กและคำบอกตำแหน่ง
+          const cleaned = s
+            .replace(new RegExp(activeLandmark.name.toLowerCase(), 'g'), ' ')
+            .replace(/แถวๆ|แถว|ใกล้ๆ|ใกล้|รอบๆ|รอบ|ติด|โซน|ย่าน|บริเวณ|ทางไป|บ้านเดี่ยว|บ้าน|คอนโดมิเนียม|คอนโด|ทาวน์โฮม|ที่ดิน|เช่า|ขาย/g, ' ')
+            .trim();
+          remainingTokens = cleaned.split(/\s+/).filter((t) => t.length >= 2);
+        } else {
+          remainingTokens = s.split(/\s+/).filter(Boolean);
+        }
+
+        if (remainingTokens.length > 0) {
+          const searchableBag = [
+            prop.title,
+            prop.location,
+            prop.amphureName,
+            prop.provinceName,
+            prop.districtName,
+            prop.agentName,
+            prop.type,
+            prop.description,
+            prop.tag,
+            ...(prop.amenities || []),
+            ...(prop.nearbies?.map((n) => n.name) || [])
+          ].map((f) => (f || '').toLowerCase()).join(' ');
+
+          const matchesAll = remainingTokens.every((token) => searchableBag.includes(token));
+          if (!matchesAll) return false;
+        }
+      }
+
+      // กรองทำเล จังหวัด / อำเภอ / ตำบล (หากไม่ได้กำลังค้นหา Landmark)
+      if (!activeLandmark) {
+        if (filters.province && prop.province_id !== parseInt(filters.province, 10)) return false;
+        if (filters.amphure && prop.amphure_id !== parseInt(filters.amphure, 10)) return false;
+        if (filters.district && prop.district_id !== parseInt(filters.district, 10)) return false;
+      }
 
       // กรองประเภททรัพย์
       const typeMap: Record<string, string> = { house: 'บ้าน', condo: 'คอนโด', townhome: 'ทาวน์โฮม', land: 'ที่ดิน' };
@@ -410,7 +538,6 @@ function SearchPageContent() {
       // กรองห้องนอน / ห้องน้ำ / ที่จอดรถ
       if (filters.bedrooms !== 'any') {
         if (filters.bedrooms === '0') {
-          // ห้องสตูดิโอ (bedrooms = 0 หรือมีคำว่า สตูดิโอ / studio)
           const isZeroBed = (prop.bedrooms === 0 || !prop.bedrooms);
           const hasStudioWord = /สตูดิโอ|studio/i.test(`${prop.title} ${prop.description} ${prop.type}`);
           if (!isZeroBed && !hasStudioWord) return false;
@@ -428,7 +555,7 @@ function SearchPageContent() {
       // กรองสิ่งอำนวยความสะดวก
       const desc = prop.description || '';
       const propAmenities = prop.amenities || [];
-      const hasAmenity = (pattern: RegExp) => propAmenities.some(a => pattern.test(a)) || pattern.test(desc);
+      const hasAmenity = (pattern: RegExp) => propAmenities.some((a) => pattern.test(a)) || pattern.test(desc);
 
       if (filters.facilities.furnished && !hasAmenity(/เฟอร์นิเจอร์|แต่งครบ|พร้อมอยู่|furnished|เฟอร์ฯ|เฟอร์/i)) return false;
       if (filters.facilities.petFriendly && !hasAmenity(/สัตว์เลี้ยง|pet/i)) return false;
@@ -439,7 +566,7 @@ function SearchPageContent() {
 
       return true;
     });
-  }, [properties, activeTab, agentId, filters, debouncedSearchTerm, propertyType]);
+  }, [properties, activeTab, agentId, filters, debouncedSearchTerm, propertyType, activeLandmark, landmarkRadius]);
 
   // ----------------------------------------------------------------------------
   // ระบบเรียงลำดับผลลัพธ์ (Sort Engine)
@@ -450,6 +577,8 @@ function SearchPageContent() {
       const priceB = parseInt(b.price.replace(/[^\d]/g, ''), 10) || 0;
 
       switch (sortBy) {
+        case 'distance_asc':
+          return (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity);
         case 'price_asc':
           return priceA - priceB;
         case 'price_desc':
@@ -465,10 +594,13 @@ function SearchPageContent() {
           return (b.agentRating || 0) - (a.agentRating || 0);
         case 'latest':
         default:
+          if (activeLandmark && a.distanceKm != null && b.distanceKm != null) {
+            return a.distanceKm - b.distanceKm;
+          }
           return Number(b.id) - Number(a.id);
       }
     });
-  }, [filteredProperties, sortBy]);
+  }, [filteredProperties, sortBy, activeLandmark]);
 
   // แบ่งหน้า (Pagination) 8 รายการต่อหน้า
   const itemsPerPage = 8;
@@ -482,11 +614,36 @@ function SearchPageContent() {
     return properties.filter(p => p.isPremium || p.isVerifiedPro).slice(0, 4);
   }, [sortedProperties.length, properties]);
 
+  // ตัวเลือกการเรียงลำดับผลลัพธ์ (Sort Options)
+  const currentSortOptions = useMemo(() => {
+    if (activeLandmark) {
+      return [
+        { value: 'distance_asc' as SortKey, label: 'ใกล้ที่สุด (Closest)' },
+        ...SORT_OPTIONS
+      ];
+    }
+    return SORT_OPTIONS;
+  }, [activeLandmark]);
+
   // รายการ Active Filter Chips
   const activeChips = useMemo(() => {
     const chips: { id: string; label: string; icon?: React.ReactNode; onRemove: () => void }[] = [];
 
-    if (debouncedSearchTerm) {
+    if (activeLandmark) {
+      chips.push({
+        id: 'landmark',
+        label: `แถว ${activeLandmark.name} (${landmarkRadius > 0 ? `${landmarkRadius} กม.` : 'ทั้งหมด'})`,
+        icon: <Navigation className="w-3 h-3 text-rose-500" />,
+        onRemove: () => {
+          setManualLandmark(null);
+          setDynamicLandmark(null);
+          setSearchTerm('');
+          setDebouncedSearchTerm('');
+        }
+      });
+    }
+
+    if (debouncedSearchTerm && !activeLandmark) {
       chips.push({
         id: 'search',
         label: `"${debouncedSearchTerm}"`,
@@ -639,7 +796,7 @@ function SearchPageContent() {
     }
 
     return chips;
-  }, [debouncedSearchTerm, propertyType, agentId, properties, filters]);
+  }, [debouncedSearchTerm, propertyType, agentId, properties, filters, activeLandmark, landmarkRadius]);
 
   return (
     <div className="font-sans bg-slate-50 min-h-screen text-slate-800 antialiased text-sm pb-16">
@@ -667,7 +824,7 @@ function SearchPageContent() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onFocus={() => setIsSearchFocused(true)}
                   onKeyDown={(e) => e.key === 'Enter' && triggerSearch()}
-                  placeholder="ระบุทำเล, ชื่อโครงการ, รถไฟฟ้า, รหัสไปรษณีย์..."
+                  placeholder="พิมพ์ 'บ้านแถวเซ็นทรัล', 'คอนโดใกล้สนามบิน', 'แถว ม.อ.'..."
                   className="w-full bg-transparent border-none p-0 focus:ring-0 text-slate-800 text-xs font-bold placeholder-slate-400 outline-none"
                 />
                 {searchTerm && (
@@ -758,6 +915,38 @@ function SearchPageContent() {
                   </div>
                 )}
 
+                {/* แนะนำค้นหาตามแลนด์มาร์กยอดนิยม */}
+                <div className="mb-3.5">
+                  <div className="text-[11px] font-bold text-slate-400 mb-2 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-blue-700 font-extrabold">
+                      <Navigation className="w-3 h-3 text-blue-600" />
+                      ค้นหาตามทำเลและแลนด์มาร์ก (ใกล้เคียง)
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-semibold">คำนวณระยะทางจริง</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {popularLandmarks.map((lm) => (
+                      <button
+                        key={lm.id}
+                        type="button"
+                        onClick={() => {
+                          const query = `บ้านแถว${lm.aliases[0] || lm.name}`;
+                          setSearchTerm(query);
+                          setDebouncedSearchTerm(query);
+                          setManualLandmark(lm);
+                          setSortBy('distance_asc');
+                          saveRecentSearch(query);
+                          setIsSearchFocused(false);
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-blue-50/80 hover:bg-blue-100 text-blue-800 text-xs font-bold transition cursor-pointer flex items-center gap-1 border border-blue-200/60"
+                      >
+                        <MapPin className="w-3 h-3 text-blue-600 shrink-0" />
+                        <span>{lm.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* คำค้นหายอดนิยม */}
                 <div>
                   <div className="text-[11px] font-bold text-slate-400 mb-2 flex items-center gap-1.5">
@@ -775,7 +964,7 @@ function SearchPageContent() {
                           saveRecentSearch(tag);
                           setIsSearchFocused(false);
                         }}
-                        className="px-3 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition cursor-pointer"
+                        className="px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition cursor-pointer"
                       >
                         {tag}
                       </button>
@@ -904,7 +1093,7 @@ function SearchPageContent() {
                   {activeChips.length > 0 && <span className="text-blue-600 font-extrabold">({activeChips.length})</span>}
                 </button>
 
-                {/* สลับมุมมอง Grid / List */}
+                {/* สลับมุมมอง Grid / List / Map */}
                 <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200/60">
                   <button
                     type="button"
@@ -928,6 +1117,18 @@ function SearchPageContent() {
                   >
                     <List className="w-4 h-4" />
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('map')}
+                    className={`p-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1 ${
+                      viewMode === 'map' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                    title="มุมมองแผนที่พร้อมระยะทาง"
+                    aria-label="มุมมองแผนที่พร้อมระยะทาง"
+                  >
+                    <Map className="w-4 h-4" />
+                    <span className="text-[11px] font-bold hidden sm:inline">แผนที่</span>
+                  </button>
                 </div>
 
                 {/* เรียงลำดับ */}
@@ -938,11 +1139,66 @@ function SearchPageContent() {
                     onChange={(val) => setSortBy(val as SortKey)}
                     className="w-40 sm:w-44"
                     buttonClassName="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5"
-                    options={SORT_OPTIONS}
+                    options={currentSortOptions}
                   />
                 </div>
               </div>
             </div>
+
+            {/* แบนเนอร์แลนด์มาร์กและการปรับรัศมีค้นหา (Landmark Proximity Banner) */}
+            {activeLandmark && (
+              <div className="bg-gradient-to-r from-blue-50 via-sky-50 to-indigo-50 border border-blue-200/80 rounded-2xl p-4 shadow-xs animate-in fade-in duration-200">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex items-start sm:items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <Compass className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-blue-700 bg-blue-100/90 px-2 py-0.5 rounded-md flex items-center gap-1">
+                          <Navigation className="w-3 h-3 text-blue-600" />
+                          ค้นหาตามพิกัดและระยะทาง
+                        </span>
+                        <span className="text-xs text-slate-500 font-semibold">
+                          พบ {filteredProperties.filter((p) => p.distanceKm != null).length} ทรัพย์ในบริเวณนี้
+                        </span>
+                      </div>
+                      <h3 className="font-extrabold text-slate-900 text-sm sm:text-base mt-0.5 flex items-center gap-1.5">
+                        <span>อสังหาริมทรัพย์รอบ {activeLandmark.name}</span>
+                        {activeLandmark.province && (
+                          <span className="text-xs font-medium text-slate-500">({activeLandmark.province})</span>
+                        )}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {/* ตัวเลือกปรับรัศมี (Radius Filter Pills) */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                    <span className="text-[11px] font-bold text-slate-600 shrink-0">รัศมี:</span>
+                    {[
+                      { label: '3 กม.', value: 3 },
+                      { label: '5 กม.', value: 5 },
+                      { label: '10 กม.', value: 10 },
+                      { label: '20 กม.', value: 20 },
+                      { label: 'ไม่จำกัด', value: 0 },
+                    ].map((r) => (
+                      <button
+                        key={r.value}
+                        type="button"
+                        onClick={() => setLandmarkRadius(r.value)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                          landmarkRadius === r.value
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'bg-white/80 hover:bg-white text-slate-700 border border-slate-200'
+                        }`}
+                      >
+                        {r.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Active Filter Chips */}
             {activeChips.length > 0 && (
@@ -976,11 +1232,20 @@ function SearchPageContent() {
               </div>
             )}
 
-            {/* Skeleton Loading ขณะดึงข้อมูล */}
-            {propertiesLoading ? (
-              <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-5' : 'flex flex-col gap-4'}>
+            {/* แสดงผลตาม View Mode: Map หรือ Card Grid/List */}
+            {viewMode === 'map' ? (
+              <div className="space-y-4">
+                <SearchProximityMap
+                  landmark={activeLandmark}
+                  properties={filteredProperties}
+                  radiusKm={landmarkRadius}
+                />
+              </div>
+            ) : propertiesLoading ? (
+              /* Skeleton Loading ขณะดึงข้อมูล */
+              <div className={viewMode === 'list' ? 'flex flex-col gap-4' : 'grid grid-cols-1 md:grid-cols-2 gap-5'}>
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <PropertyCardSkeleton key={i} viewMode={viewMode} />
+                  <PropertyCardSkeleton key={i} viewMode={viewMode === 'list' ? 'list' : 'grid'} />
                 ))}
               </div>
             ) : sortedProperties.length === 0 ? (
@@ -1058,21 +1323,21 @@ function SearchPageContent() {
               </div>
             ) : (
               /* แสดงรายการอสังหาริมทรัพย์ */
-              <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-5' : 'flex flex-col gap-4'}>
+              <div className={viewMode === 'list' ? 'flex flex-col gap-4' : 'grid grid-cols-1 md:grid-cols-2 gap-5'}>
                 {paginatedProperties.map((prop) => (
                   <PropertyCard
                     key={prop.id}
                     prop={prop}
                     isFav={favorites.includes(prop.id)}
                     toggleFavorite={toggleFavorite}
-                    viewMode={viewMode}
+                    viewMode={viewMode === 'list' ? 'list' : 'grid'}
                   />
                 ))}
               </div>
             )}
 
-            {/* Pagination */}
-            {totalPages > 1 && (
+            {/* Pagination (แสดงเฉพาะมุมมองการ์ด/รายการ) */}
+            {viewMode !== 'map' && totalPages > 1 && (
               <div className="flex items-center justify-center gap-1.5 pt-6 text-xs font-bold">
                 <button
                   type="button"

@@ -148,6 +148,11 @@ export default function PropertyCard({
                 <p className="text-slate-400 text-xs font-medium flex items-center gap-1.5 mt-1">
                   <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                   <span className="truncate">{displayLocation}</span>
+                  {prop.distanceText && (
+                    <span className="shrink-0 font-extrabold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-md text-[11px] flex items-center gap-1">
+                      ห่าง {prop.distanceText}
+                    </span>
+                  )}
                 </p>
               </div>
 
@@ -322,6 +327,14 @@ export default function PropertyCard({
             }`}
           />
 
+          {/* ป้ายระยะทาง บนรูปภาพ */}
+          {prop.distanceText && (
+            <div className="absolute top-2.5 right-11 bg-blue-600/95 backdrop-blur-xs text-white text-[10px] font-black px-2 py-0.5 rounded-lg shadow-sm flex items-center gap-1 border border-white/20">
+              <MapPin className="w-3 h-3 shrink-0" />
+              <span>ห่าง {prop.distanceText}</span>
+            </div>
+          )}
+
           {/* ป้ายราคาต่อ ตร.ม. บนมุมล่างซ้ายรูปภาพ */}
           {pricePerSqm && (
             <div className="absolute bottom-2.5 left-2.5 bg-slate-900/75 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
@@ -353,6 +366,11 @@ export default function PropertyCard({
           <p className="text-slate-400 text-xs font-medium flex items-center gap-1.5">
             <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
             <span className="truncate">{displayLocation}</span>
+            {prop.distanceText && (
+              <span className="shrink-0 font-extrabold text-blue-700 bg-blue-50 border border-blue-200/80 px-1.5 py-0.5 rounded-md text-[10px]">
+                ห่าง {prop.distanceText}
+              </span>
+            )}
           </p>
 
           {/* สเปกบ้าน: ห้องนอน, ห้องน้ำ, ขนาดพื้นที่, ที่จอดรถ */}
