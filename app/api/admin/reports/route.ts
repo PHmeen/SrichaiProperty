@@ -4,6 +4,11 @@ import { getServerSession } from 'next-auth/next'; // ดึงเซสชั�
 import { authOptions } from '@/lib/authOptions'; // ค่าคอนฟิก NextAuth ส่งให้ getServerSession
 import { notifyUser } from '@/lib/notify'; // ส่งการแจ้งเตือนความคืบหน้าเรื่องร้องเรียน
 
+// คีย์ในตาราง system_configs ที่เก็บสรุปผลการปิดเรื่องร้องเรียน = คำนำหน้านี้ + รหัสรายงาน (UUID 36 ตัว)
+// system_configs.key เป็น VarChar(50) → คำนำหน้ายาวได้ไม่เกิน 14 ตัว
+// (เดิมใช้ 'report_resolution_' 18 ตัว รวมเป็น 54 → บันทึกไม่ได้ทุกครั้ง แอดมินปิดเรื่องไม่ได้ — BUG-46)
+const RESOLUTION_KEY_PREFIX = 'report_res_';
+
 interface AdminSession {
   user?: {
     id?: string;
@@ -61,7 +66,7 @@ export async function GET(req: Request) {
       db.system_configs.findMany({
         where: {
           key: {
-            startsWith: 'report_resolution_'
+            startsWith: RESOLUTION_KEY_PREFIX
           }
         }
       })
@@ -69,7 +74,7 @@ export async function GET(req: Request) {
 
     // Map: reportId -> Resolution Info
     const resolutionMap = new Map(resolutionConfigs.map(c => {
-      const reportId = c.key.replace('report_resolution_', '');
+      const reportId = c.key.replace(RESOLUTION_KEY_PREFIX, '');
       return [reportId, {
         summary: c.description || '',
         author: c.value || 'Admin',
@@ -190,9 +195,9 @@ export async function PATCH(req: Request) {
     // 4. Save Resolution Summary Log (Audit Trail)
     if (resolutionSummary) {
       await db.system_configs.upsert({
-        where: { key: `report_resolution_${reportId}` },
+        where: { key: `${RESOLUTION_KEY_PREFIX}${reportId}` },
         create: {
-          key: `report_resolution_${reportId}`,
+          key: `${RESOLUTION_KEY_PREFIX}${reportId}`,
           value: adminIdentifier,
           description: resolutionSummary,
         },
