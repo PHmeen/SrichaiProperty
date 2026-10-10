@@ -31,28 +31,32 @@ export interface SendEmailResult {
 // ------------------------------------------------------------------------------
 // 1. ตั้งค่าการเชื่อมต่อ SMTP (Transporter Configuration)
 // ------------------------------------------------------------------------------
-const SMTP_HOST = process.env.SMTP_HOST || 'smtp.gmail.com';
-const SMTP_PORT = parseInt(process.env.SMTP_PORT || '465', 10);
-const SMTP_SECURE = process.env.SMTP_SECURE !== 'false'; // ค่าเริ่มต้นคือ true สำหรับ Port 465
-const SMTP_USER = process.env.SMTP_USER || '';
-const SMTP_PASS = process.env.SMTP_PASS || '';
-const EMAIL_FROM = process.env.EMAIL_FROM || `Srichai Property <${SMTP_USER || 'no-reply@srichaiproperty.com'}>`;
+function getSmtpConfig() {
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = parseInt(process.env.SMTP_PORT || '465', 10);
+  const secure = process.env.SMTP_SECURE !== 'false';
+  const user = (process.env.SMTP_USER || '').trim();
+  const pass = (process.env.SMTP_PASS || '').trim().replace(/\s+/g, '');
+  const from = process.env.EMAIL_FROM || `Srichai Property <${user || 'no-reply@srichaiproperty.com'}>`;
+  return { host, port, secure, user, pass, from };
+}
 
 let transporter: nodemailer.Transporter | null = null;
 
 function getTransporter(): nodemailer.Transporter | null {
-  if (!SMTP_USER || !SMTP_PASS) {
+  const cfg = getSmtpConfig();
+  if (!cfg.user || !cfg.pass) {
     return null; // ยังไม่ได้ตั้งค่า SMTP -> เข้าสู่ Mock Mode
   }
 
   if (!transporter) {
-    transporter = nodemailer.createTransporter({
-      host: SMTP_HOST,
-      port: SMTP_PORT,
-      secure: SMTP_SECURE,
+    transporter = nodemailer.createTransport({
+      host: cfg.host,
+      port: cfg.port,
+      secure: cfg.secure,
       auth: {
-        user: SMTP_USER,
-        pass: SMTP_PASS,
+        user: cfg.user,
+        pass: cfg.pass,
       },
       tls: {
         rejectUnauthorized: process.env.NODE_ENV === 'production',
@@ -67,7 +71,8 @@ function getTransporter(): nodemailer.Transporter | null {
  * ตรวจสอบว่าระบบตั้งค่าการส่งอีเมลจริงไว้หรือยัง
  */
 export function isEmailConfigured(): boolean {
-  return Boolean(SMTP_USER && SMTP_PASS);
+  const cfg = getSmtpConfig();
+  return Boolean(cfg.user && cfg.pass);
 }
 
 // ------------------------------------------------------------------------------
@@ -114,7 +119,7 @@ export async function sendEmail({
   subject,
   html,
   text,
-  from = EMAIL_FROM,
+  from,
 }: SendEmailOptions): Promise<SendEmailResult> {
   try {
     if (!to || !to.includes('@')) {
@@ -122,6 +127,8 @@ export async function sendEmail({
       return { success: false, error: 'อีเมลผู้รับไม่ถูกต้อง' };
     }
 
+    const cfg = getSmtpConfig();
+    const effectiveFrom = from || cfg.from;
     const mailer = getTransporter();
 
     // กรณีไม่มีการตั้งค่า SMTP ใน .env -> ทำงานในโหมด Mock จำลองอย่างปลอดภัย
@@ -141,7 +148,7 @@ export async function sendEmail({
 
     // กรณีมี SMTP จริง -> ส่งออกไปยังเครือข่ายอินเทอร์เน็ต
     const info = await mailer.sendMail({
-      from,
+      from: effectiveFrom,
       to,
       subject,
       html,
@@ -169,6 +176,7 @@ export async function sendEmail({
  */
 export async function verifyEmailConnection(): Promise<{ success: boolean; message: string }> {
   const mailer = getTransporter();
+  const cfg = getSmtpConfig();
   if (!mailer) {
     return {
       success: false,
@@ -180,7 +188,7 @@ export async function verifyEmailConnection(): Promise<{ success: boolean; messa
     await mailer.verify();
     return {
       success: true,
-      message: `เชื่อมต่อกับ SMTP Server สำเร็จพร้อมใช้งาน (${SMTP_HOST}:${SMTP_PORT})`,
+      message: `เชื่อมต่อกับ SMTP Server สำเร็จพร้อมใช้งาน (${cfg.host}:${cfg.port})`,
     };
   } catch (error) {
     const err = error as Error;
