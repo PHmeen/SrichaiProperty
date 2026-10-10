@@ -32,11 +32,12 @@ import {
 import { Property } from '@/context/AppContext';
 
 interface PropertyCardProps {
-  prop: Property;
-  isFav: boolean;
-  toggleFavorite: (id: string | number) => void;
-  viewMode?: 'grid' | 'list';
+  prop: Property;                     // ข้อมูลบ้านทั้งหลัง (ราคา, ชื่อ, ห้องนอน, รูปภาพ ฯลฯ)
+  isFav: boolean;                     // บ้านหลังนี้ลูกค้ากดหัวใจไว้หรือยัง (true/false)
+  toggleFavorite: (id: string | number) => void; // ฟังก์ชันกดสลับหัวใจ
+  viewMode?: 'grid' | 'list';        // การ์ดแนวตั้ง (grid) หรือการ์ดแนวนอน (list)
 }
+
 
 export default function PropertyCard({ 
   prop, 
@@ -358,7 +359,7 @@ export default function PropertyCard({
           </div>
           
           {/* ชื่อทรัพย์ */}
-          <h3 className="text-sm font-extrabold text-slate-800 line-clamp-1 group-hover:text-blue-600 transition-colors">
+          <h3 className="text-sm font-extrabold text-slate-800 line-clamp-1 group-hover: transition-colors">
             {prop.title}
           </h3>
 

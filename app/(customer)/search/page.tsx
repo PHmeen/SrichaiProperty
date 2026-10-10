@@ -1391,7 +1391,7 @@ function SearchPageContent() {
             ) : sortedProperties.length === 0 ? (
               /* Smart Empty State เมื่อค้นหาไม่พบ */
               <div className="space-y-8">
-                <div className="bg-white border border-slate-200/80 rounded-2xl p-10 text-center shadow-xs space-y-4">
+                <div className="bg-white  border-slate-200/80 rounded-2xl p-10 text-center shadow-xs space-y-4">
                   <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto">
                     <SearchX className="w-8 h-8" />
                   </div>
