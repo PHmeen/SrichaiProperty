@@ -60,6 +60,13 @@ function ChatContent() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(initialSessionId);
+  const [syncedSessionId, setSyncedSessionId] = useState<string | null>(initialSessionId);
+
+  // ซิงก์ sessionId หาก URL มีการเปลี่ยนพารามิเตอร์ขณะเปิดหน้านี้อยู่ (เช่น กดดูแชทจากการแจ้งเตือน)
+  if (initialSessionId && initialSessionId !== syncedSessionId) {
+    setSyncedSessionId(initialSessionId);
+    setSelectedSessionId(initialSessionId);
+  }
 
   // ----------------------------------------------------------------------------
   // 2.2 ฟังก์ชันดึงข้อมูลห้องแชทและข้อความจาก API (GET /api/chat/sessions)

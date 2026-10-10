@@ -14,11 +14,12 @@
  * ==============================================================================
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation"; // ใช้เช็คหน้าปัจจุบันเพื่อไฮไลต์เมนูที่กำลังเปิดอยู่
 import { useSession, signOut } from "next-auth/react"; // ใช้ดึงข้อมูลผู้ใช้ที่ล็อกอินและออกจากระบบ
+import { MessageSquare } from "lucide-react";
 import NotificationBell from "@/components/common/NotificationBell"; // ใช้แสดงกระดิ่งแจ้งเตือนบนแถบเมนู
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 
@@ -71,6 +72,27 @@ export default function Navbar() {
   const isUserAdmin = userRole === 'admin';
   const roleLabel = userRole === 'admin' ? 'ผู้ดูแลระบบ' : userRole === 'agent' ? 'นายหน้า' : 'สมาชิก';
 
+  // ดึงจำนวนข้อความแชทที่ยังไม่ได้อ่าน
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  useEffect(() => {
+    if (session?.user) {
+      fetch('/api/chat/sessions')
+        .then(r => r.json())
+        .then(data => {
+          if (data.success && Array.isArray(data.sessions)) {
+            const totalUnread = data.sessions.reduce(
+              (sum: number, s: { unreadCount?: number }) => sum + (s.unreadCount || 0),
+              0
+            );
+            setUnreadChatCount(totalUnread);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [session?.user, pathname]);
+
+  const chatUrl = userRole === 'agent' ? '/agent/chat' : '/chat';
+
   return (
     // <nav> ลอยติดบนสุดเสมอ (fixed top-0) พร้อมเอฟเฟกต์พื้นหลังเบลอ (backdrop-blur)
     <nav className={`fixed w-full z-50 transition-all duration-300 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm ${isUserAdmin ? 'top-8' : 'top-0'}`}>
@@ -109,15 +131,18 @@ export default function Navbar() {
               <div className="flex items-center gap-2">
                 {/* ทางลัดไปหน้ากล่องข้อความ / แชท */}
                 <Link
-                  href="/chat"
+                  href={chatUrl}
                   className={`p-2 rounded-xl transition cursor-pointer relative ${
-                    pathname === '/chat' ? 'text-blue-600 bg-blue-50' : 'text-slate-600 hover:text-blue-600 hover:bg-slate-100'
+                    pathname === chatUrl ? 'text-blue-600 bg-blue-50' : 'text-slate-600 hover:text-blue-600 hover:bg-slate-100'
                   }`}
                   title="กล่องข้อความ / แชท"
                 >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
+                  <MessageSquare className="w-5 h-5 shrink-0" />
+                  {unreadChatCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-rose-600 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-xs animate-pulse">
+                      {unreadChatCount > 99 ? '99+' : unreadChatCount}
+                    </span>
+                  )}
                 </Link>
 
                 {isDesktop && <NotificationBell />}
@@ -233,16 +258,21 @@ export default function Navbar() {
             {/* ทางลัดเข้ากล่องข้อความบนมือถือ */}
             {session && (
               <Link
-                href="/chat"
+                href={chatUrl}
                 onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-extrabold transition ${
-                  pathname === '/chat' ? "text-blue-700 bg-blue-50" : "text-slate-700 hover:bg-slate-50"
+                className={`flex items-center justify-between px-4 py-3 rounded-xl text-xs font-extrabold transition ${
+                  pathname === chatUrl ? "text-blue-700 bg-blue-50" : "text-slate-700 hover:bg-slate-50"
                 }`}
               >
-                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-                <span>กล่องข้อความ / แชท</span>
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-slate-500 shrink-0" />
+                  <span>กล่องข้อความ / แชท</span>
+                </div>
+                {unreadChatCount > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-black">
+                    {unreadChatCount > 99 ? '99+' : unreadChatCount}
+                  </span>
+                )}
               </Link>
             )}
 

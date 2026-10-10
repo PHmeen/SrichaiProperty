@@ -49,6 +49,7 @@ export async function POST(request: Request) {
       data: {
         reporter_id: user.id,
         reported_agent_id: reportedUserId,
+        reported_property_id: chatSession.property_id || null,
         reason: reason,
         details: details || null,
         status: 'pending'

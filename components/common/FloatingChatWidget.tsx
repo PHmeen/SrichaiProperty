@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation'; // ใช้เช็คหน้าปัจจุบันเพื่อซ่อนปุ่มลอยตอนอยู่ในหน้าแชทอยู่แล้ว
 import { useSession } from 'next-auth/react'; // ใช้ดึงข้อมูลผู้ใช้ที่ล็อกอินเพื่อกำหนดลิงก์ปลายทางของปุ่มแชท
+import { MessageCircle } from 'lucide-react';
 
 // ==============================================================================
 // FLOATING CHAT WIDGET COMPONENT (ปุ่มทางด่วนเข้าสู่ระบบแชทแบบลอยมุมขวาล่าง)
@@ -37,9 +38,7 @@ export default function FloatingChatWidget() {
       aria-label="เปิดกล่องข้อความแชท"
     >
       {/* ไอคอนบอลลูนข้อความแชท */}
-      <svg className="w-5 h-5 sm:w-6 sm:h-6 transition-transform group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 12a8 8 0 1 1-3.4-6.5L21 4l-1 4.5A8 8 0 0 1 21 12Z" />
-      </svg>
+      <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 transition-transform group-hover:scale-110" />
 
       {/* จุดป้ายสีเขียวแสดงสถานะออนไลน์และพร้อมใช้งาน (Online Indicator Badge) */}
       <span className="absolute top-0 right-0 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-emerald-500 border-2 border-white rounded-full"></span>

@@ -135,7 +135,7 @@ export async function GET() {
       // ดึงข้อความล่าสุดมาทำ Text Preview (พรีวิวข้อความ, 📎 ไฟล์แนบ, หรือ 📍 ตำแหน่งที่แชร์)
       const lastMsg = s.messages[s.messages.length - 1];
       const lastMsgPreview = lastMsg 
-        ? (lastMsg.content || (lastMsg.file_url ? '📎 ไฟล์แนบ' : lastMsg.latitude ? '📍 ตำแหน่งที่แชร์' : ''))
+        ? (lastMsg.content || (lastMsg.file_url ? '[ไฟล์แนบ]' : lastMsg.latitude ? '[ตำแหน่งที่แชร์]' : ''))
         : 'เริ่มบทสนทนาใหม่';
 
       // ดึงจำนวนข้อความยังไม่ได้อ่านของห้องนี้
